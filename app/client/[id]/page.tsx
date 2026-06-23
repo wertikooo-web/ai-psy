@@ -2,23 +2,28 @@
 
 import { useState, useEffect, use } from "react";
 import { clients as mockClients, consultations as mockConsultations } from "@/lib/mockData";
+import { mockHistoryItems } from "@/lib/mockHistoryData";
 import type { StoredClient } from "@/lib/clientStore";
 import type { StoredConsultation } from "@/lib/consultationStore";
+import type { ClientHistoryItem, ClientMaterial } from "@/lib/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
+import { OverviewTab } from "@/components/client/tabs/OverviewTab";
+import { ConsultationsTab } from "@/components/client/tabs/ConsultationsTab";
+import { HistoryTab } from "@/components/client/tabs/HistoryTab";
+import { MaterialsTab } from "@/components/client/tabs/MaterialsTab";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowRight, Mic, ArrowLeft,
-  TrendingUp, TrendingDown,
-  ChevronDown, ChevronUp, Trash2,
-} from "lucide-react";
+import { Mic, ArrowLeft, Trash2 } from "lucide-react";
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("ru-RU", {
-    day: "numeric", month: "long", year: "numeric",
-  });
-}
+type Tab = "overview" | "consultations" | "history" | "materials";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "overview",      label: "Обзор"            },
+  { id: "consultations", label: "Консультации"      },
+  { id: "history",       label: "История клиента"   },
+  { id: "materials",     label: "Материалы"         },
+];
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
   active:    { label: "в процессе",  cls: "bg-emerald-50 text-emerald-600 border-emerald-100" },
@@ -26,38 +31,40 @@ const statusLabel: Record<string, { label: string; cls: string }> = {
   completed: { label: "завершена",   cls: "bg-slate-50 text-slate-500 border-slate-200" },
 };
 
-const sessionStatus: Record<string, { label: string; cls: string }> = {
-  analyzed:    { label: "Проанализирована", cls: "bg-brand-50 text-brand-500" },
-  new:         { label: "Ожидает анализа",  cls: "bg-amber-50 text-amber-600" },
-  in_progress: { label: "В обработке",      cls: "bg-slate-50 text-slate-500" },
-  uploaded:    { label: "Загружена",        cls: "bg-slate-50 text-slate-500" },
-};
-
 export default function ClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
+  const router  = useRouter();
 
-  const [uploadOpen, setUploadOpen]   = useState(false);
-  const [openCompare, setOpenCompare] = useState<string | null>(null);
-  const [realClient, setRealClient]   = useState<StoredClient | null>(null);
-  const [realSessions, setRealSessions] = useState<StoredConsultation[]>([]);
+  const [tab, setTab]                     = useState<Tab>("overview");
+  const [uploadOpen, setUploadOpen]       = useState(false);
+  const [realClient, setRealClient]       = useState<StoredClient | null>(null);
+  const [realSessions, setRealSessions]   = useState<StoredConsultation[]>([]);
+  const [historyItems, setHistoryItems]   = useState<ClientHistoryItem[]>([]);
+  const [materials, setMaterials]         = useState<ClientMaterial[]>([]);
   const [deletingClient, setDeletingClient] = useState(false);
-  const [deletingSession, setDeletingSession] = useState<string | null>(null);
 
-  const mockClient   = mockClients.find((c) => c.id === id);
-  const isMock       = !!mockClient;
-  const client       = mockClient ?? realClient;
+  const mockClient = mockClients.find((c) => c.id === id);
+  const isMock     = !!mockClient;
+  const client     = mockClient ?? realClient;
 
+  // Load data for real clients
   useEffect(() => {
-    if (isMock) return;
-    fetch("/api/clients")
-      .then((r) => r.json())
-      .then((all: StoredClient[]) => setRealClient(all.find((c) => c.id === id) ?? null))
-      .catch(() => {});
-    fetch("/api/consultations")
-      .then((r) => r.json())
-      .then((all: StoredConsultation[]) => setRealSessions(all.filter((c) => c.clientId === id)))
-      .catch(() => {});
+    if (isMock) {
+      // Mock clients use static data for history; materials start empty
+      setHistoryItems(mockHistoryItems.filter((i) => i.clientId === id));
+      return;
+    }
+    Promise.all([
+      fetch("/api/clients").then((r) => r.json()),
+      fetch("/api/consultations").then((r) => r.json()),
+      fetch(`/api/client-history/${id}`).then((r) => r.json()),
+      fetch(`/api/client-materials/${id}`).then((r) => r.json()),
+    ]).then(([clients, consultations, history, mats]) => {
+      setRealClient((clients as StoredClient[]).find((c) => c.id === id) ?? null);
+      setRealSessions((consultations as StoredConsultation[]).filter((c) => c.clientId === id));
+      setHistoryItems(history as ClientHistoryItem[]);
+      setMaterials(mats as ClientMaterial[]);
+    }).catch(() => {});
   }, [id, isMock]);
 
   if (!client) {
@@ -73,7 +80,6 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
     .filter((c) => c.clientId === id)
     .sort((a, b) => b.sessionNumber - a.sessionNumber);
 
-  const sessions = isMock ? mockSessionsForClient : realSessions;
   const st = statusLabel[client.status] ?? statusLabel.active;
 
   async function handleDeleteClient() {
@@ -88,19 +94,13 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   }
 
   async function handleDeleteSession(sessionId: string) {
-    if (!confirm("Удалить эту запись консультации?")) return;
-    setDeletingSession(sessionId);
-    try {
-      await fetch(`/api/consultations/${sessionId}`, { method: "DELETE" });
-      setRealSessions((prev) => prev.filter((s) => s.id !== sessionId));
-    } finally {
-      setDeletingSession(null);
-    }
+    await fetch(`/api/consultations/${sessionId}`, { method: "DELETE" });
+    setRealSessions((prev) => prev.filter((s) => s.id !== sessionId));
   }
 
   return (
     <>
-      <div className="p-8 max-w-2xl mx-auto space-y-8">
+      <div className="p-6 max-w-2xl mx-auto space-y-6">
 
         {/* Back */}
         <Link
@@ -121,13 +121,23 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
                 {st.label}
               </span>
             </div>
-            {"age" in client && client.age && (
-              <p className="text-sm text-slate-400 mt-0.5">
-                {client.age} лет{client.concern ? ` · ${client.concern}` : ""}
-              </p>
-            )}
+            {(() => {
+              const age = "age" in client ? (client as { age?: number }).age : undefined;
+              return age ? (
+                <p className="text-sm text-slate-400 mt-0.5">
+                  {age} лет{client.concern ? ` · ${client.concern}` : ""}
+                </p>
+              ) : client.concern ? (
+                <p className="text-sm text-slate-400 mt-0.5">{client.concern}</p>
+              ) : null;
+            })()}
             <p className="text-xs text-slate-400 mt-1">
-              {client.totalConsultations} встреч · последняя {formatDate(client.lastConsultation)}
+              {isMock
+                ? `${mockSessionsForClient.length} встреч`
+                : `${realSessions.length} встреч`}
+              {client.lastConsultation
+                ? ` · последняя ${new Date(client.lastConsultation).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}`
+                : ""}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -151,213 +161,60 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        {/* Therapy overview */}
-        {(client.mainTopics?.length > 0 || client.lastShift || client.currentFocus) && (
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
+        {/* Tab navigation */}
+        <div className="flex gap-1 bg-slate-100/60 rounded-xl p-1">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                tab === t.id
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-            {client.mainTopics?.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">
-                  Повторяющиеся темы терапии
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {client.mainTopics.map((t) => (
-                    <span key={t} className="px-3 py-1 rounded-full text-sm text-slate-600 bg-slate-50 border border-slate-100">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {client.lastShift && (
-              <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Последний значимый сдвиг
-                </p>
-                <p className="text-sm text-slate-600 leading-relaxed italic">{client.lastShift}</p>
-              </div>
-            )}
-
-            {client.currentFocus && (
-              <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Текущий фокус
-                </p>
-                <p className="text-sm font-medium text-slate-700">{client.currentFocus}</p>
-              </div>
-            )}
-
-            {/* Dynamics (mock only) */}
-            {isMock && (() => {
-              const map = mockSessionsForClient.find((c) => c.clientMap)?.clientMap;
-              if (!map?.dynamics?.length) return null;
-              return (
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">
-                    Динамика терапии
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {map.dynamics.map((d) => (
-                      <span
-                        key={d.label}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm border ${
-                          d.direction === "up"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                            : "bg-rose-50 text-rose-600 border-rose-100"
-                        }`}
-                      >
-                        {d.direction === "up" ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                        {d.label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
+        {/* Tab content */}
+        {tab === "overview" && (
+          <OverviewTab
+            client={client}
+            mockSessions={isMock ? mockSessionsForClient : []}
+          />
         )}
 
-        {/* Consultations timeline */}
-        <section>
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
-            История консультаций
-          </h2>
+        {tab === "consultations" && (
+          <ConsultationsTab
+            isMock={isMock}
+            mockSessions={isMock ? mockSessionsForClient : []}
+            realSessions={realSessions}
+            onUpload={() => setUploadOpen(true)}
+            onDeleteSession={handleDeleteSession}
+          />
+        )}
 
-          {sessions.length === 0 && (
-            <div className="text-center py-10 text-slate-400 text-sm">
-              <p>Записей пока нет.</p>
-              <button
-                onClick={() => setUploadOpen(true)}
-                className="mt-3 text-brand-500 hover:text-brand-600 font-medium transition-colors"
-              >
-                Загрузить первую запись →
-              </button>
-            </div>
-          )}
+        {tab === "history" && (
+          <HistoryTab
+            clientId={id}
+            items={historyItems}
+            isMock={isMock}
+            onAdd={(item) => setHistoryItems((prev) => [...prev, item])}
+            onDelete={(itemId) => setHistoryItems((prev) => prev.filter((i) => i.id !== itemId))}
+          />
+        )}
 
-          <div className="space-y-3">
-            {sessions.map((c, idx) => {
-              const status = "sessionNumber" in c
-                ? (c as typeof mockSessionsForClient[0]).status
-                : "uploaded";
-              const st = sessionStatus[status] ?? sessionStatus.uploaded;
-              const sessionNum = "sessionNumber" in c
-                ? (c as typeof mockSessionsForClient[0]).sessionNumber
-                : idx + 1;
-              const topic = "topic" in c
-                ? (c as typeof mockSessionsForClient[0]).topic
-                : ("title" in c ? (c as StoredConsultation).title : "");
-              const duration = "duration" in c
-                ? (c as typeof mockSessionsForClient[0]).duration
-                : "";
-              const date = "date" in c
-                ? (c as typeof mockSessionsForClient[0]).date
-                : (c as StoredConsultation).uploadedAt?.slice(0, 10) ?? "";
-
-              const compareData = "compareData" in c
-                ? (c as typeof mockSessionsForClient[0]).compareData
-                : undefined;
-              const hasPrev = idx < sessions.length - 1;
-              const isOpen = openCompare === c.id;
-
-              return (
-                <div key={c.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                  <div className="flex items-center gap-3 p-4">
-                    <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-semibold text-slate-500">{sessionNum}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700 truncate">{topic}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {date ? formatDate(date) : ""}
-                        {duration ? ` · ${duration}` : ""}
-                      </p>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.cls} flex-shrink-0`}>
-                      {st.label}
-                    </span>
-                    <Link
-                      href={`/consultation/${c.id}`}
-                      className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 font-medium flex-shrink-0 transition-colors"
-                    >
-                      Открыть <ArrowRight size={12} />
-                    </Link>
-                    {!isMock && (
-                      <button
-                        onClick={() => handleDeleteSession(c.id)}
-                        disabled={deletingSession === c.id}
-                        className="p-1.5 text-slate-200 hover:text-rose-400 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0"
-                        title="Удалить запись"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Compare button (mock only) */}
-                  {hasPrev && compareData && (
-                    <div className="border-t border-slate-50">
-                      <button
-                        onClick={() => setOpenCompare(isOpen ? null : c.id)}
-                        className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
-                      >
-                        <span>Сравнить с сессией {compareData.prevSession}</span>
-                        {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                      </button>
-
-                      {isOpen && (
-                        <div className="px-4 pb-4 space-y-3 border-t border-slate-50 bg-slate-50/50">
-                          <p className="text-xs text-slate-500 pt-3 leading-relaxed italic">
-                            {compareData.requestChange}
-                          </p>
-                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                            {compareData.newTopics.length > 0 && (
-                              <div>
-                                <p className="text-xs font-semibold text-emerald-600 mb-1.5 flex items-center gap-1">
-                                  <TrendingUp size={10} /> Новое
-                                </p>
-                                <div className="flex flex-wrap gap-1">
-                                  {compareData.newTopics.map((t) => (
-                                    <span key={t} className="px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-100">{t}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {compareData.strengthened.length > 0 && (
-                              <div>
-                                <p className="text-xs font-semibold text-brand-500 mb-1.5 flex items-center gap-1">
-                                  <TrendingUp size={10} /> Усилилось
-                                </p>
-                                <div className="flex flex-wrap gap-1">
-                                  {compareData.strengthened.map((t) => (
-                                    <span key={t} className="px-2 py-0.5 rounded-full text-xs bg-brand-50 text-brand-600 border border-brand-100">{t}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {compareData.weakened.length > 0 && (
-                              <div>
-                                <p className="text-xs font-semibold text-rose-500 mb-1.5 flex items-center gap-1">
-                                  <TrendingDown size={10} /> Ослабло
-                                </p>
-                                <div className="flex flex-wrap gap-1">
-                                  {compareData.weakened.map((t) => (
-                                    <span key={t} className="px-2 py-0.5 rounded-full text-xs bg-rose-50 text-rose-600 border border-rose-100">{t}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
+        {tab === "materials" && (
+          <MaterialsTab
+            clientId={id}
+            materials={materials}
+            isMock={isMock}
+            onAdd={(m) => setMaterials((prev) => [m, ...prev])}
+            onDelete={(mid) => setMaterials((prev) => prev.filter((m) => m.id !== mid))}
+          />
+        )}
 
       </div>
 

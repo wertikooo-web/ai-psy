@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteClient } from "@/lib/clientStore";
 import { readAll, writeAll } from "@/lib/consultationStore";
+import { deleteForClient as deleteHistoryForClient } from "@/lib/clientHistoryStore";
+import { deleteForClient as deleteMaterialsForClient } from "@/lib/clientMaterialsStore";
 
 export async function DELETE(
   _req: NextRequest,
@@ -10,9 +12,11 @@ export async function DELETE(
   try {
     await deleteClient(id);
 
-    // Delete all consultations belonging to this client
+    // Cascade-delete all related data
     const all = await readAll();
     await writeAll(all.filter((c) => c.clientId !== id));
+    await deleteHistoryForClient(id);
+    await deleteMaterialsForClient(id);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
