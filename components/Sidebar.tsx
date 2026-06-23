@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { UploadModal } from "@/components/upload/UploadModal";
+import { UserChip } from "@/components/UserChip";
 
 const navItems = [
   { href: "/",               label: "Дашборд",      icon: LayoutDashboard },
@@ -95,16 +96,7 @@ export function Sidebar() {
           </Link>
         ))}
 
-        {/* User chip */}
-        <div className="mt-3 px-3 py-2.5 rounded-lg bg-slate-50 flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-            НВ
-          </div>
-          <div className="min-w-0">
-            <div className="text-xs font-semibold text-slate-700 truncate">Наталья Веселова</div>
-            <div className="text-xs text-slate-400 truncate">Психолог</div>
-          </div>
-        </div>
+        <UserChip />
       </div>
     </aside>
     <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />

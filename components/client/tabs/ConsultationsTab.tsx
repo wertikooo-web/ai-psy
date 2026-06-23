@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { ArrowRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Trash2, CheckCircle2, CircleDashed } from "lucide-react";
 import Link from "next/link";
 import type { StoredConsultation } from "@/lib/consultationStore";
 
@@ -28,10 +28,15 @@ interface MockSession {
 }
 
 const sessionStatus: Record<string, { label: string; cls: string }> = {
-  analyzed:    { label: "Проанализирована", cls: "bg-brand-50 text-brand-500" },
-  new:         { label: "Ожидает анализа",  cls: "bg-amber-50 text-amber-600" },
-  in_progress: { label: "В обработке",      cls: "bg-slate-50 text-slate-500" },
-  uploaded:    { label: "Загружена",        cls: "bg-slate-50 text-slate-500" },
+  done:        { label: "Проанализирована",       cls: "bg-brand-50 text-brand-500" },
+  analyzed:    { label: "Проанализирована",       cls: "bg-brand-50 text-brand-500" },
+  ready:       { label: "Готово к анализу",       cls: "bg-emerald-50 text-emerald-600" },
+  transcribing:{ label: "Транскрипция...",         cls: "bg-slate-50 text-slate-500" },
+  analyzing:   { label: "Анализ...",              cls: "bg-slate-50 text-slate-500" },
+  created:     { label: "Ожидает транскрипции",   cls: "bg-amber-50 text-amber-600" },
+  uploaded:    { label: "Ожидает транскрипции",   cls: "bg-amber-50 text-amber-600" },
+  new:         { label: "Ожидает анализа",        cls: "bg-amber-50 text-amber-600" },
+  error:       { label: "Ошибка",                 cls: "bg-red-50 text-red-500" },
 };
 
 interface Props {
@@ -109,18 +114,25 @@ export function ConsultationsTab({
   return (
     <div className="space-y-3">
       {realSessions.map((c, idx) => {
-        const st = sessionStatus.uploaded;
+        const hasAudio    = !!(c.audio?.fileUrl ?? c.fileUrl);
+        const hasTranscript = !!c.transcript?.text;
+        const hasAnalysis   = !!(c.analyses?.length);
+        const displayTitle  = /\.(mp3|m4a|wav|ogg|webm|flac)$/i.test(c.title)
+          ? `Консультация #${idx + 1}`
+          : c.title;
         return (
           <div key={c.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
             <div className="flex items-center gap-3 p-4">
               <SessionNumber n={idx + 1} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-700 truncate">{c.title}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{formatDate(c.uploadedAt)}</p>
+                <p className="text-sm font-medium text-slate-700 truncate">{displayTitle}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{formatDate(c.createdAt ?? c.uploadedAt ?? "")}</p>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <MiniStatus ok={hasAudio}      label="Аудио" />
+                  <MiniStatus ok={hasTranscript} label="Транскрипт" />
+                  <MiniStatus ok={hasAnalysis}   label="Анализ" />
+                </div>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.cls} flex-shrink-0`}>
-                {st.label}
-              </span>
               <Link href={`/consultation/${c.id}`}
                 className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 font-medium flex-shrink-0 transition-colors">
                 Открыть <ArrowRight size={12} />
@@ -138,6 +150,17 @@ export function ConsultationsTab({
         );
       })}
     </div>
+  );
+}
+
+function MiniStatus({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-md ${
+      ok ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"
+    }`}>
+      {ok ? <CheckCircle2 size={10} /> : <CircleDashed size={10} />}
+      {label}
+    </span>
   );
 }
 

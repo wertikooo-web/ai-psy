@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "@/lib/mockData";
-import { Send, BrainCircuit, User } from "lucide-react";
+import { Send, BrainCircuit, User, ChevronsLeft, ChevronsRight, MessagesSquare } from "lucide-react";
 import clsx from "clsx";
 
 interface ChatPanelProps {
   messages: ChatMessage[];
   pendingMessage?: string | null;
   onMessageConsumed?: () => void;
+  collapsed: boolean;
+  onToggle: () => void;
 }
 
 const MOCK_RESPONSES = [
@@ -19,61 +21,119 @@ const MOCK_RESPONSES = [
   "Динамика терапии позитивная. Клиент демонстрирует нарастающую способность к рефлексии.",
 ];
 
-export function ChatPanel({ messages: initial, pendingMessage, onMessageConsumed }: ChatPanelProps) {
+const QUICK_PROMPTS = ["Что важно на следующей сессии?", "Ключевой инсайт?", "Риски?"];
+
+export function ChatPanel({
+  messages: initial,
+  pendingMessage,
+  onMessageConsumed,
+  collapsed,
+  onToggle,
+}: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [input, setInput]       = useState("");
+  const [loading, setLoading]   = useState(false);
+  const bottomRef               = useRef<HTMLDivElement>(null);
+  const textareaRef             = useRef<HTMLTextAreaElement>(null);
 
   // Inject message from "dig deeper" cards
   useEffect(() => {
     if (!pendingMessage) return;
     setInput(pendingMessage);
     onMessageConsumed?.();
-    // Auto-scroll to input area
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    textareaRef.current?.focus();
   }, [pendingMessage, onMessageConsumed]);
 
-  const send = () => {
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  // Auto-resize textarea
+  function handleInputChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setInput(e.target.value);
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+  }
+
+  function send() {
     if (!input.trim() || loading) return;
 
     const userMsg: ChatMessage = {
-      id: `u${Date.now()}`,
-      role: "user",
-      content: input,
+      id:        `u${Date.now()}`,
+      role:      "user",
+      content:   input,
       timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
     };
     setMessages((m) => [...m, userMsg]);
     setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
     setLoading(true);
 
     setTimeout(() => {
       const aiMsg: ChatMessage = {
-        id: `a${Date.now()}`,
-        role: "assistant",
-        content: MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)],
+        id:        `a${Date.now()}`,
+        role:      "assistant",
+        content:   MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)],
         timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages((m) => [...m, aiMsg]);
       setLoading(false);
     }, 1200);
-  };
+  }
 
+  // ── Collapsed: narrow vertical tab ──────────────────────────────────────────
+  if (collapsed) {
+    return (
+      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-white">
+        <button
+          onClick={onToggle}
+          title="Развернуть чат"
+          className="flex-1 flex flex-col items-center justify-start pt-4 gap-3 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors w-full"
+        >
+          <ChevronsRight size={14} />
+          <span
+            className="text-xs font-medium text-slate-400 select-none"
+            style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+          >
+            Чат
+          </span>
+        </button>
+      </div>
+    );
+  }
+
+  // ── Expanded ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full bg-white">
-      {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-brand-500 flex items-center justify-center">
-            <BrainCircuit size={13} className="text-white" />
+    <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
+
+      {/* Panel header — fixed */}
+      <div className="px-5 pt-4 pb-3 border-b border-slate-100 flex-shrink-0">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+              <MessagesSquare size={13} className="text-emerald-500" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-700">Чат по консультации</h2>
+              <p className="text-xs text-slate-400">Задавайте вопросы по этой сессии</p>
+            </div>
           </div>
-          <h2 className="text-sm font-semibold text-slate-700">Чат по консультации</h2>
+          <button
+            onClick={onToggle}
+            title="Свернуть"
+            className="p-1 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors flex-shrink-0"
+          >
+            <ChevronsLeft size={14} />
+          </button>
         </div>
-        <p className="text-xs text-slate-400 mt-0.5 ml-8">AI знает контекст этой сессии</p>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin">
+      {/* Messages — scrolls independently */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
         {messages.map((msg) => {
           const isAI = msg.role === "assistant";
           return (
@@ -87,7 +147,7 @@ export function ChatPanel({ messages: initial, pendingMessage, onMessageConsumed
                   : <User size={11} className="text-slate-400" />
                 }
               </div>
-              <div className={clsx("max-w-[85%]", isAI ? "" : "items-end flex flex-col")}>
+              <div className={clsx("max-w-[85%]", !isAI && "flex flex-col items-end")}>
                 <div className={clsx(
                   "text-sm leading-relaxed rounded-2xl px-3.5 py-2.5 whitespace-pre-wrap",
                   isAI
@@ -101,8 +161,6 @@ export function ChatPanel({ messages: initial, pendingMessage, onMessageConsumed
             </div>
           );
         })}
-
-        <div ref={bottomRef} />
 
         {loading && (
           <div className="flex gap-2.5">
@@ -118,12 +176,14 @@ export function ChatPanel({ messages: initial, pendingMessage, onMessageConsumed
             </div>
           </div>
         )}
+
+        <div ref={bottomRef} />
       </div>
 
-      {/* Suggestions */}
-      <div className="px-4 pb-2">
+      {/* Quick prompts — fixed */}
+      <div className="px-4 pt-2 pb-1 flex-shrink-0">
         <div className="flex flex-wrap gap-1.5">
-          {["Что важно на следующей сессии?", "Ключевой инсайт?", "Риски?"].map((s) => (
+          {QUICK_PROMPTS.map((s) => (
             <button
               key={s}
               onClick={() => setInput(s)}
@@ -135,12 +195,13 @@ export function ChatPanel({ messages: initial, pendingMessage, onMessageConsumed
         </div>
       </div>
 
-      {/* Input */}
-      <div className="px-4 py-3 border-t border-slate-100">
+      {/* Input — fixed at bottom */}
+      <div className="px-4 py-3 border-t border-slate-100 flex-shrink-0">
         <div className="flex gap-2 items-end">
           <textarea
+            ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -148,8 +209,9 @@ export function ChatPanel({ messages: initial, pendingMessage, onMessageConsumed
               }
             }}
             placeholder="Спросите об этой консультации..."
-            rows={2}
-            className="flex-1 resize-none text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 placeholder:text-slate-300 scrollbar-thin"
+            rows={1}
+            className="flex-1 resize-none text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 placeholder:text-slate-300 overflow-hidden"
+            style={{ minHeight: "40px", maxHeight: "120px" }}
           />
           <button
             onClick={send}

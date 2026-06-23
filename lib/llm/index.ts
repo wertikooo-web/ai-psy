@@ -18,4 +18,4 @@ export function getProvider(name: LLMProvider): LLMProviderClient {
   return client;
 }
 
-export const DEFAULT_PROVIDER: LLMProvider = "anthropic";
+export const DEFAULT_PROVIDER: LLMProvider = "openai";

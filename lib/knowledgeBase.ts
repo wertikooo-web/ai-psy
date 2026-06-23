@@ -3,7 +3,7 @@ import fs from "fs/promises";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type AnalysisMode = "working" | "deep" | "therapist_process" | "gestalt";
+export type AnalysisMode = "working" | "deep" | "therapist_process" | "gestalt" | "hypothesis" | "next_session";
 
 export interface AnalysisPromptInput {
   mode: AnalysisMode;
@@ -53,6 +53,19 @@ const MODE_ONLY_FILES: Record<AnalysisMode, string[]> = {
   gestalt: [
     "04_СТИЛЬ_АНАЛИТИЧЕСКОГО_РАЗБОРА.md",
     "07_ГЕШТАЛЬТ_РЕЖИМ.md",
+    "11_КУДА_МОЖНО_КОПНУТЬ_ЕЩЁ.md",
+  ],
+
+  hypothesis: [
+    "04_СТИЛЬ_АНАЛИТИЧЕСКОГО_РАЗБОРА.md",
+    "05_ПРИОРИТЕТЫ_АНАЛИТИЧЕСКОГО_ВНИМАНИЯ.md",
+    "06_РАБОТА_С_ГИПОТЕЗАМИ.md",
+    "08_ЧТО_МОЖЕТ_БЫТЬ_БОЛЕЕ_ПРОСТЫМ_ОБЪЯСНЕНИЕМ.md",
+  ],
+
+  next_session: [
+    "03_ГОРЯЧИЕ_КНОПКИ.md",
+    "04_СТИЛЬ_АНАЛИТИЧЕСКОГО_РАЗБОРА.md",
     "11_КУДА_МОЖНО_КОПНУТЬ_ЕЩЁ.md",
   ],
 };
@@ -127,6 +140,8 @@ export async function buildAnalysisPrompt(input: AnalysisPromptInput): Promise<s
     deep:              "Глубокий (включая терапевтический процесс)",
     therapist_process: "Анализ работы психолога",
     gestalt:           "Гештальт-оптика",
+    hypothesis:        "Работа с гипотезами",
+    next_session:      "Подготовка к следующей сессии",
   };
 
   const sections: string[] = [];

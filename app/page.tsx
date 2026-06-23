@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const [addOpen, setAddOpen]         = useState(false);
   const [query, setQuery]             = useState("");
   const [realClients, setRealClients] = useState<StoredClient[]>([]);
+  const [greeting, setGreeting]       = useState("Психолог");
 
   async function loadClients() {
     try {
@@ -38,7 +39,17 @@ export default function DashboardPage() {
     } catch {}
   }
 
-  useEffect(() => { loadClients(); }, []);
+  useEffect(() => {
+    loadClients();
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((p) => {
+        const name = p.displayName?.trim() ||
+          [p.firstName, p.lastName].filter(Boolean).join(" ") || "";
+        if (name) setGreeting(name);
+      })
+      .catch(() => {});
+  }, []);
 
   const mockActive  = mockClients.filter((c) => c.status === "active");
   const allClients: DisplayClient[] = [
@@ -59,7 +70,7 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-lg font-semibold text-slate-800">Добрый день, Наталья</h1>
+            <h1 className="text-lg font-semibold text-slate-800">Добрый день, {greeting}</h1>
             <p className="text-sm text-slate-400 mt-0.5">
               {new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
             </p>

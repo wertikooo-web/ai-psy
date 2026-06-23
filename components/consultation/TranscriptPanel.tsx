@@ -2,25 +2,67 @@
 
 import { useState } from "react";
 import { TranscriptSegment } from "@/lib/mockData";
-import { Search, User, Stethoscope } from "lucide-react";
+import { Search, User, Stethoscope, ChevronsLeft, ChevronsRight, Mic } from "lucide-react";
 import clsx from "clsx";
 
 interface TranscriptPanelProps {
   segments: TranscriptSegment[];
+  collapsed: boolean;
+  onToggle: () => void;
 }
 
-export function TranscriptPanel({ segments }: TranscriptPanelProps) {
+export function TranscriptPanel({ segments, collapsed, onToggle }: TranscriptPanelProps) {
   const [query, setQuery] = useState("");
 
   const filtered = segments.filter((s) =>
     s.text.toLowerCase().includes(query.toLowerCase())
   );
 
+  // ── Collapsed: narrow vertical tab ──────────────────────────────────────────
+  if (collapsed) {
+    return (
+      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-white">
+        <button
+          onClick={onToggle}
+          title="Развернуть транскрипт"
+          className="flex-1 flex flex-col items-center justify-start pt-4 gap-3 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors w-full"
+        >
+          <ChevronsRight size={14} />
+          <span
+            className="text-xs font-medium text-slate-400 select-none"
+            style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+          >
+            Транскрипт
+          </span>
+        </button>
+      </div>
+    );
+  }
+
+  // ── Expanded ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full bg-white border-r border-slate-100">
-      {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100">
-        <h2 className="text-sm font-semibold text-slate-700 mb-3">Транскрипт</h2>
+    <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
+
+      {/* Panel header — fixed */}
+      <div className="px-5 pt-4 pb-3 border-b border-slate-100 flex-shrink-0">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+              <Mic size={13} className="text-slate-500" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-700">Транскрипт</h2>
+              <p className="text-xs text-slate-400">Реплики клиента и психолога</p>
+            </div>
+          </div>
+          <button
+            onClick={onToggle}
+            title="Свернуть"
+            className="p-1 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors flex-shrink-0"
+          >
+            <ChevronsLeft size={14} />
+          </button>
+        </div>
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
           <input
@@ -32,21 +74,15 @@ export function TranscriptPanel({ segments }: TranscriptPanelProps) {
         </div>
       </div>
 
-      {/* Segments */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 scrollbar-thin">
+      {/* Segments — scrolls independently */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
         {filtered.length === 0 && (
           <p className="text-xs text-slate-400 text-center py-8">Ничего не найдено</p>
         )}
         {filtered.map((seg) => {
           const isTherapist = seg.speaker === "therapist";
           return (
-            <div
-              key={seg.id}
-              className={clsx(
-                "flex gap-2.5 group",
-                isTherapist ? "flex-row" : "flex-row"
-              )}
-            >
+            <div key={seg.id} className="flex gap-2.5">
               <div className={clsx(
                 "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
                 isTherapist ? "bg-brand-100" : "bg-slate-100"
@@ -68,14 +104,9 @@ export function TranscriptPanel({ segments }: TranscriptPanelProps) {
                 </div>
                 <p className={clsx(
                   "text-sm leading-relaxed rounded-xl px-3 py-2",
-                  isTherapist
-                    ? "bg-brand-50 text-slate-700"
-                    : "bg-slate-50 text-slate-600"
+                  isTherapist ? "bg-brand-50 text-slate-700" : "bg-slate-50 text-slate-600"
                 )}>
-                  {query
-                    ? highlightText(seg.text, query)
-                    : seg.text
-                  }
+                  {query ? highlightText(seg.text, query) : seg.text}
                 </p>
               </div>
             </div>
@@ -83,9 +114,11 @@ export function TranscriptPanel({ segments }: TranscriptPanelProps) {
         })}
       </div>
 
-      <div className="px-5 py-3 border-t border-slate-100">
+      {/* Footer — fixed */}
+      <div className="px-5 py-3 border-t border-slate-100 flex-shrink-0">
         <p className="text-xs text-slate-400 text-center">
-          {segments.length} реплик · {filtered.length !== segments.length && `найдено ${filtered.length}`}
+          {segments.length} реплик
+          {filtered.length !== segments.length && ` · найдено ${filtered.length}`}
         </p>
       </div>
     </div>

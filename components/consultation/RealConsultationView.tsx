@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { StoredConsultation } from "@/lib/consultationStore";
+import { StoredConsultation, ConsultationStatus } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import {
   ArrowLeft, FileAudio, Calendar, HardDrive, Clock,
-  Zap, Search, UserCheck, Layers, HelpCircle, CalendarCheck,
-  Play,
+  Zap, Search, UserCheck, Layers, Lightbulb, CalendarClock,
+  Play, NotebookPen, FileText, Loader2, AlertCircle,
+  Download, ChevronDown, ChevronUp, BrainCircuit,
+  CheckCircle2, CircleDashed,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -19,16 +21,6 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function estimateDuration(bytes: number): string {
   const minutes = Math.round(bytes / (128 * 1024 / 8) / 60);
   if (minutes < 1) return "< 1 мин";
@@ -37,13 +29,7 @@ function estimateDuration(bytes: number): string {
 
 // ── Analysis modes ────────────────────────────────────────────────────────────
 
-type ModeId =
-  | "working"
-  | "deep"
-  | "therapist"
-  | "gestalt"
-  | "hypothesis"
-  | "next_session";
+type ModeId = "working" | "deep" | "therapist_process" | "gestalt" | "hypothesis" | "next_session";
 
 interface AnalysisMode {
   id: ModeId;
@@ -53,64 +39,147 @@ interface AnalysisMode {
 }
 
 const MODES: AnalysisMode[] = [
-  {
-    id: "working",
-    icon: <Zap size={16} />,
-    label: "Рабочий анализ",
-    desc: "Ключевые темы, гипотезы, динамика — быстро",
-  },
-  {
-    id: "deep",
-    icon: <Search size={16} />,
-    label: "Глубокий анализ",
-    desc: "Паттерны, процессы, подробный разбор",
-  },
-  {
-    id: "therapist",
-    icon: <UserCheck size={16} />,
-    label: "Работа психолога",
-    desc: "Фокус на ваших интервенциях и реакциях",
-  },
-  {
-    id: "gestalt",
-    icon: <Layers size={16} />,
-    label: "Гештальт-анализ",
-    desc: "Через призму гештальт-подхода",
-  },
-  {
-    id: "hypothesis",
-    icon: <HelpCircle size={16} />,
-    label: "Проверка гипотезы",
-    desc: "Тестирование конкретной гипотезы",
-  },
-  {
-    id: "next_session",
-    icon: <CalendarCheck size={16} />,
-    label: "Следующая встреча",
-    desc: "Что важно учесть на следующей сессии",
-  },
+  { id: "working",          icon: <Zap size={16} />,         label: "Рабочий анализ",             desc: "Ключевые темы, гипотезы, динамика — быстро" },
+  { id: "deep",             icon: <Search size={16} />,      label: "Глубокий анализ",             desc: "Паттерны, процессы, подробный разбор" },
+  { id: "hypothesis",       icon: <Lightbulb size={16} />,   label: "Гипотезы",                   desc: "Построить и проверить рабочие гипотезы" },
+  { id: "therapist_process",icon: <UserCheck size={16} />,   label: "Работа психолога (+А)",       desc: "Фокус на ваших интервенциях и реакциях" },
+  { id: "gestalt",          icon: <Layers size={16} />,      label: "Гештальт-анализ (+G)",        desc: "Через призму гештальт-подхода" },
+  { id: "next_session",     icon: <CalendarClock size={16} />,label: "Следующая сессия",           desc: "Что продолжить и исследовать на следующей встрече" },
 ];
 
 const MODE_HINTS: Record<ModeId, string> = {
-  working:      "Сжатый разбор: основные темы, гипотезы и динамика. Подходит для большинства консультаций.",
-  deep:         "Подробный анализ паттернов и терапевтических процессов. Хорошо для ключевых сессий.",
-  therapist:    "Взгляд на ваши вопросы, интервенции и реакции. Полезно для супервизии.",
-  gestalt:      "Контакт, прерывания, цикл опыта — через призму гештальт-подхода.",
-  hypothesis:   "Задайте гипотезу — AI проверит её по транскрипту и оценит уверенность.",
-  next_session: "Незавершённые темы, на что обратить внимание, рекомендации к следующей сессии.",
+  working:          "Сжатый разбор: основные темы, гипотезы и динамика. Подходит для большинства консультаций.",
+  deep:             "Подробный анализ паттернов и терапевтических процессов. Хорошо для ключевых сессий.",
+  hypothesis:       "Фокус на формировании и проверке рабочих гипотез о клиенте. Полезно когда нужна ясность.",
+  therapist_process:"Взгляд на ваши вопросы, интервенции и реакции. Полезно для супервизии.",
+  gestalt:          "Контакт, прерывания, цикл опыта — через призму гештальт-подхода.",
+  next_session:     "Что важно вынести из этой сессии для следующей: точки продолжения, вопросы, гипотезы.",
 };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function downloadBlob(content: string, filename: string, mime = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function cleanTitle(title: string, idx = 1): string {
+  if (/\.(mp3|m4a|wav|ogg|webm|flac)$/i.test(title)) return `Консультация #${idx}`;
+  return title;
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function RealConsultationView({ consultation: c }: Props) {
-  const [selectedMode, setSelectedMode] = useState<ModeId>("working");
-  const [launched, setLaunched]         = useState(false);
+  // ── Derived initial state ─────────────────────────────────────────────────
+  const audioFile = c.audio ?? (c.fileUrl
+    ? { fileName: c.fileName ?? "", fileUrl: c.fileUrl, fileSize: c.fileSize ?? 0 }
+    : null);
 
-  const clientHref = c.clientId ? `/client/${c.clientId}` : "/";
+  const initialTranscript = c.transcript?.text ?? null;
+  const initialStatus     = c.status ?? (audioFile ? "created" : "ready");
+  const lastAnalysis      = c.analyses?.length ? c.analyses[c.analyses.length - 1] : null;
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  const [currentStatus, setStatus]        = useState<ConsultationStatus>(initialStatus);
+  const [transcriptText, setTranscript]   = useState<string | null>(initialTranscript);
+  const [transcriptOpen, setTrOpen]       = useState(false);
+  const [transcribing, setTranscribing]   = useState(false);
+  const [transcribeErr, setTranscribeErr] = useState<string | null>(null);
+
+  const [selectedMode, setSelectedMode]   = useState<ModeId>("working");
+  const [analyzing, setAnalyzing]         = useState(false);
+  const [analysisResult, setResult]       = useState<string | null>(lastAnalysis?.result ?? null);
+  const [analyzedMode, setAnalyzedMode]   = useState<ModeId | null>((lastAnalysis?.mode as ModeId) ?? null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  async function runTranscription() {
+    setTranscribing(true);
+    setTranscribeErr(null);
+    setStatus("transcribing");
+    try {
+      const res = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consultationId: c.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Ошибка транскрипции");
+      }
+      const { text } = await res.json();
+      setTranscript(text);
+      setStatus("ready");
+    } catch (err) {
+      setTranscribeErr(err instanceof Error ? err.message : "Неизвестная ошибка");
+      setStatus("created");
+    } finally {
+      setTranscribing(false);
+    }
+  }
+
+  async function runAnalysis() {
+    setAnalyzing(true);
+    setAnalysisError(null);
+    setResult(null);
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consultationId: c.id, mode: selectedMode }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Ошибка анализа");
+      }
+      const data = await res.json();
+      setResult(data.result);
+      setAnalyzedMode(selectedMode);
+      setStatus("done");
+    } catch (err) {
+      setAnalysisError(err instanceof Error ? err.message : "Неизвестная ошибка");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
+  // ── Derived display values ────────────────────────────────────────────────
+  const source    = c.source ?? (audioFile ? "audio" : "transcript");
+  const dateStr   = c.createdAt ?? c.uploadedAt ?? "";
+  const hasAudio  = !!audioFile;
+  const hasText   = !!transcriptText;
+  const hasResult = !!analysisResult;
+
+  const clientHref  = c.clientId ? `/client/${c.clientId}` : "/";
+  const displayTitle = cleanTitle(c.title);
+  const sourceLabel  = source === "audio" ? "Аудиозапись" : source === "notes" ? "Заметки" : "Транскрипт";
+
+  const headerBadgeCls =
+    currentStatus === "done"        ? "bg-brand-50 text-brand-500 border-brand-100" :
+    currentStatus === "ready"       ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+    currentStatus === "transcribing"? "bg-sky-50 text-sky-600 border-sky-100" :
+    currentStatus === "analyzing"   ? "bg-violet-50 text-violet-600 border-violet-100" :
+    "bg-amber-50 text-amber-600 border-amber-100";
+
+  const headerBadgeText =
+    currentStatus === "done"        ? "Проанализировано" :
+    currentStatus === "ready"       ? "Готово к анализу" :
+    currentStatus === "transcribing"? "Транскрипция..." :
+    currentStatus === "analyzing"   ? "Анализ..." :
+    "Ожидает транскрипции";
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
-      {/* Top bar */}
+
+      {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-slate-100 px-5 py-3 flex items-center gap-4 flex-shrink-0">
         <Link
           href={clientHref}
@@ -127,115 +196,251 @@ export function RealConsultationView({ consultation: c }: Props) {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-slate-800">{c.clientName}</span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-600 border border-amber-100">
-                Ожидает анализа
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${headerBadgeCls}`}>
+                {headerBadgeText}
               </span>
             </div>
-            <p className="text-xs text-slate-400 truncate">{c.title}</p>
+            <p className="text-xs text-slate-400 truncate">{displayTitle}</p>
           </div>
         </div>
 
-        <div className="text-xs text-slate-400 flex-shrink-0">
-          {new Date(c.uploadedAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
-        </div>
+        {dateStr && (
+          <div className="text-xs text-slate-400 flex-shrink-0">
+            {new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+          </div>
+        )}
       </header>
 
-      {/* Content */}
+      {/* ── Scrollable content ─────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-lg mx-auto px-4 pt-10 pb-16 space-y-4">
+        <div className="max-w-lg mx-auto px-4 pt-8 pb-16 space-y-4">
 
-          {/* File card */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-brand-50 flex items-center justify-center flex-shrink-0">
-                <FileAudio size={22} className="text-brand-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base font-semibold text-slate-800 mb-0.5 truncate">{c.title}</h2>
-                <p className="text-sm text-slate-400 truncate">{c.fileName}</p>
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              <MetaCell icon={<HardDrive size={13} />} label="Размер"      value={formatBytes(c.fileSize)} />
-              <MetaCell icon={<Clock size={13} />}     label="Длительность" value={estimateDuration(c.fileSize)} />
-              <MetaCell icon={<Calendar size={13} />}  label="Загружено"   value={
-                new Date(c.uploadedAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
-              } />
+          {/* Info card */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-5">
+            <h2 className="text-base font-semibold text-slate-800 mb-1">{displayTitle}</h2>
+            <div className="flex items-center gap-3 text-xs text-slate-400">
+              <span className="flex items-center gap-1">
+                <Calendar size={12} />
+                {dateStr ? new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }) : "—"}
+              </span>
+              <span>·</span>
+              <span>{sourceLabel}</span>
+              {audioFile && (
+                <>
+                  <span>·</span>
+                  <span className="flex items-center gap-1">
+                    <HardDrive size={12} />
+                    {formatBytes(audioFile.fileSize)}
+                  </span>
+                  <span>·</span>
+                  <span className="flex items-center gap-1">
+                    <Clock size={12} />
+                    {estimateDuration(audioFile.fileSize)}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Analysis mode selector */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
-              Выберите режим анализа
-            </p>
-
-            <div className="grid grid-cols-2 gap-2.5 mb-4">
-              {MODES.map((mode) => {
-                const active = selectedMode === mode.id;
-                return (
-                  <button
-                    key={mode.id}
-                    onClick={() => setSelectedMode(mode.id)}
-                    className={`flex flex-col items-start gap-1.5 p-3.5 rounded-xl border text-left transition-all ${
-                      active
-                        ? "border-brand-300 bg-brand-50"
-                        : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className={active ? "text-brand-500" : "text-slate-400"}>
-                      {mode.icon}
-                    </span>
-                    <span className={`text-sm font-medium ${active ? "text-brand-700" : "text-slate-700"}`}>
-                      {mode.label}
-                    </span>
-                    <span className="text-xs text-slate-400 leading-snug">{mode.desc}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Selected mode hint */}
-            <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-100 mb-4">
-              <p className="text-xs text-slate-500 leading-relaxed">
-                <span className="font-medium text-slate-700">{MODES.find((m) => m.id === selectedMode)?.label}</span>
-                {" — "}
-                {MODE_HINTS[selectedMode]}
+          {/* ── Materials block ─────────────────────────────────────────────── */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-50">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Материалы консультации
               </p>
             </div>
 
-            {!launched ? (
-              <button
-                onClick={() => setLaunched(true)}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm"
-              >
-                <Play size={14} />
-                Запустить анализ
-              </button>
-            ) : (
-              <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-center">
-                <p className="text-sm font-medium text-amber-700">Транскрипция скоро будет доступна</p>
-                <p className="text-xs text-amber-500 mt-0.5">
-                  Режим выбран: <strong>{MODES.find((m) => m.id === selectedMode)?.label}</strong>
-                </p>
+            {/* Row 1: Audio */}
+            {hasAudio && (
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-50">
+                <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
+                  <FileAudio size={15} className="text-brand-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-700">Аудиозапись</p>
+                  <p className="text-xs text-slate-400 truncate">{audioFile!.fileName}</p>
+                </div>
+                <StatusPill ok={true} label="Загружено" />
+                <a
+                  href={audioFile!.fileUrl}
+                  download={audioFile!.fileName}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors"
+                >
+                  <Download size={12} />
+                  Скачать
+                </a>
               </div>
             )}
+
+            {/* Row 2: Transcript */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-50">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasText ? "bg-emerald-50" : "bg-slate-50"}`}>
+                <FileText size={15} className={hasText ? "text-emerald-500" : "text-slate-300"} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-700">Транскрипт</p>
+                <p className="text-xs text-slate-400">
+                  {hasText ? `${transcriptText!.length.toLocaleString("ru-RU")} символов` : "Не создан"}
+                </p>
+              </div>
+              <StatusPill ok={hasText} label={hasText ? "Готов" : "Нет"} />
+              {hasText ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setTrOpen((v) => !v)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-50 border border-slate-200 transition-colors"
+                  >
+                    {transcriptOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    {transcriptOpen ? "Скрыть" : "Открыть"}
+                  </button>
+                  <button
+                    onClick={() => downloadBlob(transcriptText!, `транскрипт-${c.id.slice(0,8)}.txt`)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-50 border border-slate-200 transition-colors"
+                  >
+                    <Download size={12} />
+                    .txt
+                  </button>
+                </div>
+              ) : source === "audio" ? (
+                <button
+                  onClick={runTranscription}
+                  disabled={transcribing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 transition-colors"
+                >
+                  {transcribing
+                    ? <><Loader2 size={12} className="animate-spin" />Транскрибирую...</>
+                    : <><Play size={12} />Создать транскрипт</>
+                  }
+                </button>
+              ) : null}
+            </div>
+
+            {/* Row 3: AI Analysis */}
+            <div className="flex items-center gap-3 px-5 py-4">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasResult ? "bg-brand-50" : "bg-slate-50"}`}>
+                <BrainCircuit size={15} className={hasResult ? "text-brand-500" : "text-slate-300"} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-700">AI-анализ</p>
+                <p className="text-xs text-slate-400">
+                  {hasResult ? (analyzedMode ? MODES.find(m => m.id === analyzedMode)?.label ?? analyzedMode : "Готов") : "Не создан"}
+                </p>
+              </div>
+              <StatusPill ok={hasResult} label={hasResult ? "Готов" : "Нет"} />
+              {hasResult && analysisResult && (
+                <button
+                  onClick={() => downloadBlob(analysisResult, `анализ-${c.id.slice(0,8)}.md`, "text/markdown;charset=utf-8")}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-50 border border-slate-200 transition-colors"
+                >
+                  <Download size={12} />
+                  .md
+                </button>
+              )}
+            </div>
           </div>
 
+          {/* Transcription error */}
+          {transcribeErr && (
+            <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-100">
+              <AlertCircle size={14} className="text-red-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-red-600 leading-relaxed">{transcribeErr}</p>
+            </div>
+          )}
+
           {/* Audio player */}
-          {c.fileUrl && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          {audioFile?.fileUrl && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4">
               <p className="text-xs font-medium text-slate-500 mb-3">Прослушать запись</p>
-              <audio
-                controls
-                src={c.fileUrl}
-                className="w-full h-10"
-                style={{ accentColor: "#3a5ff8" }}
-              >
+              <audio controls src={audioFile.fileUrl} className="w-full h-10" style={{ accentColor: "#3a5ff8" }}>
                 Ваш браузер не поддерживает аудиоплеер.
               </audio>
             </div>
+          )}
+
+          {/* Transcript text (collapsible) */}
+          {hasText && transcriptOpen && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-50 flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  {source === "notes" ? "Заметки" : "Транскрипт"}
+                </p>
+                <button onClick={() => setTrOpen(false)} className="text-xs text-slate-400 hover:text-slate-600">
+                  Свернуть
+                </button>
+              </div>
+              <div className="px-5 py-4 max-h-72 overflow-y-auto">
+                <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap font-mono text-xs">
+                  {transcriptText}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Mode selector (only when transcript available) ────────────── */}
+          {hasText && (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
+                Режим анализа
+              </p>
+
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {MODES.map((mode) => {
+                  const active = selectedMode === mode.id;
+                  return (
+                    <button
+                      key={mode.id}
+                      onClick={() => setSelectedMode(mode.id)}
+                      className={`flex flex-col items-start gap-1 p-2.5 rounded-xl border text-left transition-all ${
+                        active ? "border-brand-300 bg-brand-50" : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className={active ? "text-brand-500" : "text-slate-400"}>{mode.icon}</span>
+                      <span className={`text-xs font-semibold leading-snug ${active ? "text-brand-700" : "text-slate-700"}`}>{mode.label}</span>
+                      <span className="text-xs text-slate-400 leading-snug">{mode.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-100 mb-4">
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  <span className="font-medium text-slate-700">{MODES.find((m) => m.id === selectedMode)?.label}</span>
+                  {" — "}
+                  {MODE_HINTS[selectedMode]}
+                </p>
+              </div>
+
+              {analyzing ? (
+                <div className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-50 border border-brand-100 text-sm text-brand-600 font-medium">
+                  <Loader2 size={14} className="animate-spin" />
+                  Анализирую...
+                </div>
+              ) : (
+                <button
+                  onClick={runAnalysis}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm"
+                >
+                  <Play size={14} />
+                  {hasResult ? "Запустить снова" : "Запустить анализ"}
+                </button>
+              )}
+
+              {analysisError && (
+                <div className="mt-3 flex items-start gap-2 px-3.5 py-3 rounded-xl bg-red-50 border border-red-100">
+                  <AlertCircle size={14} className="text-red-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-red-600 leading-relaxed">{analysisError}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Analysis result ───────────────────────────────────────────── */}
+          {analysisResult && analyzedMode && (
+            <AnalysisResultCard
+              text={analysisResult}
+              mode={analyzedMode}
+              onExport={() => downloadBlob(analysisResult, `анализ-${c.id.slice(0,8)}.md`, "text/markdown;charset=utf-8")}
+            />
           )}
 
         </div>
@@ -244,12 +449,71 @@ export function RealConsultationView({ consultation: c }: Props) {
   );
 }
 
-function MetaCell({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function StatusPill({ ok, label }: { ok: boolean; label: string }) {
   return (
-    <div className="flex flex-col items-center p-3 rounded-xl bg-slate-50 text-center">
-      <span className="text-slate-400 mb-1">{icon}</span>
-      <p className="text-sm font-semibold text-slate-700">{value}</p>
-      <p className="text-xs text-slate-400 mt-0.5">{label}</p>
+    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
+      ok ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+         : "bg-slate-50 text-slate-400 border border-slate-100"
+    }`}>
+      {ok
+        ? <CheckCircle2 size={11} />
+        : <CircleDashed size={11} />}
+      {label}
+    </span>
+  );
+}
+
+function AnalysisResultCard({
+  text,
+  mode,
+  onExport,
+}: {
+  text: string;
+  mode: ModeId;
+  onExport: () => void;
+}) {
+  const modeLabel = MODES.find((m) => m.id === mode)?.label ?? mode;
+  const blocks    = text.split(/\n(?=##\s)/);
+
+  return (
+    <div className="bg-white rounded-2xl border border-brand-100 shadow-sm overflow-hidden">
+      <div className="px-6 py-3.5 border-b border-brand-50 bg-brand-50/60 flex items-center gap-2">
+        <span className="text-xs font-semibold text-brand-600 uppercase tracking-wider">
+          Результат анализа
+        </span>
+        <span className="px-2 py-0.5 rounded-full bg-white border border-brand-100 text-brand-500 text-xs font-medium">
+          {modeLabel}
+        </span>
+        <button
+          onClick={onExport}
+          className="ml-auto flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-brand-500 hover:bg-white border border-brand-100 transition-colors"
+        >
+          <Download size={12} />
+          .md
+        </button>
+      </div>
+      <div className="px-6 py-5 space-y-4">
+        {blocks.map((block, i) => {
+          const trimmed = block.trim();
+          if (!trimmed) return null;
+          if (trimmed.startsWith("## ")) {
+            const lines   = trimmed.split("\n");
+            const heading = lines[0].replace(/^##\s+/, "");
+            const body    = lines.slice(1).join("\n").trim();
+            return (
+              <div key={i}>
+                <h3 className="text-sm font-semibold text-slate-700 mb-2">{heading}</h3>
+                {body && <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{body}</div>}
+              </div>
+            );
+          }
+          return (
+            <div key={i} className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{trimmed}</div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -7,16 +7,28 @@ import { AnalysisPanel } from "./AnalysisPanel";
 import { ChatPanel } from "./ChatPanel";
 import { CompareModal } from "./CompareModal";
 
+type PanelKey = "transcript" | "analysis" | "chat";
+
 interface Props {
   consultation: Consultation;
 }
 
 export function ConsultationClient({ consultation }: Props) {
-  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [compareOpen, setCompareOpen] = useState(false);
+  const [pendingMessage, setPendingMessage]       = useState<string | null>(null);
+  const [compareOpen, setCompareOpen]             = useState(false);
+  const [collapsed, setCollapsed]                 = useState<Record<PanelKey, boolean>>({
+    transcript: false,
+    analysis:   false,
+    chat:       false,
+  });
+
+  const toggle = useCallback((key: PanelKey) => {
+    setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   const handleSendToChat = useCallback((text: string) => {
     setPendingMessage(text);
+    setCollapsed(prev => ({ ...prev, chat: false })); // auto-expand chat
   }, []);
 
   const handleMessageConsumed = useCallback(() => {
@@ -25,8 +37,13 @@ export function ConsultationClient({ consultation }: Props) {
 
   return (
     <>
-      <div className="flex-1 overflow-hidden grid grid-cols-3">
-        <TranscriptPanel segments={consultation.transcript} />
+      {/* ── Three-column work area ─────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 flex overflow-hidden divide-x divide-slate-100">
+        <TranscriptPanel
+          segments={consultation.transcript}
+          collapsed={collapsed.transcript}
+          onToggle={() => toggle("transcript")}
+        />
 
         <AnalysisPanel
           sections={consultation.analysis}
@@ -37,12 +54,16 @@ export function ConsultationClient({ consultation }: Props) {
           date={consultation.date}
           onSendToChat={handleSendToChat}
           onCompare={() => setCompareOpen(true)}
+          collapsed={collapsed.analysis}
+          onToggle={() => toggle("analysis")}
         />
 
         <ChatPanel
           messages={consultation.chat}
           pendingMessage={pendingMessage}
           onMessageConsumed={handleMessageConsumed}
+          collapsed={collapsed.chat}
+          onToggle={() => toggle("chat")}
         />
       </div>
 

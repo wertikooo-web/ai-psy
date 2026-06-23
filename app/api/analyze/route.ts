@@ -1,0 +1,169 @@
+import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
+import { getConsultation, updateConsultation } from "@/lib/consultationStore";
+import { generateAnalysis } from "@/lib/analysisService";
+import type { AnalysisMode } from "@/lib/knowledgeBase";
+import { readAll as readAllClients } from "@/lib/clientStore";
+import { getForClient as getHistory } from "@/lib/clientHistoryStore";
+import { getForClient as getMaterials } from "@/lib/clientMaterialsStore";
+import { readAll as readAllConsultations } from "@/lib/consultationStore";
+
+export async function POST(req: NextRequest) {
+  try {
+    const { consultationId, mode } = await req.json();
+
+    if (!consultationId || !mode) {
+      return NextResponse.json({ error: "consultationId и mode обязательны" }, { status: 400 });
+    }
+
+    const consultation = await getConsultation(consultationId);
+    if (!consultation) {
+      return NextResponse.json({ error: "Консультация не найдена" }, { status: 404 });
+    }
+
+    const rawText = consultation.transcript?.text;
+    if (!rawText) {
+      return NextResponse.json({ error: "Транскрипт отсутствует. Добавьте текст перед анализом." }, { status: 400 });
+    }
+
+    // For notes: tell AI this is not a verbatim transcript
+    const transcript =
+      consultation.source === "notes"
+        ? `[КОНТЕКСТ: Это заметки психолога о сессии, а не дословная стенограмма разговора]\n\n${rawText}`
+        : rawText;
+
+    // Build clientContext from stored data
+    const clientContext = await assembleClientContext(
+      consultation.clientId,
+      consultation.clientName,
+      consultationId,
+    );
+
+    // Mark as analyzing
+    await updateConsultation(consultationId, { status: "analyzing" });
+
+    // Run analysis (always openai, explicit)
+    const output = await generateAnalysis({
+      mode: mode as AnalysisMode,
+      transcript,
+      clientContext: clientContext || undefined,
+      provider: "openai",
+    });
+
+    // Persist result
+    const entry = {
+      id:        randomUUID(),
+      mode,
+      result:    output.text,
+      createdAt: new Date().toISOString(),
+    };
+
+    const existingAnalyses = consultation.analyses ?? [];
+    await updateConsultation(consultationId, {
+      status:   "done",
+      analyses: [...existingAnalyses, entry],
+    });
+
+    return NextResponse.json({
+      id:       entry.id,
+      result:   output.text,
+      mode,
+      model:    output.model,
+      provider: output.provider,
+    });
+
+  } catch (err) {
+    console.error("[analyze]", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Ошибка анализа" },
+      { status: 500 },
+    );
+  }
+}
+
+// ── clientContext builder ────────────────────────────────────────────────────
+
+const SECTION_LABELS: Record<string, string> = {
+  main_topics:         "Основные темы",
+  hypotheses:          "Гипотезы",
+  resources:           "Ресурсы",
+  significant_events:  "Значимые события",
+  explored:            "Проработано",
+  needs_clarification: "Требует прояснения",
+  notes:               "Заметки",
+};
+
+async function assembleClientContext(
+  clientId: string,
+  fallbackName: string,
+  currentConsultationId: string,
+): Promise<string> {
+  const parts: string[] = [];
+
+  // 1. Client card
+  try {
+    const clients = await readAllClients();
+    const client  = clients.find((c) => c.id === clientId);
+    if (client) {
+      parts.push(`Клиент: ${client.name}`);
+      if (client.concern)              parts.push(`Запрос: ${client.concern}`);
+      if (client.mainTopics?.length)   parts.push(`Темы работы: ${client.mainTopics.join(", ")}`);
+      if (client.currentFocus)         parts.push(`Текущий фокус: ${client.currentFocus}`);
+    } else {
+      parts.push(`Клиент: ${fallbackName}`);
+    }
+  } catch {
+    parts.push(`Клиент: ${fallbackName}`);
+  }
+
+  // 2. Client history (structured, grouped by section)
+  try {
+    const history = await getHistory(clientId);
+    if (history.length > 0) {
+      parts.push("\nИстория клиента:");
+      const grouped: Record<string, string[]> = {};
+      for (const item of history) {
+        (grouped[item.section] ??= []).push(item.text);
+      }
+      for (const [section, items] of Object.entries(grouped)) {
+        parts.push(`${SECTION_LABELS[section] ?? section}: ${items.join("; ")}`);
+      }
+    }
+  } catch { /* no history yet */ }
+
+  // 3. Materials (first 3, truncated to 500 chars each)
+  try {
+    const materials = await getMaterials(clientId);
+    if (materials.length > 0) {
+      parts.push("\nМатериалы клиента:");
+      for (const m of materials.slice(0, 3)) {
+        const preview = m.content.length > 500
+          ? m.content.slice(0, 500) + "…"
+          : m.content;
+        parts.push(`[${m.type}] ${preview}`);
+      }
+    }
+  } catch { /* no materials yet */ }
+
+  // 4. Previous consultations with analyses (excluding current)
+  try {
+    const allConsults = await readAllConsultations();
+    const prev = allConsults.filter(
+      (c) => c.clientId === clientId &&
+             c.id !== currentConsultationId &&
+             c.analyses?.length,
+    );
+    if (prev.length > 0) {
+      parts.push("\nПредыдущие анализы:");
+      for (const p of prev.slice(0, 2)) {
+        const lastAnalysis = p.analyses![p.analyses!.length - 1];
+        const preview = lastAnalysis.result.length > 400
+          ? lastAnalysis.result.slice(0, 400) + "…"
+          : lastAnalysis.result;
+        parts.push(`[${p.title} · ${lastAnalysis.mode}]\n${preview}`);
+      }
+    }
+  } catch { /* ok */ }
+
+  return parts.join("\n");
+}
