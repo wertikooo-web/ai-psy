@@ -21,15 +21,17 @@ export function TranscriptPanel({ segments, collapsed, onToggle }: TranscriptPan
   // ── Collapsed: narrow vertical tab ──────────────────────────────────────────
   if (collapsed) {
     return (
-      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-white">
+      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-slate-50 border-r border-slate-100">
         <button
           onClick={onToggle}
           title="Развернуть транскрипт"
-          className="flex-1 flex flex-col items-center justify-start pt-4 gap-3 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors w-full"
+          className="flex-1 flex flex-col items-center justify-start pt-4 gap-3 hover:bg-slate-100 transition-colors w-full"
         >
-          <ChevronsRight size={14} />
+          <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm">
+            <ChevronsRight size={15} className="text-slate-600" />
+          </div>
           <span
-            className="text-xs font-medium text-slate-400 select-none"
+            className="text-xs font-semibold text-slate-500 select-none"
             style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
           >
             Транскрипт
@@ -58,9 +60,9 @@ export function TranscriptPanel({ segments, collapsed, onToggle }: TranscriptPan
           <button
             onClick={onToggle}
             title="Свернуть"
-            className="p-1 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-50 transition-colors flex-shrink-0"
+            className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors flex-shrink-0"
           >
-            <ChevronsLeft size={14} />
+            <ChevronsLeft size={15} className="text-slate-500" />
           </button>
         </div>
         <div className="relative">

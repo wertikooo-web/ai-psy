@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { clients } from "@/lib/mockData";
+import { clients as mockClients } from "@/lib/mockData";
+import type { StoredClient } from "@/lib/clientStore";
 import { Avatar } from "@/components/ui/Avatar";
 import {
   X, Mic, FileAudio, Upload, ChevronRight, Plus,
@@ -70,6 +71,7 @@ export function UploadModal({
   const initialStep: Step = hasPreset ? "select_source" : "select_client";
 
   const [step, setStep]                   = useState<Step>(initialStep);
+  const [realClients, setRealClients]     = useState<StoredClient[]>([]);
   const [selectedClientId, setSelected]   = useState<string | null>(presetClientId ?? null);
   const [creatingNew, setCreatingNew]     = useState(false);
   const [newName, setNewName]             = useState("");
@@ -83,6 +85,14 @@ export function UploadModal({
   const [createdId, setCreatedId]         = useState<string | null>(null);
 
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Load real clients on mount
+  useEffect(() => {
+    fetch("/api/clients")
+      .then((r) => r.json())
+      .then((data: StoredClient[]) => setRealClients(data))
+      .catch(() => {});
+  }, []);
 
   // Reset on close
   useEffect(() => {
@@ -124,8 +134,14 @@ export function UploadModal({
     if (f) handleFile(f);
   }, [handleFile]);
 
+  // Merged client list: real clients first, then mock
+  const allClients = [
+    ...realClients,
+    ...mockClients.filter((m) => !realClients.some((r) => r.id === m.id)),
+  ];
+
   // Client display values
-  const mockClient  = clients.find((c) => c.id === selectedClientId);
+  const mockClient  = allClients.find((c) => c.id === selectedClientId);
   const clientLabel = hasPreset
     ? (presetClientName ?? "")
     : creatingNew
@@ -247,7 +263,7 @@ export function UploadModal({
             </ModalHeader>
 
             <div className="px-5 py-4 space-y-1.5 max-h-72 overflow-y-auto scrollbar-thin">
-              {clients.map((c) => (
+              {allClients.map((c) => (
                 <button
                   key={c.id}
                   onClick={() => { setSelected(c.id); setCreatingNew(false); }}

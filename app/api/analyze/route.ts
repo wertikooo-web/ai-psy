@@ -74,6 +74,11 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     console.error("[analyze]", err);
+    // Reset status so the user can retry
+    try {
+      const { consultationId } = await req.clone().json().catch(() => ({}));
+      if (consultationId) await updateConsultation(consultationId, { status: "ready" });
+    } catch { /* ignore */ }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Ошибка анализа" },
       { status: 500 },

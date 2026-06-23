@@ -288,9 +288,15 @@ export function RealConsultationView({ consultation: c }: Props) {
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => setTrOpen((v) => !v)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-50 border border-slate-200 transition-colors"
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      transcriptOpen
+                        ? "bg-brand-50 text-brand-600 border-brand-200 hover:bg-brand-100"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                    }`}
                   >
-                    {transcriptOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    {transcriptOpen
+                      ? <ChevronUp size={14} className="text-brand-500" />
+                      : <ChevronDown size={14} className="text-brand-500" />}
                     {transcriptOpen ? "Скрыть" : "Открыть"}
                   </button>
                   <button
@@ -364,7 +370,11 @@ export function RealConsultationView({ consultation: c }: Props) {
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   {source === "notes" ? "Заметки" : "Транскрипт"}
                 </p>
-                <button onClick={() => setTrOpen(false)} className="text-xs text-slate-400 hover:text-slate-600">
+                <button
+                  onClick={() => setTrOpen(false)}
+                  className="flex items-center gap-1 text-xs font-medium text-brand-500 hover:text-brand-700 transition-colors"
+                >
+                  <ChevronUp size={14} className="text-brand-500" />
                   Свернуть
                 </button>
               </div>
