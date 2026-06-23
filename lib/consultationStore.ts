@@ -27,7 +27,7 @@ export async function readAll(): Promise<StoredConsultation[]> {
   }
 }
 
-async function writeAll(data: StoredConsultation[]): Promise<void> {
+export async function writeAll(data: StoredConsultation[]): Promise<void> {
   await mkdir(DATA_DIR, { recursive: true });
   await writeFile(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
 }

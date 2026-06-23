@@ -1,26 +1,54 @@
 "use client";
 
-import { useState } from "react";
-import { clients, consultations } from "@/lib/mockData";
+import { useState, useEffect } from "react";
+import { clients as mockClients, consultations } from "@/lib/mockData";
+import type { StoredClient } from "@/lib/clientStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
+import { AddClientModal } from "@/components/client/AddClientModal";
 import Link from "next/link";
-import { Mic, Search, ArrowRight, Clock } from "lucide-react";
+import { Mic, Search, ArrowRight, Clock, UserPlus } from "lucide-react";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
   return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
+interface DisplayClient {
+  id: string;
+  name: string;
+  initials: string;
+  color: string;
+  totalConsultations: number;
+  lastConsultation: string;
+  currentFocus: string;
+  isReal?: boolean;
+}
+
 export default function DashboardPage() {
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  const [uploadOpen, setUploadOpen]   = useState(false);
+  const [addOpen, setAddOpen]         = useState(false);
+  const [query, setQuery]             = useState("");
+  const [realClients, setRealClients] = useState<StoredClient[]>([]);
+
+  async function loadClients() {
+    try {
+      const res = await fetch("/api/clients");
+      if (res.ok) setRealClients(await res.json());
+    } catch {}
+  }
+
+  useEffect(() => { loadClients(); }, []);
+
+  const mockActive  = mockClients.filter((c) => c.status === "active");
+  const allClients: DisplayClient[] = [
+    ...realClients.map((c) => ({ ...c, isReal: true })),
+    ...mockActive.map((c) => ({ ...c, isReal: false })),
+  ];
 
   const filtered = query.trim()
-    ? clients.filter((c) =>
-        c.name.toLowerCase().includes(query.toLowerCase())
-      )
-    : clients.filter((c) => c.status === "active");
+    ? allClients.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))
+    : allClients;
 
   const recent = consultations.slice(0, 5);
 
@@ -29,20 +57,29 @@ export default function DashboardPage() {
       <div className="p-8 max-w-xl mx-auto space-y-8">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-lg font-semibold text-slate-800">Добрый день, Наталья</h1>
             <p className="text-sm text-slate-400 mt-0.5">
               {new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
             </p>
           </div>
-          <button
-            onClick={() => setUploadOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
-          >
-            <Mic size={14} />
-            Загрузить запись
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setAddOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2 border border-slate-200 hover:border-brand-200 hover:bg-brand-50 text-slate-600 hover:text-brand-600 text-sm font-medium rounded-xl transition-colors"
+            >
+              <UserPlus size={14} />
+              Новый клиент
+            </button>
+            <button
+              onClick={() => setUploadOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
+            >
+              <Mic size={14} />
+              Загрузить запись
+            </button>
+          </div>
         </div>
 
         {/* Search */}
@@ -77,7 +114,11 @@ export default function DashboardPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-slate-800">{client.name}</span>
-                    <span className="text-xs text-slate-400 truncate hidden sm:block">{client.currentFocus}</span>
+                    {client.currentFocus && (
+                      <span className="text-xs text-slate-400 truncate hidden sm:block">
+                        {client.currentFocus}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {client.totalConsultations} встреч · последняя {formatDate(client.lastConsultation)}
@@ -126,6 +167,11 @@ export default function DashboardPage() {
       </div>
 
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <AddClientModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={loadClients}
+      />
     </>
   );
 }
