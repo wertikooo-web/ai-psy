@@ -43,6 +43,15 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   const [materials, setMaterials]         = useState<ClientMaterial[]>([]);
   const [deletingClient, setDeletingClient] = useState(false);
 
+  // Reload real sessions after a new upload
+  function reloadRealSessions() {
+    if (isMock) return;
+    fetch("/api/consultations")
+      .then((r) => r.json())
+      .then((all: StoredConsultation[]) => setRealSessions(all.filter((c) => c.clientId === id)))
+      .catch(() => {});
+  }
+
   const mockClient = mockClients.find((c) => c.id === id);
   const isMock     = !!mockClient;
   const client     = mockClient ?? realClient;
@@ -79,6 +88,9 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   const mockSessionsForClient = mockConsultations
     .filter((c) => c.clientId === id)
     .sort((a, b) => b.sessionNumber - a.sessionNumber);
+
+  const sessionCount = isMock ? mockSessionsForClient.length : realSessions.length;
+  const uploadBtnLabel = sessionCount === 0 ? "Загрузить первую запись" : "Новая запись";
 
   const st = statusLabel[client.status] ?? statusLabel.active;
 
@@ -146,7 +158,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
               className="flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
             >
               <Mic size={13} />
-              Новая запись
+              {uploadBtnLabel}
             </button>
             {!isMock && (
               <button
@@ -192,6 +204,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
             mockSessions={isMock ? mockSessionsForClient : []}
             realSessions={realSessions}
             onUpload={() => setUploadOpen(true)}
+            uploadBtnLabel={uploadBtnLabel}
             onDeleteSession={handleDeleteSession}
           />
         )}
@@ -218,7 +231,14 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
 
       </div>
 
-      <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <UploadModal
+        open={uploadOpen}
+        onClose={() => { setUploadOpen(false); reloadRealSessions(); }}
+        presetClientId={id}
+        presetClientName={client?.name}
+        presetClientInitials={client?.initials}
+        presetClientColor={client?.color}
+      />
     </>
   );
 }

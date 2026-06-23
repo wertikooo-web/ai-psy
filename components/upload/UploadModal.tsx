@@ -6,18 +6,22 @@ import { clients } from "@/lib/mockData";
 import { Avatar } from "@/components/ui/Avatar";
 import {
   X, Mic, FileAudio, Upload, ChevronRight, Plus,
-  CheckCircle2, Loader2, UserPlus, FileText, AlertCircle,
+  CheckCircle2, Loader2, UserPlus, FileText, AlertCircle, Lock,
 } from "lucide-react";
 import clsx from "clsx";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  // When set, skip client selection and lock the client
+  presetClientId?: string;
+  presetClientName?: string;
+  presetClientInitials?: string;
+  presetClientColor?: string;
 }
 
 type Step = "select_client" | "upload" | "processing" | "done" | "error";
 
-// Processing stages — driven by real API calls, not timers
 const STAGES = [
   { icon: "🎙", label: "Загружается файл" },
   { icon: "💾", label: "Создаётся запись" },
@@ -26,11 +30,19 @@ const STAGES = [
 
 const ACCEPTED = ".mp3,.m4a,.wav,.ogg,.webm";
 
-export function UploadModal({ open, onClose }: Props) {
+export function UploadModal({
+  open,
+  onClose,
+  presetClientId,
+  presetClientName,
+  presetClientInitials,
+  presetClientColor,
+}: Props) {
   const router = useRouter();
+  const hasPreset = !!presetClientId;
 
-  const [step, setStep]                  = useState<Step>("select_client");
-  const [selectedClientId, setSelected] = useState<string | null>(null);
+  const [step, setStep]                  = useState<Step>(hasPreset ? "upload" : "select_client");
+  const [selectedClientId, setSelected] = useState<string | null>(presetClientId ?? null);
   const [creatingNew, setCreatingNew]   = useState(false);
   const [newName, setNewName]           = useState("");
   const [title, setTitle]               = useState("");
@@ -46,8 +58,8 @@ export function UploadModal({ open, onClose }: Props) {
   useEffect(() => {
     if (!open) {
       const t = setTimeout(() => {
-        setStep("select_client");
-        setSelected(null);
+        setStep(hasPreset ? "upload" : "select_client");
+        setSelected(presetClientId ?? null);
         setCreatingNew(false);
         setNewName("");
         setTitle("");
@@ -59,7 +71,7 @@ export function UploadModal({ open, onClose }: Props) {
       }, 300);
       return () => clearTimeout(t);
     }
-  }, [open]);
+  }, [open, hasPreset, presetClientId]);
 
   // Auto-redirect after done
   useEffect(() => {
@@ -83,29 +95,36 @@ export function UploadModal({ open, onClose }: Props) {
     [handleFile]
   );
 
-  const selectedClient = clients.find((c) => c.id === selectedClientId);
-  const clientLabel = creatingNew
-    ? newName.trim() || "Новый клиент"
-    : selectedClient?.name ?? "";
+  // Resolve client display values — preset takes priority over mock lookup
+  const mockClient = clients.find((c) => c.id === selectedClientId);
+  const clientLabel = hasPreset
+    ? (presetClientName ?? "")
+    : creatingNew
+    ? (newName.trim() || "Новый клиент")
+    : (mockClient?.name ?? "");
 
-  const initials = creatingNew
-    ? newName.trim().slice(0, 2).toUpperCase() || "НК"
-    : selectedClient?.initials ?? "КЛ";
+  const initials = hasPreset
+    ? (presetClientInitials ?? "КЛ")
+    : creatingNew
+    ? (newName.trim().slice(0, 2).toUpperCase() || "НК")
+    : (mockClient?.initials ?? "КЛ");
 
-  const color = selectedClient?.color ?? "#6088ff";
+  const color = hasPreset
+    ? (presetClientColor ?? "#6088ff")
+    : (mockClient?.color ?? "#6088ff");
 
   const canProceedToUpload =
+    hasPreset ||
     (!!selectedClientId && !creatingNew) ||
     (creatingNew && !!newName.trim());
 
-  // ── Real processing ───────────────────────────────────────────────────────
+  // ── Real processing ─────────────────────────────────────────────────────────
   async function startProcessing() {
     if (!file) return;
     setStep("processing");
     setErrorMsg("");
 
     try {
-      // Stage 0: upload file
       setStageIdx(0);
       const form = new FormData();
       form.append("file", file);
@@ -117,7 +136,6 @@ export function UploadModal({ open, onClose }: Props) {
       }
       const uploadData = await uploadRes.json();
 
-      // Stage 1: create consultation record
       setStageIdx(1);
       const consultRes = await fetch("/api/consultations", {
         method: "POST",
@@ -137,11 +155,8 @@ export function UploadModal({ open, onClose }: Props) {
       if (!consultRes.ok) throw new Error("Ошибка создания записи консультации");
       const { id } = await consultRes.json();
 
-      // Stage 2: done
       setStageIdx(2);
       setCreatedId(id);
-
-      // Small pause so user sees "Готово" before redirect
       setTimeout(() => setStep("done"), 700);
 
     } catch (err: unknown) {
@@ -155,16 +170,14 @@ export function UploadModal({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm"
         onClick={step === "processing" ? undefined : onClose}
       />
 
-      {/* Card */}
       <div className="relative bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md overflow-hidden">
 
-        {/* ── STEP 1: select client ──────────────────────────── */}
+        {/* ── STEP 1: select client (skipped if preset) ─────── */}
         {step === "select_client" && (
           <>
             <ModalHeader title="Новая консультация" onClose={onClose}>
@@ -244,14 +257,18 @@ export function UploadModal({ open, onClose }: Props) {
         {step === "upload" && (
           <>
             <ModalHeader title="Запись консультации" onClose={onClose}>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1.5">
                 <Avatar initials={initials} color={color} size="sm" />
-                <span className="text-xs text-slate-500">{clientLabel}</span>
+                <span className="text-xs font-medium text-slate-600">{clientLabel}</span>
+                {hasPreset && (
+                  <span className="ml-1 flex items-center gap-1 text-xs text-slate-400">
+                    <Lock size={10} />
+                  </span>
+                )}
               </div>
             </ModalHeader>
 
             <div className="px-5 py-4 space-y-4">
-              {/* Title */}
               <div>
                 <label className="text-xs font-medium text-slate-500 block mb-1.5">
                   Название консультации
@@ -268,7 +285,6 @@ export function UploadModal({ open, onClose }: Props) {
                 </div>
               </div>
 
-              {/* Drop zone */}
               <div>
                 <label className="text-xs font-medium text-slate-500 block mb-1.5">
                   Аудиозапись <span className="text-slate-300 font-normal">MP3, M4A, WAV</span>
@@ -313,12 +329,18 @@ export function UploadModal({ open, onClose }: Props) {
             </div>
 
             <ModalFooter>
-              <button
-                onClick={() => setStep("select_client")}
-                className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                ← Назад
-              </button>
+              {hasPreset ? (
+                <button onClick={onClose} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
+                  Отмена
+                </button>
+              ) : (
+                <button
+                  onClick={() => setStep("select_client")}
+                  className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  ← Назад
+                </button>
+              )}
               <button
                 disabled={!file}
                 onClick={startProcessing}

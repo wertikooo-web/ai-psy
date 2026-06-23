@@ -39,6 +39,7 @@ interface Props {
   mockSessions?: MockSession[];
   realSessions?: StoredConsultation[];
   onUpload: () => void;
+  uploadBtnLabel?: string;
   onDeleteSession?: (id: string) => void;
 }
 
@@ -47,6 +48,7 @@ export function ConsultationsTab({
   mockSessions = [],
   realSessions = [],
   onUpload,
+  uploadBtnLabel = "Загрузить запись",
   onDeleteSession,
 }: Props) {
   const [openCompare, setOpenCompare] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export function ConsultationsTab({
 
   if (isMock) {
     if (mockSessions.length === 0) {
-      return <Empty onUpload={onUpload} />;
+      return <Empty onUpload={onUpload} label={uploadBtnLabel} />;
     }
     return (
       <div className="space-y-3">
@@ -102,7 +104,7 @@ export function ConsultationsTab({
   }
 
   // real client
-  if (realSessions.length === 0) return <Empty onUpload={onUpload} />;
+  if (realSessions.length === 0) return <Empty onUpload={onUpload} label={uploadBtnLabel} />;
 
   return (
     <div className="space-y-3">
@@ -147,12 +149,12 @@ function SessionNumber({ n }: { n: number }) {
   );
 }
 
-function Empty({ onUpload }: { onUpload: () => void }) {
+function Empty({ onUpload, label }: { onUpload: () => void; label: string }) {
   return (
     <div className="text-center py-10 text-slate-400 text-sm">
       <p>Записей пока нет.</p>
       <button onClick={onUpload} className="mt-3 text-brand-500 hover:text-brand-600 font-medium transition-colors">
-        Загрузить первую запись →
+        {label} →
       </button>
     </div>
   );
