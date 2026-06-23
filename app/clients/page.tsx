@@ -22,9 +22,10 @@ export default function ClientsPage() {
         {clients.map((client) => {
           const lastConsultation = consultations.find((c) => c.clientId === client.id);
           return (
-            <div
+            <Link
               key={client.id}
-              className="bg-white rounded-2xl border border-slate-100 p-6 hover:shadow-sm transition-shadow"
+              href={`/client/${client.id}`}
+              className="block bg-white rounded-2xl border border-slate-100 p-6 hover:border-brand-100 hover:shadow-sm transition-all group"
             >
               {/* Name row */}
               <div className="flex items-start gap-3 mb-4">
@@ -65,19 +66,16 @@ export default function ClientsPage() {
                 <p className="text-sm text-slate-700 font-medium">{client.currentFocus}</p>
               </div>
 
-              {/* Link to last session */}
+              {/* Last session label */}
               {lastConsultation && (
-                <Link
-                  href={`/consultation/${lastConsultation.id}`}
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-brand-50 hover:border-brand-100 border border-transparent transition-all group"
-                >
-                  <span className="text-sm text-slate-500 group-hover:text-brand-600 truncate">
+                <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 border border-transparent">
+                  <span className="text-sm text-slate-500 truncate">
                     Последняя встреча: {lastConsultation.topic}
                   </span>
-                  <ArrowRight size={13} className="text-slate-300 group-hover:text-brand-400 flex-shrink-0 transition-colors" />
-                </Link>
+                  <ArrowRight size={13} className="text-slate-300 flex-shrink-0" />
+                </div>
               )}
-            </div>
+            </Link>
           );
         })}
       </div>
