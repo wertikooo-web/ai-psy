@@ -53,7 +53,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle }: TranscriptPan
               <Mic size={13} className="text-slate-500" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-slate-700">Транскрипт</h2>
+              <h2 className="text-base font-semibold text-slate-800">Транскрипт</h2>
               <p className="text-xs text-slate-400">Реплики клиента и психолога</p>
             </div>
           </div>

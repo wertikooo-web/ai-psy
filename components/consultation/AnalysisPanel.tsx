@@ -129,7 +129,7 @@ export function AnalysisPanel({
               <BrainCircuit size={13} className="text-brand-500" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-slate-700">AI-анализ</h2>
+              <h2 className="text-base font-semibold text-slate-800">AI-анализ</h2>
               <p className="text-xs text-slate-400">Ключевые наблюдения и направления</p>
             </div>
           </div>
