@@ -17,6 +17,15 @@ interface DebugResult {
   error?: string;
 }
 
+interface AnalysisResult {
+  analysis: string;
+  usedFiles: string[];
+  provider: string;
+  model: string;
+  promptTokens: number;
+  error?: string;
+}
+
 const MODES: { value: Mode; label: string }[] = [
   { value: "working",           label: "Рабочий" },
   { value: "deep",              label: "Глубокий" },
@@ -36,18 +45,26 @@ const P: Record<string, React.CSSProperties> = {
   lbl2:    { fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 8, marginTop: 16 },
   card:    { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 24, marginBottom: 16 },
   errCard: { background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 16, padding: 24, marginBottom: 16 },
-  modes:   { display: "flex", gap: 8, flexWrap: "wrap" },
-  input:   { width: "100%", padding: "10px 14px", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 13, color: "#1e293b", boxSizing: "border-box" },
-  ta:      { width: "100%", padding: "10px 14px", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 13, color: "#1e293b", resize: "vertical", fontFamily: "monospace", boxSizing: "border-box" },
-  btn:     { width: "100%", padding: "12px", background: "#3a5ff8", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", marginTop: 16 },
-  btnOff:  { width: "100%", padding: "12px", background: "#cbd5e1", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "not-allowed", marginTop: 16 },
-  pre:     { background: "#f8fafc", borderRadius: 10, padding: 16, fontSize: 11, fontFamily: "monospace", whiteSpace: "pre-wrap", overflowY: "auto", maxHeight: 280, color: "#334155", margin: 0 },
+  modes:   { display: "flex", gap: 8, flexWrap: "wrap" as const },
+  input:   { width: "100%", padding: "10px 14px", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 13, color: "#1e293b", boxSizing: "border-box" as const },
+  ta:      { width: "100%", padding: "10px 14px", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 13, color: "#1e293b", resize: "vertical" as const, fontFamily: "monospace", boxSizing: "border-box" as const },
+  btnRow:  { display: "flex", gap: 12, marginTop: 16 },
+  btn:     { flex: 1, padding: "12px", background: "#3a5ff8", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer" },
+  btn2:    { flex: 1, padding: "12px", background: "#16a34a", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer" },
+  btnOff:  { flex: 1, padding: "12px", background: "#cbd5e1", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "not-allowed" },
+  pre:     { background: "#f8fafc", borderRadius: 10, padding: 16, fontSize: 11, fontFamily: "monospace", whiteSpace: "pre-wrap" as const, overflowY: "auto" as const, maxHeight: 280, color: "#334155", margin: 0 },
+  preAI:   { background: "#f0fdf4", borderRadius: 10, padding: 16, fontSize: 13, whiteSpace: "pre-wrap" as const, overflowY: "auto" as const, maxHeight: 500, color: "#14532d", margin: 0, lineHeight: 1.6 },
   grid:    { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 },
-  stat:    { background: "#f8fafc", borderRadius: 12, padding: "12px 8px", textAlign: "center" },
+  grid3:   { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 },
+  stat:    { background: "#f8fafc", borderRadius: 12, padding: "12px 8px", textAlign: "center" as const },
+  statG:   { background: "#f0fdf4", borderRadius: 12, padding: "12px 8px", textAlign: "center" as const },
   statV:   { fontSize: 18, fontWeight: 700, color: "#0f172a" },
+  statVG:  { fontSize: 18, fontWeight: 700, color: "#16a34a" },
   statL:   { fontSize: 11, color: "#94a3b8", marginTop: 2 },
   fRow:    { display: "flex", alignItems: "center", gap: 8, padding: "5px 0" },
-  fIdx:    { fontSize: 11, color: "#cbd5e1", width: 20, textAlign: "right" },
+  fIdx:    { fontSize: 11, color: "#cbd5e1", width: 20, textAlign: "right" as const },
+  divider: { borderTop: "2px solid #e2e8f0", margin: "32px 0", display: "flex", alignItems: "center", justifyContent: "center" },
+  divLbl:  { background: "#f8fafc", padding: "4px 16px", fontSize: 12, fontWeight: 600, color: "#94a3b8", borderRadius: 20, marginTop: -14 },
 };
 
 function modeBtn(active: boolean): React.CSSProperties {
@@ -63,43 +80,63 @@ function fileTagStyle(first: boolean): React.CSSProperties {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function DebugAnalysisPage() {
-  const [mode, setMode]         = useState<Mode>("working");
-  const [transcript, setTr]     = useState(SAMPLE);
-  const [ctx, setCtx]           = useState("38 лет. 3-я сессия. Тревога.");
-  const [loading, setLoading]   = useState(false);
-  const [result, setResult]     = useState<DebugResult | null>(null);
-  const [fetchErr, setFetchErr] = useState("");
+  const [mode, setMode]           = useState<Mode>("working");
+  const [transcript, setTr]       = useState(SAMPLE);
+  const [ctx, setCtx]             = useState("38 лет. 3-я сессия. Тревога.");
+
+  const [loadingDebug, setLoadingDebug]   = useState(false);
+  const [debugResult, setDebugResult]     = useState<DebugResult | null>(null);
+  const [debugErr, setDebugErr]           = useState("");
+
+  const [loadingAI, setLoadingAI]         = useState(false);
+  const [aiResult, setAIResult]           = useState<AnalysisResult | null>(null);
+  const [aiErr, setAIErr]                 = useState("");
 
   useEffect(() => { console.log("[debug-analysis] mounted"); }, []);
 
   async function runDebug() {
-    console.log("[debug-analysis] BUTTON CLICK — mode:", mode);
-    setLoading(true);
-    setResult(null);
-    setFetchErr("");
+    setLoadingDebug(true);
+    setDebugResult(null);
+    setDebugErr("");
     try {
-      console.log("[debug-analysis] API REQUEST → /api/debug-analysis");
       const res = await fetch("/api/debug-analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode, provider: "openai", transcript, clientContext: ctx }),
       });
-      console.log("[debug-analysis] API STATUS:", res.status);
-      const data: DebugResult = await res.json();
-      console.log("[debug-analysis] API RESPONSE:", data);
-      setResult(data);
+      setDebugResult(await res.json());
     } catch (e) {
-      console.error("[debug-analysis] FETCH ERROR:", e);
-      setFetchErr(String(e));
+      setDebugErr(String(e));
     } finally {
-      setLoading(false);
+      setLoadingDebug(false);
     }
   }
 
+  async function runAI() {
+    setLoadingAI(true);
+    setAIResult(null);
+    setAIErr("");
+    try {
+      const res = await fetch("/api/analyze-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode, provider: "openai", transcript, clientContext: ctx }),
+      });
+      const data: AnalysisResult = await res.json();
+      setAIResult(data);
+    } catch (e) {
+      setAIErr(String(e));
+    } finally {
+      setLoadingAI(false);
+    }
+  }
+
+  const busy = loadingDebug || loadingAI;
+
   return (
     <div style={P.page}>
-      <h1 style={P.h1}>Debug: Сборка промпта</h1>
-      <p style={P.sub}>Проверяет базу знаний — без вызова OpenAI</p>
+      <h1 style={P.h1}>Debug: Анализ</h1>
+      <p style={P.sub}>Проверка базы знаний и реального вызова OpenAI</p>
 
       {/* Mode selector */}
       <div style={P.card}>
@@ -113,7 +150,7 @@ export default function DebugAnalysisPage() {
         </div>
       </div>
 
-      {/* Inputs */}
+      {/* Inputs + buttons */}
       <div style={P.card}>
         <label style={P.lbl}>Контекст клиента</label>
         <input style={P.input} value={ctx} onChange={(e) => setCtx(e.target.value)} />
@@ -121,48 +158,50 @@ export default function DebugAnalysisPage() {
         <label style={P.lbl2}>Транскрипт</label>
         <textarea style={P.ta} rows={5} value={transcript} onChange={(e) => setTr(e.target.value)} />
 
-        <button style={loading ? P.btnOff : P.btn} onClick={runDebug} disabled={loading}>
-          {loading ? "Собираю промпт..." : "Проверить сборку промпта"}
-        </button>
+        <div style={P.btnRow}>
+          <button style={busy ? P.btnOff : P.btn} onClick={runDebug} disabled={busy}>
+            {loadingDebug ? "Собираю промпт..." : "Проверить сборку промпта"}
+          </button>
+          <button style={busy ? P.btnOff : P.btn2} onClick={runAI} disabled={busy}>
+            {loadingAI ? "Запрос к OpenAI..." : "Запустить реальный анализ"}
+          </button>
+        </div>
       </div>
 
-      {/* Fetch error */}
-      {fetchErr && (
+      {/* ── SECTION: Debug result ───────────────────────────────────────── */}
+      {debugErr && (
         <div style={P.errCard}>
           <strong style={{ color: "#b91c1c" }}>Ошибка fetch:</strong>
-          <pre style={{ ...P.pre, marginTop: 8 }}>{fetchErr}</pre>
+          <pre style={{ ...P.pre, marginTop: 8 }}>{debugErr}</pre>
         </div>
       )}
 
-      {/* Results */}
-      {result && (
-        result.error ? (
+      {debugResult && (
+        debugResult.error ? (
           <div style={P.errCard}>
-            <strong style={{ color: "#b91c1c" }}>Ошибка API:</strong>
-            <pre style={{ ...P.pre, marginTop: 8 }}>{result.error}</pre>
+            <strong style={{ color: "#b91c1c" }}>Ошибка debug API:</strong>
+            <pre style={{ ...P.pre, marginTop: 8 }}>{debugResult.error}</pre>
           </div>
         ) : (
           <>
-            {/* Stats */}
             <div style={P.card}>
               <div style={P.grid}>
-                <div style={P.stat}><div style={P.statV}>{result.mode}</div><div style={P.statL}>Режим</div></div>
-                <div style={P.stat}><div style={P.statV}>{result.usedFiles.length}</div><div style={P.statL}>Файлов</div></div>
-                <div style={P.stat}><div style={P.statV}>{result.promptLength.toLocaleString("ru")}</div><div style={P.statL}>Символов</div></div>
-                <div style={P.stat}><div style={P.statV}>{Math.round(result.promptLength / 4).toLocaleString("ru")}</div><div style={P.statL}>Токенов ~</div></div>
+                <div style={P.stat}><div style={P.statV}>{debugResult.mode}</div><div style={P.statL}>Режим</div></div>
+                <div style={P.stat}><div style={P.statV}>{debugResult.usedFiles.length}</div><div style={P.statL}>Файлов</div></div>
+                <div style={P.stat}><div style={P.statV}>{debugResult.promptLength.toLocaleString("ru")}</div><div style={P.statL}>Символов</div></div>
+                <div style={P.stat}><div style={P.statV}>{Math.round(debugResult.promptLength / 4).toLocaleString("ru")}</div><div style={P.statL}>Токенов ~</div></div>
               </div>
-              <span style={tagStyle(result.coreIsFirst)}>
-                {result.coreIsFirst ? "✅ CORE первый" : "❌ CORE не первый"}
+              <span style={tagStyle(debugResult.coreIsFirst)}>
+                {debugResult.coreIsFirst ? "✅ CORE первый" : "❌ CORE не первый"}
               </span>
-              <span style={tagStyle(result.missingFiles.length === 0)}>
-                {result.missingFiles.length === 0 ? "✅ Все файлы найдены" : `❌ Нет: ${result.missingFiles.join(", ")}`}
+              <span style={tagStyle(debugResult.missingFiles.length === 0)}>
+                {debugResult.missingFiles.length === 0 ? "✅ Все файлы найдены" : `❌ Нет: ${debugResult.missingFiles.join(", ")}`}
               </span>
             </div>
 
-            {/* File order */}
             <div style={P.card}>
               <label style={P.lbl}>Порядок файлов</label>
-              {result.usedFiles.map((f, i) => (
+              {debugResult.usedFiles.map((f, i) => (
                 <div key={f} style={P.fRow}>
                   <span style={P.fIdx}>{i + 1}.</span>
                   <span style={fileTagStyle(i === 0)}>{f}</span>
@@ -171,16 +210,50 @@ export default function DebugAnalysisPage() {
               ))}
             </div>
 
-            {/* Prompt preview */}
             <div style={P.card}>
               <label style={P.lbl}>Первые 1500 символов промпта</label>
-              <pre style={P.pre}>{result.promptPreview}</pre>
+              <pre style={P.pre}>{debugResult.promptPreview}</pre>
+            </div>
+          </>
+        )
+      )}
+
+      {/* ── SECTION: Real AI result ─────────────────────────────────────── */}
+      {aiErr && (
+        <div style={P.errCard}>
+          <strong style={{ color: "#b91c1c" }}>Ошибка AI:</strong>
+          <pre style={{ ...P.pre, marginTop: 8 }}>{aiErr}</pre>
+        </div>
+      )}
+
+      {aiResult && (
+        aiResult.error ? (
+          <div style={P.errCard}>
+            <strong style={{ color: "#b91c1c" }}>Ошибка OpenAI:</strong>
+            <pre style={{ ...P.pre, marginTop: 8 }}>{aiResult.error}</pre>
+          </div>
+        ) : (
+          <>
+            <div style={{ ...P.divider }}>
+              <div style={P.divLbl}>Результат OpenAI</div>
             </div>
 
-            {/* Mock response */}
             <div style={P.card}>
-              <label style={P.lbl}>Mock response</label>
-              <code style={{ fontSize: 12, color: "#64748b" }}>{result.mockResponse}</code>
+              <div style={P.grid3}>
+                <div style={P.statG}><div style={P.statVG}>{aiResult.provider}</div><div style={P.statL}>Provider</div></div>
+                <div style={P.statG}><div style={P.statVG}>{aiResult.model ?? "gpt-4o"}</div><div style={P.statL}>Model</div></div>
+                <div style={P.statG}><div style={P.statVG}>{aiResult.promptTokens?.toLocaleString("ru") ?? "—"}</div><div style={P.statL}>Prompt tokens</div></div>
+              </div>
+
+              <label style={P.lbl}>Файлы базы знаний ({aiResult.usedFiles.length})</label>
+              <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 16 }}>
+                {aiResult.usedFiles.map((f, i) => (
+                  <span key={f} style={fileTagStyle(i === 0)}>{f}</span>
+                ))}
+              </div>
+
+              <label style={P.lbl}>Анализ</label>
+              <pre style={P.preAI}>{aiResult.analysis}</pre>
             </div>
           </>
         )
