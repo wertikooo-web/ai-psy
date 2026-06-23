@@ -118,7 +118,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle }: TranscriptPan
 
       {/* Footer — fixed */}
       <div className="px-5 py-3 border-t border-slate-100 flex-shrink-0">
-        <p className="text-xs text-slate-400 text-center">
+        <p className="text-xs text-slate-500 text-center font-medium">
           {segments.length} реплик
           {filtered.length !== segments.length && ` · найдено ${filtered.length}`}
         </p>

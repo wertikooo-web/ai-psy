@@ -223,7 +223,7 @@ export function ChatPanel({
             <Send size={15} className="text-white" />
           </button>
         </div>
-        <p className="text-xs text-slate-300 text-center mt-1.5">Enter — отправить · Shift+Enter — перенос</p>
+        <p className="text-xs text-slate-500 text-center font-medium mt-1.5">Enter — отправить · Shift+Enter — перенос</p>
       </div>
     </div>
   );

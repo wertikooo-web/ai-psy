@@ -273,7 +273,7 @@ export function AnalysisPanel({
 
       {/* Footer — fixed */}
       <div className="px-5 py-3 border-t border-slate-100 flex-shrink-0">
-        <p className="text-xs text-slate-300 text-center">Только для специалиста · TRANSCRIPT AI</p>
+        <p className="text-xs text-slate-500 text-center font-medium">Только для специалиста · TRANSCRIPT AI</p>
       </div>
     </div>
   );
