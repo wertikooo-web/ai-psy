@@ -111,7 +111,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   }
 
   return (
-    <>
+    <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="p-6 max-w-2xl mx-auto space-y-6">
 
         {/* Back */}
@@ -239,6 +239,6 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
         presetClientInitials={client?.initials}
         presetClientColor={client?.color}
       />
-    </>
+    </div>
   );
 }

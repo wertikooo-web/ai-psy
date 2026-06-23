@@ -59,6 +59,7 @@ export default function SettingsPage() {
   }
 
   return (
+    <div className="flex-1 min-h-0 overflow-y-auto">
     <div className="max-w-xl mx-auto px-6 py-10">
       <h1 className="text-xl font-bold text-slate-800 mb-1">Настройки</h1>
       <p className="text-sm text-slate-400 mb-8">Управление профилем и параметрами</p>
@@ -156,6 +157,7 @@ export default function SettingsPage() {
         <h2 className="text-sm font-semibold text-slate-400">Уведомления</h2>
         <p className="text-xs text-slate-300 mt-0.5">Скоро</p>
       </div>
+    </div>
     </div>
   );
 }

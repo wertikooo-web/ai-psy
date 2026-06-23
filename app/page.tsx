@@ -64,7 +64,7 @@ export default function DashboardPage() {
   const recent = consultations.slice(0, 5);
 
   return (
-    <>
+    <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="p-8 max-w-xl mx-auto space-y-8">
 
         {/* Header */}
@@ -183,6 +183,6 @@ export default function DashboardPage() {
         onClose={() => setAddOpen(false)}
         onCreated={loadClients}
       />
-    </>
+    </div>
   );
 }

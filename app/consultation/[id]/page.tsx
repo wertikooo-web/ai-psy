@@ -25,7 +25,7 @@ export default async function ConsultationPage({ params }: Props) {
     });
 
     return (
-      <div className="flex flex-col h-screen overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <header className="bg-white border-b border-slate-100 px-5 py-3 flex items-center gap-4 flex-shrink-0">
           <Link
             href="/"

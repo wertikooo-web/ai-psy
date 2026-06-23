@@ -11,6 +11,7 @@ const statusLabel: Record<string, string> = {
 
 export default function ClientsPage() {
   return (
+    <div className="flex-1 min-h-0 overflow-y-auto">
     <div className="p-8 max-w-2xl mx-auto">
 
       <div className="mb-8">
@@ -79,6 +80,7 @@ export default function ClientsPage() {
           );
         })}
       </div>
+    </div>
     </div>
   );
 }

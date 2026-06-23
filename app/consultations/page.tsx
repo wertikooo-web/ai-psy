@@ -20,7 +20,7 @@ export default function ConsultationsPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
 
   return (
-    <>
+    <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="p-6 max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -95,6 +95,6 @@ export default function ConsultationsPage() {
       </div>
 
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
-    </>
+    </div>
   );
 }

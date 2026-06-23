@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { AnalysisSection, ModeAnalysis, DigDeeperCard, VoiceObservation } from "@/lib/mockData";
 import {
   ChevronRight, ChevronDown, BrainCircuit, User, Sparkles,
-  GitCompare, Download, ChevronsLeft, ChevronsRight,
+  GitCompare, Download, ChevronsLeft, ChevronsRight, Lightbulb, CalendarClock,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -29,13 +29,23 @@ const EXTRA_MODES = [
   },
   {
     icon: <User size={13} />,
-    label: "Анализ работы психолога (+A)",
+    label: "Анализ работы психолога",
     chatPrompt: "Проанализируй работу психолога в этой сессии: качество вопросов, интервенции, терапевтический альянс и упущенные возможности.",
   },
   {
     icon: <Sparkles size={13} />,
-    label: "Гештальт-анализ (+G)",
+    label: "Гештальт-анализ",
     chatPrompt: "Проведи гештальт-анализ сессии: фигура и фон, цикл контакта, прерывания (ретрофлексия, дефлексия), незавершённые ситуации и уровни осознавания.",
+  },
+  {
+    icon: <Lightbulb size={13} />,
+    label: "Работа с гипотезами",
+    chatPrompt: "Сформулируй 3–5 рабочих гипотез по этой сессии: что может стоять за поведением клиента, какие паттерны прослеживаются, что стоит проверить в следующей встрече.",
+  },
+  {
+    icon: <CalendarClock size={13} />,
+    label: "Подготовка к следующей сессии",
+    chatPrompt: "Помоги подготовиться к следующей сессии: что важно продолжить, какие темы остались незавершёнными, на что обратить внимание, какие вопросы стоит задать.",
   },
 ];
 
@@ -192,7 +202,7 @@ export function AnalysisPanel({
 
         {/* ── 1. Что важно ── */}
         <div className="px-5 pt-6 pb-3">
-          <p className="text-xs text-slate-400 uppercase tracking-wider mb-4">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">
             Что важно в этой сессии
           </p>
 
@@ -233,7 +243,7 @@ export function AnalysisPanel({
 
         {/* ── 2. Что дальше ── */}
         <div className="px-5 pb-6">
-          <p className="text-xs text-slate-400 uppercase tracking-wider mb-4">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">
             Что можно исследовать дальше
           </p>
 
