@@ -113,23 +113,23 @@ export function ChatPanel({
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
 
       {/* Panel header — fixed */}
-      <div className="px-5 pt-4 pb-3 border-b border-slate-100 flex-shrink-0">
+      <div className="px-5 pt-4 pb-3 border-b border-emerald-600 flex-shrink-0 bg-emerald-600">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
-              <MessagesSquare size={13} className="text-emerald-500" />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+              <MessagesSquare size={15} className="text-white" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-800">Чат по консультации</h2>
-              <p className="text-xs text-slate-400">Задавайте вопросы по этой сессии</p>
+              <h2 className="text-lg font-bold text-white">Чат по консультации</h2>
+              <p className="text-xs text-emerald-100">Задавайте вопросы по этой сессии</p>
             </div>
           </div>
           <button
             onClick={onToggle}
             title="Свернуть"
-            className="w-7 h-7 rounded-lg bg-brand-50 hover:bg-brand-100 border border-brand-200 flex items-center justify-center transition-colors flex-shrink-0"
+            className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors flex-shrink-0"
           >
-            <ChevronsLeft size={14} className="text-brand-500" />
+            <ChevronsLeft size={14} className="text-white" />
           </button>
         </div>
       </div>

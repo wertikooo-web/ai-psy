@@ -122,15 +122,15 @@ export function AnalysisPanel({
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
 
       {/* Panel header — fixed */}
-      <div className="px-5 pt-4 pb-3 border-b border-slate-100 flex-shrink-0">
+      <div className="px-5 pt-4 pb-3 border-b border-brand-600 flex-shrink-0 bg-brand-500">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
-              <BrainCircuit size={13} className="text-brand-500" />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+              <BrainCircuit size={15} className="text-white" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-800">AI-анализ</h2>
-              <p className="text-xs text-slate-400">Ключевые наблюдения и направления</p>
+              <h2 className="text-lg font-bold text-white">AI-анализ</h2>
+              <p className="text-xs text-brand-100">Ключевые наблюдения и направления</p>
             </div>
           </div>
 
@@ -142,8 +142,8 @@ export function AnalysisPanel({
                 className={clsx(
                   "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border",
                   menuOpen
-                    ? "bg-slate-100 text-slate-700 border-slate-200"
-                    : "text-slate-400 border-slate-200 hover:bg-slate-50 hover:text-slate-600"
+                    ? "bg-white/30 text-white border-white/30"
+                    : "text-white/80 border-white/30 hover:bg-white/20 hover:text-white"
                 )}
               >
                 Ещё
@@ -191,9 +191,9 @@ export function AnalysisPanel({
             <button
               onClick={onToggle}
               title="Свернуть"
-              className="w-7 h-7 rounded-lg bg-brand-50 hover:bg-brand-100 border border-brand-200 flex items-center justify-center transition-colors"
+              className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
             >
-              <ChevronsLeft size={14} className="text-brand-500" />
+              <ChevronsLeft size={14} className="text-white" />
             </button>
           </div>
         </div>

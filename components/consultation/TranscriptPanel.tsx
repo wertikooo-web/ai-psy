@@ -46,32 +46,32 @@ export function TranscriptPanel({ segments, collapsed, onToggle }: TranscriptPan
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
 
       {/* Panel header — fixed */}
-      <div className="px-5 pt-4 pb-3 border-b border-slate-100 flex-shrink-0">
+      <div className="px-5 pt-4 pb-3 border-b border-slate-200 flex-shrink-0 bg-slate-700">
         <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-              <Mic size={13} className="text-slate-500" />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+              <Mic size={15} className="text-white" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-800">Транскрипт</h2>
-              <p className="text-xs text-slate-400">Реплики клиента и психолога</p>
+              <h2 className="text-lg font-bold text-white">Транскрипт</h2>
+              <p className="text-xs text-slate-300">Реплики клиента и психолога</p>
             </div>
           </div>
           <button
             onClick={onToggle}
             title="Свернуть"
-            className="w-7 h-7 rounded-lg bg-brand-50 hover:bg-brand-100 border border-brand-200 flex items-center justify-center transition-colors flex-shrink-0"
+            className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors flex-shrink-0"
           >
-            <ChevronsLeft size={15} className="text-brand-500" />
+            <ChevronsLeft size={15} className="text-white" />
           </button>
         </div>
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по тексту..."
-            className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 placeholder:text-slate-300"
+            className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-white/20 bg-white/10 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/30"
           />
         </div>
       </div>
