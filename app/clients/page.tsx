@@ -205,49 +205,59 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
         </Tip>
       </div>
 
-      {/* ── Top: avatar + name (фиксируем pr чтобы кнопки не перекрывали) ── */}
+      {/* ── 1. Имя + возраст ── */}
       <div className="p-5 pb-3 flex items-start gap-3">
         <Avatar initials={client.initials} color={client.color} size="lg" />
         <div className="min-w-0 flex-1 pr-20">
           <h2 className="font-semibold text-slate-800 truncate leading-tight">{client.name}</h2>
           {client.age && (
-            <p className="text-xs text-stone-400 mt-0.5">{client.age} лет</p>
+            <p className="text-xs mt-0.5" style={{ color: "#A8997F" }}>{client.age} лет</p>
           )}
         </div>
       </div>
 
-      {/* ── Middle: stats + concern + tags — flex-1 заполняет оставшееся ── */}
-      <div className="px-5 flex-1 flex flex-col">
-        <div className="flex items-center gap-3 mb-2 text-xs text-stone-400">
-          <div className="flex items-center gap-1">
-            <Users size={11} />
-            <span>{client.totalConsultations} встреч</span>
-          </div>
-          {client.lastConsultation && (
-            <span>
-              {new Date(client.lastConsultation).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
-            </span>
-          )}
+      {/* ── 2. Встречи + дата ── */}
+      <div className="px-5 pb-2 flex items-center gap-3 text-xs" style={{ color: "#A8997F" }}>
+        <div className="flex items-center gap-1">
+          <Users size={11} />
+          <span>{client.totalConsultations} встреч</span>
         </div>
+        {client.lastConsultation && (
+          <span>
+            {new Date(client.lastConsultation).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+          </span>
+        )}
+      </div>
 
-        {client.concern && (
-          <p className="text-sm text-stone-600 line-clamp-2 leading-relaxed mb-2">{client.concern}</p>
+      {/* ── 3. Основной запрос ── */}
+      <div className="px-5 flex-1 flex flex-col gap-3">
+        {client.concern ? (
+          <p className="text-sm leading-relaxed line-clamp-2" style={{ color: "#4A3C2E" }}>
+            {client.concern}
+          </p>
+        ) : (
+          <p className="text-sm italic" style={{ color: "#C9BBAA" }}>Запрос не указан</p>
         )}
 
-        {/* Tags — максимум 2 строки */}
-        <div className="flex flex-wrap gap-1.5 overflow-hidden" style={{ maxHeight: "3.2rem" }}>
-          {client.mainTopics?.slice(0, 4).map((t) => (
-            <span key={t} className="px-2 py-0.5 rounded-full text-xs text-stone-500 flex-shrink-0"
-              style={{ background: "#E8E0D0", border: "1px solid #D8CFBE" }}>
-              {t}
-            </span>
-          ))}
-          {(client.mainTopics?.length ?? 0) > 4 && (
-            <span className="px-2 py-0.5 rounded-full text-xs text-stone-400 flex-shrink-0">
-              +{client.mainTopics.length - 4}
-            </span>
-          )}
-        </div>
+        {/* ── 4. Темы (теги) ── */}
+        {(client.mainTopics?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {client.mainTopics.slice(0, 5).map((t) => (
+              <span
+                key={t}
+                className="px-2 py-0.5 rounded-full text-xs flex-shrink-0"
+                style={{ background: "#E8E0D0", border: "1px solid #D8CFBE", color: "#6B5D4F" }}
+              >
+                {t}
+              </span>
+            ))}
+            {client.mainTopics.length > 5 && (
+              <span className="px-2 py-0.5 rounded-full text-xs flex-shrink-0" style={{ color: "#A8997F" }}>
+                +{client.mainTopics.length - 5}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Bottom: status badge закреплён над кнопкой ── */}
