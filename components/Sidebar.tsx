@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Users, FileText, BookOpen, Bot,
-  Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare,
+  Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
@@ -35,6 +35,7 @@ const toolsNav = [
 const systemNav = [
   { href: "/settings", label: "Настройки", icon: Settings   },
   { href: "/help",     label: "Помощь",    icon: HelpCircle },
+  { href: "/about",    label: "About",     icon: Info       },
 ];
 
 // ── Nav item ──────────────────────────────────────────────────────────────────
