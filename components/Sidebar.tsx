@@ -96,7 +96,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     <>
       <aside
         className="w-60 flex-shrink-0 flex flex-col h-full"
-        style={{ background: C.bg, borderRight: `1px solid ${C.border}` }}
+        style={{ background: C.bg, borderRight: `1px solid rgba(255,255,255,0.7)` }}
       >
         {/* Logo */}
         <Link

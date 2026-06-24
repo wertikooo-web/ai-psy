@@ -15,7 +15,8 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-800;
+    background: #F0EBE0;
+    @apply text-slate-800;
   }
 
   ::-webkit-scrollbar {
