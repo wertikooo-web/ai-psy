@@ -129,7 +129,7 @@ export default function HomePage() {
     <div className="flex-1 min-h-0 overflow-y-auto relative" style={{ background: "#FDFCFA" }}>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div className="max-w-2xl mx-auto px-6 pt-10 pb-8 text-center">
+      <div className="max-w-2xl mx-auto px-6 pt-10 lg:pt-[10vh] pb-8 text-center">
         <div className="flex items-center justify-center gap-3 mb-2">
           {photoUrl ? (
             <img src={photoUrl} alt={greeting}
