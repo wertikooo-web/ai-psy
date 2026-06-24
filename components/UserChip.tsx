@@ -28,7 +28,10 @@ export function UserChip() {
       {/* ── Chip в сайдбаре ── */}
       <button
         onClick={() => setOpen(true)}
-        className="mt-3 w-full px-3 py-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 flex items-center gap-2.5 transition-colors group text-left"
+        className="mt-3 w-full px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-all group text-left"
+        style={{ background: "transparent" }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "#E2D8C7"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
         title="Профиль"
       >
         {photo ? (
@@ -39,8 +42,8 @@ export function UserChip() {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-semibold text-slate-700 truncate group-hover:text-slate-800">{name}</div>
-          <div className="text-xs text-slate-400 truncate">{subtitle}</div>
+          <div className="text-xs font-semibold truncate" style={{ color: "#4A3C2E" }}>{name}</div>
+          <div className="text-xs truncate" style={{ color: "#A8997F" }}>{subtitle}</div>
         </div>
       </button>
 

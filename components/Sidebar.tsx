@@ -4,130 +4,148 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home,
-  Users,
-  FileText,
-  BookOpen,
-  Bot,
-  Settings,
-  HelpCircle,
-  BrainCircuit,
-  Mic,
+  Home, Users, FileText, BookOpen, Bot,
+  Settings, HelpCircle, BrainCircuit, Mic,
 } from "lucide-react";
-import clsx from "clsx";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
 
+// ── Craft palette ─────────────────────────────────────────────────────────────
+const C = {
+  bg:          "#F6F1E7",   // sidebar background
+  border:      "#E2D9CC",   // dividers / borders
+  active:      "#E7DDCC",   // active nav item bg
+  hover:       "#E2D8C7",   // hover nav item bg
+  activeTxt:   "#4A3C2E",   // active item text
+  idleTxt:     "#7A6E60",   // idle item text
+  groupLabel:  "#A8997F",   // section label ("Основное" etc.)
+  logoBg:      "#E2D9CC",   // logo area bg
+  uploadBdr:   "#D4C9B5",   // dashed upload button border
+};
+
 const mainNav = [
-  { href: "/",              label: "Главная",      icon: Home },
-  { href: "/clients",       label: "Клиенты",      icon: Users },
+  { href: "/",              label: "Главная",      icon: Home     },
+  { href: "/clients",       label: "Клиенты",      icon: Users    },
   { href: "/consultations", label: "Консультации", icon: FileText },
 ];
 
 const toolsNav = [
   { href: "/knowledge-base", label: "База знаний", icon: BookOpen },
-  { href: "/psy-gpts",       label: "PSY-GPTs",    icon: Bot },
+  { href: "/psy-gpts",       label: "PSY-GPTs",    icon: Bot      },
 ];
 
 const systemNav = [
-  { href: "/settings", label: "Настройки", icon: Settings },
+  { href: "/settings", label: "Настройки", icon: Settings   },
   { href: "/help",     label: "Помощь",    icon: HelpCircle },
 ];
 
-function NavGroup({ label, items }: { label: string; items: typeof mainNav }) {
+// ── Nav item ──────────────────────────────────────────────────────────────────
+function NavItem({
+  href, label, icon: Icon, exact = false,
+}: { href: string; label: string; icon: React.ElementType; exact?: boolean }) {
   const pathname = usePathname();
+  const active   = exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+
   return (
-    <div>
-      <div className="px-3 mb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+    <Link
+      href={href}
+      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+      style={{
+        background: active ? C.active  : "transparent",
+        color:      active ? C.activeTxt : C.idleTxt,
+      }}
+      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = C.hover; }}
+      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
+    >
+      <Icon size={16} strokeWidth={active ? 2.2 : 1.8} />
+      {label}
+    </Link>
+  );
+}
+
+// ── Nav group ─────────────────────────────────────────────────────────────────
+function NavGroup({ label, items }: { label: string; items: typeof mainNav }) {
+  return (
+    <div className="space-y-0.5">
+      <div
+        className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider"
+        style={{ color: C.groupLabel }}
+      >
         {label}
       </div>
-      {items.map(({ href, label: itemLabel, icon: Icon }) => {
-        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={clsx(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
-              active
-                ? "bg-brand-50 text-brand-600"
-                : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-            )}
-          >
-            <Icon size={16} />
-            {itemLabel}
-          </Link>
-        );
-      })}
+      {items.map(({ href, label: l, icon }) => (
+        <NavItem key={href} href={href} label={l} icon={icon} exact={href === "/"} />
+      ))}
     </div>
   );
 }
 
+// ── Sidebar ───────────────────────────────────────────────────────────────────
 export function Sidebar() {
   const [uploadOpen, setUploadOpen] = useState(false);
 
   return (
     <>
-      <aside className="w-60 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col h-screen sticky top-0">
+      <aside
+        className="w-60 flex-shrink-0 flex flex-col h-screen sticky top-0"
+        style={{ background: C.bg, borderRight: `1px solid ${C.border}` }}
+      >
         {/* Logo */}
-        <Link href="/" className="px-5 py-5 border-b border-slate-100 flex items-center gap-2.5 hover:bg-slate-50 transition-colors">
-          <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center flex-shrink-0">
-            <BrainCircuit size={18} className="text-white" />
+        <Link
+          href="/"
+          className="px-5 py-5 flex items-center gap-2.5 transition-opacity hover:opacity-80"
+          style={{ borderBottom: `1px solid ${C.border}` }}
+        >
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: C.active, border: `1px solid ${C.uploadBdr}` }}
+          >
+            <BrainCircuit size={18} style={{ color: C.activeTxt }} />
           </div>
           <div>
-            <div className="text-sm font-bold text-slate-800 leading-tight">TRANSCRIPT AI</div>
-            <div className="text-xs text-brand-500 font-medium tracking-wider">PSY</div>
+            <div className="text-sm font-bold leading-tight" style={{ color: C.activeTxt }}>
+              TRANSCRIPT AI
+            </div>
+            <div className="text-xs font-semibold tracking-wider" style={{ color: C.groupLabel }}>
+              PSY
+            </div>
           </div>
         </Link>
 
         {/* Main nav */}
         <nav className="flex-1 px-3 py-5 space-y-5 overflow-y-auto">
-          <NavGroup label="Основное" items={mainNav} />
-          <NavGroup label="Инструменты" items={toolsNav} />
+          <NavGroup label="Основное"    items={mainNav}   />
+          <NavGroup label="Инструменты" items={toolsNav}  />
         </nav>
 
         {/* Upload quick action */}
         <div className="px-3 pb-3">
           <button
             onClick={() => setUploadOpen(true)}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-brand-50 hover:text-brand-600 border border-dashed border-slate-200 hover:border-brand-200 transition-all"
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+            style={{
+              color:         C.idleTxt,
+              border:        `1px dashed ${C.uploadBdr}`,
+              background:    "transparent",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = C.hover; e.currentTarget.style.color = C.activeTxt; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.idleTxt; }}
           >
-            <Mic size={16} />
+            <Mic size={16} strokeWidth={1.8} />
             Загрузить запись
           </button>
         </div>
 
-        {/* System + User */}
-        <div className="px-3 py-3 border-t border-slate-100 space-y-0.5">
-          {systemNav.map(({ href, label, icon: Icon }) => {
-            return (
-              <NavLink key={href} href={href} label={label} icon={Icon} />
-            );
-          })}
+        {/* System nav + UserChip */}
+        <div className="px-3 py-3 space-y-0.5" style={{ borderTop: `1px solid ${C.border}` }}>
+          {systemNav.map(({ href, label, icon }) => (
+            <NavItem key={href} href={href} label={label} icon={icon} />
+          ))}
           <UserChip />
         </div>
       </aside>
 
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </>
-  );
-}
-
-function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) {
-  const pathname = usePathname();
-  const active = pathname.startsWith(href);
-  return (
-    <Link
-      href={href}
-      className={clsx(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
-        active
-          ? "bg-brand-50 text-brand-600"
-          : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-      )}
-    >
-      <Icon size={16} />
-      {label}
-    </Link>
   );
 }
