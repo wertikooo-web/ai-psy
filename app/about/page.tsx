@@ -138,9 +138,14 @@ export default function AboutPage() {
             </div>
           </Block>
 
-          {/* Version */}
-          <div className="text-center pt-2 text-xs" style={{ color: "#C9BBAA" }}>
-            TRANSCRIPT AI · PSY · Версия 1.0 · 2026
+          {/* Version + copyright */}
+          <div className="text-center pt-2 space-y-1">
+            <div className="text-xs" style={{ color: "#C9BBAA" }}>
+              TRANSCRIPT AI · PSY · Версия 1.0 · 2026
+            </div>
+            <div className="text-xs" style={{ color: "#C9BBAA" }}>
+              © 2026 Transcript AI · PSY. All rights reserved.
+            </div>
           </div>
 
         </div>
