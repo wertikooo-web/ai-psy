@@ -1,7 +1,15 @@
 "use client";
 
 import { TrendingUp, TrendingDown } from "lucide-react";
-import type { ClientHistoryItem } from "@/lib/types";
+
+// ── Craft palette (consistent with clients page) ──────────────────────────────
+const S = {
+  bg:     "#EDE7DA",   // section background
+  border: "#D8CFBE",   // section border
+  tag:    "#E4DDD0",   // tag background
+  tagBdr: "#D0C8B8",   // tag border
+  title:  "#6B5D4F",   // section title color
+};
 
 interface MockSession {
   id: string;
@@ -21,58 +29,65 @@ interface Props {
   mockSessions?: MockSession[];
 }
 
+function SectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border" style={{ background: S.bg, borderColor: S.border }}>
+      <div className="px-5 py-3 border-b" style={{ borderColor: S.border }}>
+        <h3 className="text-sm font-semibold" style={{ color: S.title }}>{title}</h3>
+      </div>
+      <div className="px-5 py-4">{children}</div>
+    </div>
+  );
+}
+
 export function OverviewTab({ client, mockSessions = [] }: Props) {
   const dynamics = mockSessions.find((s) => s.clientMap)?.clientMap?.dynamics ?? [];
-  const hasContent = (client.mainTopics?.length ?? 0) > 0 || client.lastShift || client.currentFocus || dynamics.length > 0;
+  const hasContent =
+    (client.mainTopics?.length ?? 0) > 0 ||
+    client.lastShift ||
+    client.currentFocus ||
+    dynamics.length > 0;
 
   if (!hasContent) {
     return (
-      <div className="py-10 text-center text-slate-400 text-sm">
+      <div className="py-10 text-center text-stone-400 text-sm">
         Обзор пополнится после первых консультаций
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
+    <div className="space-y-3">
       {(client.mainTopics?.length ?? 0) > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">
-            Повторяющиеся темы терапии
-          </p>
+        <SectionBlock title="Повторяющиеся темы">
           <div className="flex flex-wrap gap-2">
             {client.mainTopics!.map((t) => (
-              <span key={t} className="px-3 py-1 rounded-full text-sm text-slate-600 bg-slate-50 border border-slate-100">
+              <span
+                key={t}
+                className="px-3 py-1 rounded-full text-sm text-stone-700"
+                style={{ background: S.tag, border: `1px solid ${S.tagBdr}` }}
+              >
                 {t}
               </span>
             ))}
           </div>
-        </div>
+        </SectionBlock>
       )}
 
       {client.lastShift && (
-        <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-            Последний значимый сдвиг
-          </p>
-          <p className="text-sm text-slate-600 leading-relaxed italic">{client.lastShift}</p>
-        </div>
+        <SectionBlock title="Последний значимый сдвиг">
+          <p className="text-sm text-stone-700 leading-relaxed italic">{client.lastShift}</p>
+        </SectionBlock>
       )}
 
       {client.currentFocus && (
-        <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-            Текущий фокус
-          </p>
+        <SectionBlock title="Текущий фокус">
           <p className="text-sm font-medium text-slate-700">{client.currentFocus}</p>
-        </div>
+        </SectionBlock>
       )}
 
       {dynamics.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2.5">
-            Динамика терапии
-          </p>
+        <SectionBlock title="Динамика терапии">
           <div className="flex flex-wrap gap-2">
             {dynamics.map((d) => (
               <span
@@ -88,7 +103,7 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
               </span>
             ))}
           </div>
-        </div>
+        </SectionBlock>
       )}
     </div>
   );
