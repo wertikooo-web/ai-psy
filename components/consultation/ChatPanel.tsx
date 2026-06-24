@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "@/lib/mockData";
-import { Send, BrainCircuit, User, ChevronsLeft, ChevronsRight, MessagesSquare, AlertCircle } from "lucide-react";
+import { Send, BrainCircuit, User, ChevronsLeft, ChevronsRight, MessagesSquare, AlertCircle, Mic, MicOff } from "lucide-react";
 import clsx from "clsx";
 
 interface ChatPanelProps {
@@ -35,8 +35,49 @@ export function ChatPanel({
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
   const bottomRef               = useRef<HTMLDivElement>(null);
   const textareaRef             = useRef<HTMLTextAreaElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
+
+  function toggleListening() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+
+    if (!SR) {
+      setError("Ваш браузер не поддерживает распознавание речи. Используйте Chrome или Edge.");
+      return;
+    }
+
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+
+    const rec = new SR();
+    rec.lang = "ru-RU";
+    rec.continuous = false;
+    rec.interimResults = false;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      const transcript = e.results[0]?.[0]?.transcript ?? "";
+      setInput(prev => prev ? prev + " " + transcript : transcript);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + "px";
+      }
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend   = () => setListening(false);
+
+    recognitionRef.current = rec;
+    rec.start();
+    setListening(true);
+  }
 
   useEffect(() => {
     if (!pendingMessage) return;
@@ -225,18 +266,32 @@ export function ChatPanel({
       {/* Input */}
       <div className="px-4 pt-3 pb-3 border-t border-slate-100 flex-shrink-0">
         <div className="flex gap-2 items-end">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
-            }}
-            placeholder="Спросите об этой консультации..."
-            rows={1}
-            className="flex-1 resize-none text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 placeholder:text-slate-300 overflow-hidden"
-            style={{ minHeight: "40px", maxHeight: "120px" }}
-          />
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+              }}
+              placeholder={listening ? "Слушаю..." : "Спросите об этой консультации..."}
+              rows={1}
+              className="w-full resize-none text-sm px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 placeholder:text-slate-300 overflow-hidden"
+              style={{ minHeight: "40px", maxHeight: "120px", borderColor: listening ? "#6ee7b7" : undefined }}
+            />
+            <button
+              onClick={toggleListening}
+              title={listening ? "Остановить запись" : "Голосовой ввод"}
+              className="absolute right-2.5 bottom-2 flex items-center justify-center rounded-lg transition-colors"
+              style={{
+                width: 24, height: 24,
+                color: listening ? "#059669" : "#94a3b8",
+                background: listening ? "#d1fae5" : "transparent",
+              }}
+            >
+              {listening ? <MicOff size={13} /> : <Mic size={13} />}
+            </button>
+          </div>
           <button
             onClick={send}
             disabled={!input.trim() || loading}
