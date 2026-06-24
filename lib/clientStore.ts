@@ -4,6 +4,8 @@ import path from "path";
 const DATA_DIR  = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "clients.json");
 
+export type ClientStatus = "active" | "paused" | "archived" | "completed";
+
 export interface StoredClient {
   id: string;
   name: string;
@@ -11,7 +13,7 @@ export interface StoredClient {
   color: string;
   age?: number;
   concern: string;
-  status: "active" | "paused" | "completed";
+  status: ClientStatus;
   createdAt: string;
   totalConsultations: number;
   lastConsultation: string;
@@ -43,4 +45,13 @@ export async function addClient(c: StoredClient) {
 export async function deleteClient(id: string) {
   const all = await readAll();
   await writeAll(all.filter((c) => c.id !== id));
+}
+
+export async function updateClientStatus(id: string, status: ClientStatus) {
+  const all = await readAll();
+  const idx = all.findIndex((c) => c.id === id);
+  if (idx !== -1) {
+    all[idx].status = status;
+    await writeAll(all);
+  }
 }

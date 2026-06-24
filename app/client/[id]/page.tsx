@@ -14,7 +14,7 @@ import { HistoryTab } from "@/components/client/tabs/HistoryTab";
 import { MaterialsTab } from "@/components/client/tabs/MaterialsTab";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mic, ArrowLeft, Trash2 } from "lucide-react";
+import { Mic, ArrowLeft, Trash2, Pause, Archive, RotateCcw } from "lucide-react";
 
 type Tab = "overview" | "consultations" | "history" | "materials";
 
@@ -26,9 +26,10 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
-  active:    { label: "в процессе",  cls: "bg-emerald-50 text-emerald-600 border-emerald-100" },
-  paused:    { label: "пауза",       cls: "bg-amber-50 text-amber-600 border-amber-100" },
-  completed: { label: "завершена",   cls: "bg-slate-50 text-slate-500 border-slate-200" },
+  active:    { label: "активный",  cls: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+  paused:    { label: "пауза",     cls: "bg-amber-50 text-amber-600 border-amber-100" },
+  archived:  { label: "архив",     cls: "bg-stone-100 text-stone-500 border-stone-200" },
+  completed: { label: "завершён",  cls: "bg-stone-100 text-stone-500 border-stone-200" },
 };
 
 export default function ClientPage({ params }: { params: Promise<{ id: string }> }) {
@@ -41,7 +42,8 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   const [realSessions, setRealSessions]   = useState<StoredConsultation[]>([]);
   const [historyItems, setHistoryItems]   = useState<ClientHistoryItem[]>([]);
   const [materials, setMaterials]         = useState<ClientMaterial[]>([]);
-  const [deletingClient, setDeletingClient] = useState(false);
+  const [deletingClient, setDeletingClient]   = useState(false);
+  const [statusChanging, setStatusChanging]   = useState(false);
 
   // Reload real sessions after a new upload
   function reloadRealSessions() {
@@ -99,9 +101,27 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
     setDeletingClient(true);
     try {
       await fetch(`/api/clients/${id}`, { method: "DELETE" });
-      router.push("/");
+      router.push("/clients");
     } catch {
       setDeletingClient(false);
+    }
+  }
+
+  async function handleStatusChange(status: string) {
+    if (isMock) return;
+    setStatusChanging(true);
+    try {
+      await fetch(`/api/clients/${id}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ status }),
+      });
+      // reload client data
+      const res = await fetch("/api/clients");
+      const all = await res.json();
+      setRealClient(all.find((c: { id: string }) => c.id === id) ?? null);
+    } finally {
+      setStatusChanging(false);
     }
   }
 
@@ -116,12 +136,46 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
 
         {/* Back */}
         <Link
-          href="/"
+          href="/clients"
           className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"
         >
           <ArrowLeft size={14} />
-          Главная
+          Клиенты
         </Link>
+
+        {/* Status banner for paused/archived */}
+        {!isMock && client.status === "paused" && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-100">
+            <div className="flex items-center gap-2 text-amber-700 text-sm font-medium">
+              <Pause size={15} />
+              Клиент на паузе
+            </div>
+            <button
+              onClick={() => handleStatusChange("active")}
+              disabled={statusChanging}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-medium transition-colors disabled:opacity-60"
+            >
+              <RotateCcw size={12} />
+              Вернуть в активные
+            </button>
+          </div>
+        )}
+        {!isMock && (client.status === "archived" || client.status === "completed") && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-stone-100 border border-stone-200">
+            <div className="flex items-center gap-2 text-stone-600 text-sm font-medium">
+              <Archive size={15} />
+              Клиент находится в архиве
+            </div>
+            <button
+              onClick={() => handleStatusChange("active")}
+              disabled={statusChanging}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-medium transition-colors disabled:opacity-60"
+            >
+              <RotateCcw size={12} />
+              Вернуть в активные
+            </button>
+          </div>
+        )}
 
         {/* Client header */}
         <div className="flex items-start gap-4">
