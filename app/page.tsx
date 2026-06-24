@@ -20,41 +20,17 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
-// ── Subtle SVG background ──────────────────────────────────────────────────────
+// ── City illustration background ──────────────────────────────────────────────
 function BackgroundIllustration() {
   return (
-    <svg
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/city.png"
+      alt=""
       aria-hidden
-      className="absolute bottom-0 left-0 w-full pointer-events-none select-none"
-      viewBox="0 0 1200 320"
-      preserveAspectRatio="xMidYMax meet"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* Flowing contour lines */}
-      <path d="M0,200 C150,160 300,240 500,190 C700,140 850,220 1000,180 C1100,160 1150,170 1200,165" fill="none" stroke="#DDD4C6" strokeWidth="1.2" opacity="0.6" />
-      <path d="M0,230 C200,195 350,265 550,215 C750,165 900,240 1100,205 C1150,195 1180,200 1200,198" fill="none" stroke="#DDD4C6" strokeWidth="0.8" opacity="0.45" />
-      <path d="M0,260 C250,225 400,285 600,245 C800,205 950,265 1200,235" fill="none" stroke="#DDD4C6" strokeWidth="0.6" opacity="0.3" />
-      <path d="M0,285 C300,260 500,300 750,270 C950,245 1100,280 1200,265" fill="none" stroke="#DDD4C6" strokeWidth="0.5" opacity="0.2" />
-
-      {/* Scattered dots — neural/constellation feel */}
-      {[
-        [120, 175], [280, 215], [430, 155], [590, 200], [740, 168],
-        [880, 210], [1020, 178], [1140, 195],
-        [60,  240], [200, 270], [370, 250], [520, 280], [680, 255],
-        [830, 275], [970, 258], [1110, 272],
-      ].map(([cx, cy], i) => (
-        <circle key={i} cx={cx} cy={cy} r="2" fill="#C9BBAA" opacity="0.35" />
-      ))}
-
-      {/* Light connecting lines between some dots */}
-      <line x1="120" y1="175" x2="280" y2="215" stroke="#C9BBAA" strokeWidth="0.5" opacity="0.2" />
-      <line x1="280" y1="215" x2="430" y2="155" stroke="#C9BBAA" strokeWidth="0.5" opacity="0.2" />
-      <line x1="430" y1="155" x2="590" y2="200" stroke="#C9BBAA" strokeWidth="0.5" opacity="0.2" />
-      <line x1="590" y1="200" x2="740" y2="168" stroke="#C9BBAA" strokeWidth="0.5" opacity="0.2" />
-      <line x1="740" y1="168" x2="880" y2="210" stroke="#C9BBAA" strokeWidth="0.5" opacity="0.2" />
-      <line x1="880" y1="210" x2="1020" y2="178" stroke="#C9BBAA" strokeWidth="0.5" opacity="0.2" />
-      <line x1="1020" y1="178" x2="1140" y2="195" stroke="#C9BBAA" strokeWidth="0.5" opacity="0.2" />
-    </svg>
+      className="w-full pointer-events-none select-none"
+      style={{ display: "block", opacity: 0.85 }}
+    />
   );
 }
 
@@ -289,7 +265,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Background illustration ───────────────────────────────────────── */}
-      <div className="relative h-32 overflow-hidden pointer-events-none select-none" aria-hidden>
+      <div className="pointer-events-none select-none mt-4" aria-hidden>
         <BackgroundIllustration />
       </div>
 
