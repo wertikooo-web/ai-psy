@@ -46,9 +46,8 @@ export function TranscriptPanel({ segments, collapsed, onToggle }: TranscriptPan
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
 
       {/* Panel header — fixed */}
-      <div className="px-5 pt-4 pb-3 border-b border-slate-600 flex-shrink-0 bg-slate-700">
-        {/* Row 1: title + collapse */}
-        <div className="flex items-center justify-between mb-2.5">
+      <div className="px-5 py-4 border-b border-slate-600 flex-shrink-0 bg-slate-700">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
               <Mic size={15} className="text-white" />
@@ -66,14 +65,17 @@ export function TranscriptPanel({ segments, collapsed, onToggle }: TranscriptPan
             <ChevronsLeft size={15} className="text-white" />
           </button>
         </div>
-        {/* Row 2: search */}
+      </div>
+
+      {/* Search — white zone below header */}
+      <div className="px-4 py-2.5 border-b border-slate-100 flex-shrink-0 bg-white">
         <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по тексту..."
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-white/15 bg-white/10 text-white placeholder:text-white/40 focus:outline-none focus:border-white/30 focus:bg-white/15"
+            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300"
           />
         </div>
       </div>
