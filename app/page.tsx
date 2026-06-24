@@ -77,14 +77,6 @@ export default function HomePage() {
         <div className="absolute -bottom-10 -left-10 w-60 h-60 rounded-full bg-emerald-100/30 blur-3xl" />
 
         <div className="relative max-w-3xl mx-auto px-8 py-16 text-center">
-          {/* Logo mark */}
-          <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-1.5 mb-8 border border-slate-200/60 shadow-sm">
-            <div className="w-5 h-5 rounded bg-brand-500 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">Ψ</span>
-            </div>
-            <span className="text-xs font-semibold text-slate-600 tracking-wide">TRANSCRIPT AI · PSY</span>
-          </div>
-
           {/* Greeting */}
           <div className="flex items-center justify-center gap-4 mb-3">
             {photoUrl ? (
