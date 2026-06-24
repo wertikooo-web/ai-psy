@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Users, FileText, BookOpen, Bot,
-  Settings, HelpCircle, BrainCircuit, Mic, X,
+  Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
@@ -28,8 +28,9 @@ const mainNav = [
   { href: "/consultations", label: "Консультации", icon: FileText },
 ];
 const toolsNav = [
-  { href: "/knowledge-base", label: "База знаний", icon: BookOpen },
-  { href: "/psy-gpts",       label: "PSY-GPTs",    icon: Bot      },
+  { href: "/ai-chat",        label: "AI Чат",      icon: MessageSquare },
+  { href: "/psy-gpts",       label: "PSY-GPTs",    icon: Bot           },
+  { href: "/knowledge-base", label: "База знаний", icon: BookOpen      },
 ];
 const systemNav = [
   { href: "/settings", label: "Настройки", icon: Settings   },
