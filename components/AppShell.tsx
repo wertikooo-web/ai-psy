@@ -27,8 +27,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Menu size={18} />
         </button>
 
-        {/* Offset for mobile hamburger button */}
-        <div className="lg:hidden h-14 flex-shrink-0" />
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           {children}
         </div>
