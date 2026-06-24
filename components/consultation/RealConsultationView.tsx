@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
 import Link from "next/link";
+import { TranscriptPanel } from "./TranscriptPanel";
+import { ChatPanel } from "./ChatPanel";
 
 interface Props {
   consultation: StoredConsultation;
@@ -175,7 +177,9 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const dateStr   = c.createdAt ?? c.uploadedAt ?? "";
   const hasAudio  = !!audioFile;
   const hasText   = !!transcriptText;
-  const hasResult = !!analysisResult;
+  const hasResult  = !!analysisResult;
+  const isNotes    = source === "notes";
+  const [panelCollapsed, setPanelCollapsed] = useState({ transcript: false, chat: false });
 
   const clientHref  = c.clientId ? `/client/${c.clientId}` : "/";
   const displayTitle = cleanTitle(c.title);
@@ -194,6 +198,76 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
     currentStatus === "transcribing"? "Транскрипция..." :
     currentStatus === "analyzing"   ? "Анализ..." :
     "Ожидает транскрипции";
+
+  // ── 3-panel view after analysis ─────────────────────────────────────────────
+  if (hasResult) {
+    const segments: import("@/lib/mockData").TranscriptSegment[] = [];
+    const fakeChat: import("@/lib/mockData").ChatMessage[] = [];
+    return (
+      <div className="flex flex-col h-screen bg-slate-50">
+        <header className="bg-white border-b border-slate-100 px-5 py-3 flex items-center gap-4 flex-shrink-0">
+          <Link href={clientHref} className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
+            <ArrowLeft size={15} />{c.clientName || "Назад"}
+          </Link>
+          <div className="h-5 w-px bg-slate-200" />
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <Avatar initials={c.clientInitials} color={c.clientColor} size="sm" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-slate-800">{c.clientName}</span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-brand-50 text-brand-500 border-brand-100">
+                  Проанализировано
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 truncate">{cleanTitle(c.title)}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => { setResult(null); setAnalyzedMode(null); setStatus("ready"); }}
+            className="text-xs text-slate-400 hover:text-slate-600 transition-colors px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300"
+          >
+            Запустить снова
+          </button>
+        </header>
+
+        <div className="flex-1 min-h-0 flex overflow-hidden divide-x divide-slate-100">
+          <TranscriptPanel
+            segments={segments}
+            plainText={isNotes ? transcriptText ?? undefined : undefined}
+            isNotes={isNotes}
+            collapsed={panelCollapsed.transcript}
+            onToggle={() => setPanelCollapsed(p => ({ ...p, transcript: !p.transcript }))}
+          />
+
+          {/* Analysis panel */}
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
+            <div className="px-5 py-4 border-b border-indigo-600 flex-shrink-0 bg-indigo-600">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <BrainCircuit size={15} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">AI-анализ</h2>
+                  <p className="text-xs text-indigo-200">{analyzedMode ? MODES.find(m => m.id === analyzedMode)?.label : "Результат анализа"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 prose prose-sm max-w-none">
+              <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{analysisResult}</div>
+            </div>
+          </div>
+
+          <ChatPanel
+            messages={fakeChat}
+            collapsed={panelCollapsed.chat}
+            onToggle={() => setPanelCollapsed(p => ({ ...p, chat: !p.chat }))}
+            consultationId={c.id}
+            transcriptText={transcriptText ?? undefined}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
