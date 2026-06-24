@@ -235,7 +235,7 @@ export function VoiceNoteModal({
     if (!blob) return;
     setPhase("saving");
     setError("");
-    const id   = `vn-${Date.now()}`;
+    const id   = crypto.randomUUID();
     const form = new FormData();
     form.append("audio",       blob, `voice-${id}.webm`);
     form.append("id",          id);
@@ -259,7 +259,7 @@ export function VoiceNoteModal({
     if (!textNote.trim()) { setError("Введите текст заметки"); return; }
     setSaving(true);
     setError("");
-    const id   = `vn-${Date.now()}`;
+    const id   = crypto.randomUUID();
     const form = new FormData();
     form.append("id",          id);
     form.append("durationSec", "0");
