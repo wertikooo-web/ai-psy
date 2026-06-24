@@ -91,17 +91,17 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
   const [hovered, setHovered] = useState(false);
 
   return (
-    // overflow-hidden lets the folder-tab corners be clipped by the card's radius
+    // NO overflow:hidden — tooltips must not be clipped
+    // folder-tab gets rounded-b-2xl explicitly instead
     <div
       className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col"
       style={{
         background:  isInactive ? CARD_MUTED : CARD_BG,
         borderColor: "#DDD4C6",
         opacity:     isInactive ? 0.87 : 1,
-        overflow:    "hidden",
       }}
     >
-      {/* ── Top: avatar + name + delete ── */}
+      {/* ── Top: avatar + name + 3 action buttons ── */}
       <div className="p-5 pb-3 flex items-start gap-3">
         <Avatar initials={client.initials} color={client.color} size="lg" />
 
@@ -112,17 +112,49 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
           </span>
         </div>
 
-        <Tip text="Удалить клиента и все связанные данные">
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-stone-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0"
-          >
-            <Trash2 size={13} />
-          </button>
-        </Tip>
+        {/* All 3 actions — top right, always visible */}
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          {!isInactive ? (
+            <>
+              <Tip text="Временно приостановить работу с клиентом">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onPause(); }}
+                  className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
+                >
+                  <Pause size={13} />
+                </button>
+              </Tip>
+              <Tip text="Переместить клиента в архив">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onArchive(); }}
+                  className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-slate-600 hover:bg-stone-200 transition-colors"
+                >
+                  <Archive size={13} />
+                </button>
+              </Tip>
+            </>
+          ) : (
+            <Tip text="Вернуть клиента в активные">
+              <button
+                onClick={(e) => { e.stopPropagation(); onRestore(); }}
+                className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 transition-colors"
+              >
+                <RotateCcw size={13} />
+              </button>
+            </Tip>
+          )}
+          <Tip text="Удалить клиента и все связанные данные">
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+            >
+              <Trash2 size={13} />
+            </button>
+          </Tip>
+        </div>
       </div>
 
-      {/* ── Body: stats + concern + tags + secondary actions ── */}
+      {/* ── Body: stats + concern + tags ── */}
       <div className="px-5 pb-4 flex-1">
         <div className="flex items-center gap-3 mb-2.5 text-xs text-stone-400">
           <div className="flex items-center gap-1">
@@ -140,10 +172,9 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
           <p className="text-sm text-stone-600 line-clamp-2 leading-relaxed">{client.concern}</p>
         )}
 
-        {/* Tags row + secondary actions in same bottom row */}
-        <div className="flex items-end justify-between mt-3 gap-2">
-          <div className="flex flex-wrap gap-1.5">
-            {client.mainTopics?.slice(0, 3).map((t) => (
+        {client.mainTopics?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {client.mainTopics.slice(0, 3).map((t) => (
               <span
                 key={t}
                 className="px-2 py-0.5 rounded-full text-xs text-stone-500"
@@ -152,48 +183,13 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
                 {t}
               </span>
             ))}
-            {(client.mainTopics?.length ?? 0) > 3 && (
+            {client.mainTopics.length > 3 && (
               <span className="px-2 py-0.5 rounded-full text-xs text-stone-400">
                 +{client.mainTopics.length - 3}
               </span>
             )}
           </div>
-
-          {/* Secondary actions — right-aligned, quiet */}
-          {!client.isMock && (
-            <div className="flex items-center gap-0.5 flex-shrink-0">
-              {!isInactive ? (
-                <>
-                  <Tip text="Временно приостановить работу с клиентом">
-                    <button
-                      onClick={() => onPause()}
-                      className="w-7 h-7 rounded-md flex items-center justify-center text-stone-300 hover:text-amber-500 hover:bg-amber-50 transition-colors"
-                    >
-                      <Pause size={12} />
-                    </button>
-                  </Tip>
-                  <Tip text="Переместить клиента в архив">
-                    <button
-                      onClick={() => onArchive()}
-                      className="w-7 h-7 rounded-md flex items-center justify-center text-stone-300 hover:text-slate-500 hover:bg-stone-200 transition-colors"
-                    >
-                      <Archive size={12} />
-                    </button>
-                  </Tip>
-                </>
-              ) : (
-                <Tip text="Вернуть клиента в активные">
-                  <button
-                    onClick={() => onRestore()}
-                    className="w-7 h-7 rounded-md flex items-center justify-center text-stone-300 hover:text-emerald-500 hover:bg-emerald-50 transition-colors"
-                  >
-                    <RotateCcw size={12} />
-                  </button>
-                </Tip>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* ── Folder tab: full-width CTA ── */}
@@ -208,13 +204,12 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
         onClick={onOpen}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium transition-all group"
+        className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium transition-all group rounded-b-2xl"
         style={{
           background:  hovered ? TAB_HOVER : TAB_BG,
           color:       "#4A3F32",
           borderTop:   "1px solid #B8AC9A",
           boxShadow:   "inset 0 1px 0 rgba(255,255,255,0.22)",
-          borderRadius: 0,
           transition:  "background 0.15s ease",
         }}
       >
