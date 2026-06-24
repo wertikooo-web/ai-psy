@@ -240,12 +240,19 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               <p className="text-xs text-slate-400 truncate">{cleanTitle(c.title)}</p>
             </div>
           </div>
-          <button
-            onClick={() => { setResult(null); setAnalyzedMode(null); setStatus("ready"); }}
-            className="text-xs text-slate-400 hover:text-slate-600 transition-colors px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300"
-          >
-            Запустить снова
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {clientMaterials.filter(m => m.type !== "therapist_notes").length > 0 && (
+              <span className="hidden sm:flex items-center gap-1 text-xs px-2 py-1 rounded-lg border" style={{ background: "#F0FDF4", borderColor: "#BBF7D0", color: "#166534" }}>
+                📎 {clientMaterials.filter(m => m.type !== "therapist_notes").length} материала включены
+              </span>
+            )}
+            <button
+              onClick={() => { setResult(null); setAnalyzedMode(null); setStatus("ready"); }}
+              className="text-xs text-slate-400 hover:text-slate-600 transition-colors px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 whitespace-nowrap"
+            >
+              Обновить анализ
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 min-h-0 flex overflow-hidden divide-x divide-slate-100">
@@ -588,28 +595,13 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                   <Loader2 size={14} className="animate-spin" />
                   Анализирую...
                 </div>
-              ) : clientMaterials.length > 0 ? (
-                <div className="space-y-2">
-                  <button
-                    onClick={runAnalysis}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm"
-                  >
-                    <Play size={14} />
-                    {hasResult ? "Запустить с новыми данными" : "Запустить анализ"}
-                  </button>
-                  {hasResult && (
-                    <p className="text-xs text-center text-stone-400">
-                      Материалы клиента уже включены в контекст
-                    </p>
-                  )}
-                </div>
               ) : (
                 <button
                   onClick={runAnalysis}
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm"
                 >
                   <Play size={14} />
-                  {hasResult ? "Запустить снова" : "Запустить анализ"}
+                  Запустить анализ
                 </button>
               )}
 
