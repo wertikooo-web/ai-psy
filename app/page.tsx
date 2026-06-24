@@ -122,8 +122,10 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
-  const recentClients       = clients.slice(0, 4);
-  const recentConsultations = consultations.slice(0, 3);
+  const MAX_DASHBOARD_CLIENTS       = 4;
+  const MAX_DASHBOARD_CONSULTATIONS = 4;
+  const recentClients       = clients.slice(0, MAX_DASHBOARD_CLIENTS);
+  const recentConsultations = consultations.slice(0, MAX_DASHBOARD_CONSULTATIONS);
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto relative" style={{ background: "#FDFCFA" }}>
