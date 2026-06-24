@@ -1,20 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 import {
   Plus, Trash2, ArrowRight, Users,
   Pause, Archive, RotateCcw, CheckCircle2,
+  Search, ChevronDown,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { AddClientModal } from "@/components/client/AddClientModal";
 import { clients as mockClients } from "@/lib/mockData";
 import type { StoredClient, ClientStatus } from "@/lib/clientStore";
 
-type AnyClient = StoredClient & { isMock?: boolean };
-type FilterTab  = "active" | "paused" | "archived" | "all";
-type ModalKind  = "delete" | "pause" | "archive" | "restore" | null;
+type AnyClient   = StoredClient & { isMock?: boolean };
+type FilterTab   = "active" | "paused" | "archived" | "all";
+type ModalKind   = "delete" | "pause" | "archive" | "restore" | null;
+type SortOption  = "lastSession" | "name" | "sessions";
+type GroupOption = "none" | "topic" | "status";
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const CARD_BG  = "#F0EBE1";
@@ -293,6 +296,9 @@ export default function ClientsPage() {
   const [clients, setClients]             = useState<AnyClient[]>([]);
   const [loading, setLoading]             = useState(true);
   const [filter, setFilter]               = useState<FilterTab>("active");
+  const [search, setSearch]               = useState("");
+  const [sort, setSort]                   = useState<SortOption>("lastSession");
+  const [group, setGroup]                 = useState<GroupOption>("none");
   const [addOpen, setAddOpen]             = useState(false);
   const [modal, setModal]                 = useState<ModalKind>(null);
   const [target, setTarget]               = useState<AnyClient | null>(null);
@@ -366,20 +372,80 @@ export default function ClientsPage() {
     all:      clients.length,
   };
 
-  const filtered = clients.filter((c) => {
-    if (filter === "all")      return true;
-    if (filter === "active")   return c.status === "active";
-    if (filter === "paused")   return c.status === "paused";
-    if (filter === "archived") return c.status === "archived" || c.status === "completed";
-    return true;
-  });
+  // 1. Filter by status
+  // 2. Filter by search (name, concern, tags)
+  // 3. Sort
+  // 4. Group
+  const processed = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    const afterStatus = clients.filter((c) => {
+      if (filter === "active")   return c.status === "active";
+      if (filter === "paused")   return c.status === "paused";
+      if (filter === "archived") return c.status === "archived" || c.status === "completed";
+      return true;
+    });
+
+    const afterSearch = q
+      ? afterStatus.filter((c) => {
+          const inName    = c.name.toLowerCase().includes(q);
+          const inConcern = (c.concern ?? "").toLowerCase().includes(q);
+          const inTags    = (c.mainTopics ?? []).some((t) => t.toLowerCase().includes(q));
+          return inName || inConcern || inTags;
+        })
+      : afterStatus;
+
+    const sorted = [...afterSearch].sort((a, b) => {
+      if (sort === "name")       return a.name.localeCompare(b.name, "ru");
+      if (sort === "sessions")   return (b.totalConsultations ?? 0) - (a.totalConsultations ?? 0);
+      // lastSession — recent first, missing last
+      const da = a.lastConsultation ? new Date(a.lastConsultation).getTime() : 0;
+      const db = b.lastConsultation ? new Date(b.lastConsultation).getTime() : 0;
+      return db - da;
+    });
+
+    return sorted;
+  }, [clients, filter, search, sort]);
+
+  // Grouping
+  const STATUS_LABEL: Record<string, string> = {
+    active: "Активные", paused: "Пауза", archived: "Архив", completed: "Архив",
+  };
+
+  const grouped = useMemo((): { label: string; clients: AnyClient[] }[] => {
+    if (group === "none") return [{ label: "", clients: processed }];
+
+    if (group === "status") {
+      const order = ["active", "paused", "archived"];
+      const map = new Map<string, AnyClient[]>();
+      for (const c of processed) {
+        const key = c.status === "completed" ? "archived" : (c.status ?? "active");
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(c);
+      }
+      return order
+        .filter((k) => map.has(k))
+        .map((k) => ({ label: STATUS_LABEL[k], clients: map.get(k)! }));
+    }
+
+    // group by first tag (mainTopics[0])
+    const map = new Map<string, AnyClient[]>();
+    for (const c of processed) {
+      const key = c.mainTopics?.[0] ?? "Без темы";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(c);
+    }
+    return [...map.entries()]
+      .sort(([a], [b]) => a === "Без темы" ? 1 : b === "Без темы" ? -1 : a.localeCompare(b, "ru"))
+      .map(([label, clients]) => ({ label, clients }));
+  }, [processed, group]);
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
       <div className="p-8 max-w-6xl mx-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <h1 className="text-xl font-bold text-slate-800">Клиенты</h1>
           <button
             onClick={() => setAddOpen(true)}
@@ -390,27 +456,97 @@ export default function ClientsPage() {
           </button>
         </div>
 
-        {/* Filter tabs with live counts */}
-        <div className="flex gap-1.5 mb-6">
-          {FILTERS.map((f) => (
+        {/* Search */}
+        <div className="relative mb-4">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#A8997F" }} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск по имени, запросу или теме..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none transition-colors"
+            style={{
+              background: "#FFFFFF",
+              border: "1px solid #D8CFBE",
+              color: "#3A2E22",
+            }}
+            onFocus={(e) => { e.target.style.borderColor = "#A8997F"; }}
+            onBlur={(e)  => { e.target.style.borderColor = "#D8CFBE"; }}
+          />
+          {search && (
             <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                filter === f.id
-                  ? "bg-white text-slate-800 shadow-sm border border-stone-200"
-                  : "text-stone-500 hover:text-slate-700 hover:bg-white/60"
-              }`}
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+              style={{ color: "#A8997F" }}
             >
-              {f.label}
-              <span className={`ml-1.5 text-xs ${filter === f.id ? "text-slate-400" : "text-stone-400"}`}>
-                {count[f.id]}
-              </span>
+              <ChevronDown size={14} style={{ transform: "rotate(0)" }} />
             </button>
-          ))}
+          )}
         </div>
 
-        {/* Grid */}
+        {/* Status tabs + Sort + Group */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          {/* Status tabs */}
+          <div className="flex gap-1 flex-1 min-w-0">
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className="px-3 py-1.5 rounded-xl text-sm font-medium transition-all flex-shrink-0"
+                style={{
+                  background: filter === f.id ? "#FFFFFF" : "transparent",
+                  color:      filter === f.id ? "#3A2E22" : "#7A6E60",
+                  border:     filter === f.id ? "1px solid #D8CFBE" : "1px solid transparent",
+                  boxShadow:  filter === f.id ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+                }}
+              >
+                {f.label}
+                <span className="ml-1.5 text-xs" style={{ color: filter === f.id ? "#A8997F" : "#B8AC9A" }}>
+                  {count[f.id]}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Sort dropdown */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-xs" style={{ color: "#A8997F" }}>Сортировать:</span>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortOption)}
+              className="text-xs pl-2.5 pr-6 py-1.5 rounded-xl outline-none appearance-none cursor-pointer"
+              style={{
+                background: "#F0EBE1",
+                border: "1px solid #D8CFBE",
+                color: "#4A3C2E",
+              }}
+            >
+              <option value="lastSession">Последняя встреча</option>
+              <option value="name">Имя А-Я</option>
+              <option value="sessions">Кол-во встреч</option>
+            </select>
+          </div>
+
+          {/* Group dropdown */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-xs" style={{ color: "#A8997F" }}>Группировать:</span>
+            <select
+              value={group}
+              onChange={(e) => setGroup(e.target.value as GroupOption)}
+              className="text-xs pl-2.5 pr-6 py-1.5 rounded-xl outline-none appearance-none cursor-pointer"
+              style={{
+                background: "#F0EBE1",
+                border: "1px solid #D8CFBE",
+                color: "#4A3C2E",
+              }}
+            >
+              <option value="none">Без группировки</option>
+              <option value="topic">По основной теме</option>
+              <option value="status">По статусу</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Grid / Groups */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {[1, 2, 3].map((i) => (
@@ -418,38 +554,58 @@ export default function ClientsPage() {
                 style={{ background: CARD_BG, borderColor: "#DDD4C6" }} />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-stone-400 text-sm">
-            {filter === "active"   && "Нет активных клиентов"}
-            {filter === "paused"   && "Нет клиентов на паузе"}
-            {filter === "archived" && "Архив пуст"}
-            {filter === "all"      && "Клиентов пока нет"}
+        ) : processed.length === 0 ? (
+          <div className="text-center py-16 text-sm" style={{ color: "#A8997F" }}>
+            {search
+              ? `По запросу «${search}» ничего не найдено`
+              : filter === "active"   ? "Нет активных клиентов"
+              : filter === "paused"   ? "Нет клиентов на паузе"
+              : filter === "archived" ? "Архив пуст"
+              : "Клиентов пока нет"}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {filtered.map((client) => (
-              <ClientCard
-                key={client.id}
-                client={client}
-                onOpen={()    => router.push(`/client/${client.id}`)}
-                onDelete={()  => openModal("delete", client)}
-                onPause={()   => openModal("pause", client)}
-                onArchive={()  => openModal("archive", client)}
-                onRestore={()  => openModal("restore", client)}
-              />
+          <div className="space-y-8">
+            {grouped.map(({ label, clients: groupClients }) => (
+              <div key={label || "_all"}>
+                {label && (
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>
+                      {label}
+                    </span>
+                    <span className="text-xs" style={{ color: "#C9BBAA" }}>{groupClients.length}</span>
+                    <div className="flex-1 h-px" style={{ background: "#E5DDD2" }} />
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {groupClients.map((client) => (
+                    <ClientCard
+                      key={client.id}
+                      client={client}
+                      onOpen={()     => router.push(`/client/${client.id}`)}
+                      onDelete={()   => openModal("delete", client)}
+                      onPause={()    => openModal("pause", client)}
+                      onArchive={()  => openModal("archive", client)}
+                      onRestore={()  => openModal("restore", client)}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
 
-            {filter === "active" && (
-              <button
-                onClick={() => setAddOpen(true)}
-                className="rounded-2xl border-2 border-dashed p-6 flex flex-col items-center justify-center gap-3 text-stone-400 hover:text-brand-500 hover:border-brand-300 hover:bg-brand-50/30 transition-all min-h-[220px]"
-                style={{ borderColor: "#D8CFBE" }}
-              >
-                <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "#E8E0D0" }}>
-                  <Plus size={20} />
-                </div>
-                <span className="text-sm font-medium">Добавить клиента</span>
-              </button>
+            {/* Add client placeholder — only in no-group active view */}
+            {group === "none" && filter === "active" && !search && (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                <button
+                  onClick={() => setAddOpen(true)}
+                  className="rounded-2xl border-2 border-dashed p-6 flex flex-col items-center justify-center gap-3 text-stone-400 hover:text-brand-500 hover:border-brand-300 hover:bg-brand-50/30 transition-all min-h-[220px]"
+                  style={{ borderColor: "#D8CFBE" }}
+                >
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "#E8E0D0" }}>
+                    <Plus size={20} />
+                  </div>
+                  <span className="text-sm font-medium">Добавить клиента</span>
+                </button>
+              </div>
             )}
           </div>
         )}
