@@ -228,10 +228,19 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
               <button
                 onClick={handleDeleteClient}
                 disabled={deletingClient}
-                className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
                 title="Удалить клиента"
+                className="flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
+                style={{
+                  width: 34, height: 34,
+                  background: "#FFFFFF",
+                  border: "1px solid #D8CFBE",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+                  color: "#6B5D4F",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FECACA"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "#6B5D4F"; e.currentTarget.style.background = "#FFFFFF"; e.currentTarget.style.borderColor = "#D8CFBE"; }}
               >
-                <Trash2 size={16} />
+                <Trash2 size={15} />
               </button>
             )}
           </div>
