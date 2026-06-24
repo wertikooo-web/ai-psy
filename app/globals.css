@@ -45,3 +45,20 @@
     scrollbar-width: thin;
   }
 }
+
+@layer components {
+  .client-card {
+    background: #F3EBDD;
+    border: 1px solid #CFC0A9;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(80, 60, 40, 0.06), 0 6px 16px rgba(80, 60, 40, 0.07);
+    overflow: hidden;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+
+  .client-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 6px rgba(80, 60, 40, 0.08), 0 10px 24px rgba(80, 60, 40, 0.10);
+    border-color: #B8A890;
+  }
+}

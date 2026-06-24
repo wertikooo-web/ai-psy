@@ -22,9 +22,9 @@ type SortOption  = "lastSession" | "name" | "sessions";
 type GroupOption = "none" | "topic" | "status";
 
 // ── Palette ───────────────────────────────────────────────────────────────────
-const CARD_BG  = "#F0EBE1";
-const TAB_BG   = "#C9BBAA";
-const TAB_HOV  = "#BEB09E";
+const CARD_BG  = "#F3EBDD";
+const TAB_BG   = "#D4C5B1";
+const TAB_HOV  = "#C8B89F";
 
 // ── Status badge config ───────────────────────────────────────────────────────
 const STATUS_BADGE = {
@@ -169,8 +169,8 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
 
   return (
     <div
-      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col"
-      style={{ background: CARD_BG, borderColor: "#DDD4C6", minHeight: 292, position: "relative" }}
+      className="client-card flex flex-col"
+      style={{ minHeight: 292, position: "relative" }}
     >
       {/* ── Action buttons: белая пилюля, всегда в правом верхнем углу ── */}
       <div
@@ -278,8 +278,8 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
         className="w-full flex items-center justify-between px-5 py-2.5 text-sm font-medium rounded-b-2xl"
         style={{
           background:   tabHov ? TAB_HOV : TAB_BG,
-          color:        "#4A3F32",
-          borderTop:    "1px solid #B8AC9A",
+          color:        "#3D3228",
+          borderTop:    "1px solid #C4B49E",
           boxShadow:    "inset 0 1px 0 rgba(255,255,255,0.22)",
           transition:   "background 0.15s ease",
         }}
@@ -576,8 +576,7 @@ export default function ClientsPage() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-2xl border h-56 animate-pulse"
-                style={{ background: CARD_BG, borderColor: "#DDD4C6" }} />
+              <div key={i} className="client-card h-56 animate-pulse" />
             ))}
           </div>
         ) : processed.length === 0 ? (
