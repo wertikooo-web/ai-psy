@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addClient, readAll, StoredClient } from "@/lib/clientStore";
-import { randomUUID } from "crypto";
+import { getClients, createClient } from "@/lib/data/clients";
 
 const COLORS = [
   "#6088ff", "#4f8e4f", "#e06060", "#c47d2e",
@@ -14,8 +13,13 @@ function initials(name: string) {
 }
 
 export async function GET() {
-  const all = await readAll();
-  return NextResponse.json(all);
+  try {
+    const clients = await getClients();
+    return NextResponse.json(clients);
+  } catch (err) {
+    console.error("[clients GET]", err);
+    return NextResponse.json({ error: "Ошибка получения клиентов" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -24,26 +28,17 @@ export async function POST(req: NextRequest) {
     const name: string = (body.name ?? "").trim();
     if (!name) return NextResponse.json({ error: "Имя обязательно" }, { status: 400 });
 
-    const all = await readAll();
-    const color = COLORS[all.length % COLORS.length];
+    const allClients = await getClients();
+    const color = COLORS[allClients.length % COLORS.length];
 
-    const client: StoredClient = {
-      id:                 randomUUID(),
+    const client = await createClient({
       name,
-      initials:           initials(name),
+      initials: initials(name),
       color,
-      age:                body.age ? Number(body.age) : undefined,
-      concern:            (body.concern ?? "").trim(),
-      status:             "active",
-      createdAt:          new Date().toISOString(),
-      totalConsultations: 0,
-      lastConsultation:   new Date().toISOString().slice(0, 10),
-      mainTopics:         [],
-      lastShift:          "",
-      currentFocus:       (body.concern ?? "").trim(),
-    };
+      age:     body.age ? Number(body.age) : undefined,
+      concern: (body.concern ?? "").trim(),
+    });
 
-    await addClient(client);
     return NextResponse.json(client, { status: 201 });
   } catch (err) {
     console.error("[clients POST]", err);

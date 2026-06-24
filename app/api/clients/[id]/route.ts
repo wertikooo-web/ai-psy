@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteClient, updateClientStatus } from "@/lib/clientStore";
+import { updateClientStatus, softDeleteClient } from "@/lib/data/clients";
 import type { ClientStatus } from "@/lib/clientStore";
 import { readAll, writeAll } from "@/lib/consultationStore";
 import { deleteForClient as deleteHistoryForClient } from "@/lib/clientHistoryStore";
@@ -26,9 +26,10 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    await deleteClient(id);
+    // Soft delete the client record (sets deleted_at, keeps the row)
+    await softDeleteClient(id);
 
-    // Cascade-delete all related data
+    // Cascade-delete related data from JSON stores (unchanged)
     const all = await readAll();
     await writeAll(all.filter((c) => c.clientId !== id));
     await deleteHistoryForClient(id);

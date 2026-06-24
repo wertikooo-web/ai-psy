@@ -13,6 +13,8 @@ import { AddClientModal } from "@/components/client/AddClientModal";
 import { clients as mockClients } from "@/lib/mockData";
 import type { StoredClient, ClientStatus } from "@/lib/clientStore";
 
+const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
 type AnyClient   = StoredClient & { isMock?: boolean };
 type FilterTab   = "active" | "paused" | "archived" | "all";
 type ModalKind   = "delete" | "pause" | "archive" | "restore" | null;
@@ -306,17 +308,28 @@ export default function ClientsPage() {
 
   async function loadClients() {
     try {
-      const res   = await fetch("/api/clients");
+      const res  = await fetch("/api/clients");
       const real: StoredClient[] = res.ok ? await res.json() : [];
-      const realIds = new Set(real.map((c) => c.id));
-      setClients([
-        ...real,
-        ...mockClients
-          .filter((m) => !realIds.has(m.id))
-          .map((m) => ({ ...m, isMock: true } as AnyClient)),
-      ]);
+
+      if (DEMO_MODE) {
+        // In demo mode: show real data + mock data for any missing mock IDs
+        const realIds = new Set(real.map((c) => c.id));
+        setClients([
+          ...real,
+          ...mockClients
+            .filter((m) => !realIds.has(m.id))
+            .map((m) => ({ ...m, isMock: true } as AnyClient)),
+        ]);
+      } else {
+        // Production: only real data, no mock fallback
+        setClients(real);
+      }
     } catch {
-      setClients(mockClients.map((m) => ({ ...m, isMock: true } as AnyClient)));
+      if (DEMO_MODE) {
+        setClients(mockClients.map((m) => ({ ...m, isMock: true } as AnyClient)));
+      } else {
+        setClients([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -568,13 +581,39 @@ export default function ClientsPage() {
             ))}
           </div>
         ) : processed.length === 0 ? (
-          <div className="text-center py-16 text-sm" style={{ color: "#A8997F" }}>
-            {search
-              ? `По запросу «${search}» ничего не найдено`
-              : filter === "active"   ? "Нет активных клиентов"
-              : filter === "paused"   ? "Нет клиентов на паузе"
-              : filter === "archived" ? "Архив пуст"
-              : "Клиентов пока нет"}
+          <div className="flex flex-col items-center py-20 gap-4">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "#E8E0D0" }}>
+              <Users size={26} style={{ color: "#A8997F" }} />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium" style={{ color: "#6B5D4F" }}>
+                {search
+                  ? `По запросу «${search}» ничего не найдено`
+                  : clients.length === 0 && !DEMO_MODE && filter === "active"
+                    ? "Клиентов пока нет"
+                    : filter === "active"   ? "Нет активных клиентов"
+                    : filter === "paused"   ? "Нет клиентов на паузе"
+                    : filter === "archived" ? "Архив пуст"
+                    : "Клиентов пока нет"}
+              </p>
+              {clients.length === 0 && !DEMO_MODE && !search && filter === "active" && (
+                <p className="text-xs" style={{ color: "#A8997F" }}>
+                  Добавьте первого клиента, чтобы начать работу
+                </p>
+              )}
+            </div>
+            {!search && filter === "active" && (
+              <button
+                onClick={() => setAddOpen(true)}
+                className="mt-1 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                style={{ background: "#6B5D4F", color: "#FFFFFF" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#4A3C2E"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#6B5D4F"; }}
+              >
+                <Plus size={15} />
+                Добавить клиента
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-8">
