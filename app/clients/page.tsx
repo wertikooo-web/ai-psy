@@ -124,7 +124,7 @@ interface CardProps {
 
 function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }: CardProps) {
   const [tabHov, setTabHov] = useState(false);
-  const status = client.status as keyof typeof STATUS_BADGE;
+  const status = (client.status ?? "active") as keyof typeof STATUS_BADGE;
 
   // Action buttons depend on current status
   const actions = (

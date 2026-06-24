@@ -25,7 +25,8 @@ export interface StoredClient {
 export async function readAll(): Promise<StoredClient[]> {
   try {
     const raw = await readFile(DATA_FILE, "utf-8");
-    return JSON.parse(raw) as StoredClient[];
+    const clients = JSON.parse(raw) as StoredClient[];
+    return clients.map((c) => (c.status ? c : { ...c, status: "active" as ClientStatus }));
   } catch {
     return [];
   }
