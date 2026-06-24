@@ -28,8 +28,15 @@ function BackgroundIllustration() {
       src="/city.png"
       alt=""
       aria-hidden
-      className="w-full pointer-events-none select-none"
-      style={{ display: "block", opacity: 0.85 }}
+      className="pointer-events-none select-none"
+      style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        width: "100%",
+        opacity: 0.5,
+        zIndex: 0,
+      }}
     />
   );
 }
@@ -106,8 +113,10 @@ export default function HomePage() {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto relative" style={{ background: "#FDFCFA" }}>
 
+      <BackgroundIllustration />
+
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div className="max-w-2xl mx-auto px-6 pt-10 lg:pt-[10vh] pb-8 text-center">
+      <div className="relative z-10 max-w-2xl mx-auto px-6 pt-10 lg:pt-[10vh] pb-8 text-center">
         <div className="flex items-center justify-center gap-3 mb-2">
           {photoUrl ? (
             <img src={photoUrl} alt={greeting}
@@ -150,7 +159,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Main content grid ─────────────────────────────────────────────── */}
-      <div className="max-w-4xl mx-auto px-6 pb-10">
+      <div className="relative z-10 max-w-4xl mx-auto px-6 pb-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* Recent clients */}
@@ -264,10 +273,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── Background illustration ───────────────────────────────────────── */}
-      <div className="pointer-events-none select-none mt-4" aria-hidden>
-        <BackgroundIllustration />
-      </div>
 
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
       <AddClientModal
