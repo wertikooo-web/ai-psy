@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Save, Trash2, User, CheckCircle2, AlertCircle,
-  Key, BrainCircuit, Database, Loader2, Camera, X,
+  Key, BrainCircuit, Database, Loader2, Camera, X, ArrowLeft,
 } from "lucide-react";
 import type { UserProfile } from "@/lib/userProfile";
 
@@ -28,6 +29,7 @@ const ANALYSIS_MODES = [
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [profile, setProfile]   = useState<UserProfile>(EMPTY);
   const [status, setStatus]     = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [deleting, setDeleting] = useState(false);
@@ -128,9 +130,16 @@ export default function SettingsPage() {
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-2xl mx-auto px-6 py-10 space-y-6">
-        <div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-700 transition-colors"
+          >
+            <ArrowLeft size={16} />
+            Назад
+          </button>
+          <div className="w-px h-5 bg-slate-200" />
           <h1 className="text-xl font-bold text-slate-800">Настройки</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Профиль, AI, анализ и данные</p>
         </div>
 
         {/* ── Block 1: Profile ─────────────────────────────────────────────── */}
