@@ -10,16 +10,16 @@ import {
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
 
-// ── Craft palette ─────────────────────────────────────────────────────────────
+// ── Sidebar palette (neutral, ChatGPT-like) ───────────────────────────────────
 const C = {
-  bg:         "#F0EBE0",
-  border:     "#E5E7EB",
-  active:     "#E7DDCC",
-  hover:      "#E2D8C7",
-  activeTxt:  "#4A3C2E",
-  idleTxt:    "#7A6E60",
-  groupLabel: "#A8997F",
-  uploadBdr:  "#D4C9B5",
+  bg:         "#F7F7F8",
+  border:     "#E5E5E5",
+  active:     "#ECECED",
+  hover:      "#EFEFEF",
+  activeTxt:  "#111827",
+  idleTxt:    "#6B7280",
+  groupLabel: "#9CA3AF",
+  uploadBdr:  "#D1D5DB",
 };
 
 const mainNav = [
@@ -96,7 +96,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     <>
       <aside
         className="w-60 flex-shrink-0 flex flex-col h-full"
-        style={{ background: C.bg, borderRight: `1px solid rgba(255,255,255,0.7)` }}
+        style={{ background: C.bg, borderRight: `1px solid ${C.border}` }}
       >
         {/* Logo */}
         <Link
@@ -107,15 +107,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         >
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: C.active, border: `1px solid ${C.uploadBdr}` }}
+            style={{ background: "#E9E9EA", border: `1px solid ${C.border}` }}
           >
             <BrainCircuit size={18} style={{ color: C.activeTxt }} />
           </div>
           <div>
-            <div className="text-sm font-bold leading-tight" style={{ color: C.activeTxt }}>
+            <div className="text-sm font-bold leading-tight" style={{ color: "#111827" }}>
               TRANSCRIPT AI
             </div>
-            <div className="text-xs font-semibold tracking-wider" style={{ color: C.groupLabel }}>
+            <div className="text-xs font-semibold tracking-wider" style={{ color: "#9CA3AF" }}>
               PSY
             </div>
           </div>
