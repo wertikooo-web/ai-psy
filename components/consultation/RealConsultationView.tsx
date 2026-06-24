@@ -14,6 +14,7 @@ import { CalendarButtons } from "@/components/ui/CalendarButtons";
 import Link from "next/link";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { ChatPanel } from "./ChatPanel";
+import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 
 interface Props {
   consultation: StoredConsultation;
@@ -279,8 +280,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                 </div>
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 prose prose-sm max-w-none">
-              <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{analysisResult}</div>
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5">
+              <MarkdownRenderer content={analysisResult ?? ""} />
             </div>
           </div>
 
@@ -655,7 +656,6 @@ function AnalysisResultCard({
   onExport: () => void;
 }) {
   const modeLabel = MODES.find((m) => m.id === mode)?.label ?? mode;
-  const blocks    = text.split(/\n(?=##\s)/);
 
   return (
     <div className="bg-white rounded-2xl border border-brand-100 shadow-sm overflow-hidden">
@@ -674,25 +674,8 @@ function AnalysisResultCard({
           .md
         </button>
       </div>
-      <div className="px-6 py-5 space-y-4">
-        {blocks.map((block, i) => {
-          const trimmed = block.trim();
-          if (!trimmed) return null;
-          if (trimmed.startsWith("## ")) {
-            const lines   = trimmed.split("\n");
-            const heading = lines[0].replace(/^##\s+/, "");
-            const body    = lines.slice(1).join("\n").trim();
-            return (
-              <div key={i}>
-                <h3 className="text-sm font-semibold text-slate-700 mb-2">{heading}</h3>
-                {body && <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{body}</div>}
-              </div>
-            );
-          }
-          return (
-            <div key={i} className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{trimmed}</div>
-          );
-        })}
+      <div className="px-6 py-5">
+        <MarkdownRenderer content={text} />
       </div>
     </div>
   );
