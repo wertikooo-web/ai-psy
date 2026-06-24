@@ -22,16 +22,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Консультация не найдена" }, { status: 404 });
     }
 
-    const rawText = consultation.transcript?.text;
+    // Priority: Whisper/uploaded transcript > psychologist notes
+    const hasTranscript = !!consultation.transcript?.text;
+    const hasNotes      = !!consultation.notes;
+    const rawText       = consultation.transcript?.text ?? consultation.notes ?? null;
+
     if (!rawText) {
-      return NextResponse.json({ error: "Транскрипт отсутствует. Добавьте текст перед анализом." }, { status: 400 });
+      return NextResponse.json({ error: "Нет текста для анализа. Добавьте транскрипт или заметки." }, { status: 400 });
     }
 
-    // For notes: tell AI this is not a verbatim transcript
-    const transcript =
-      consultation.source === "notes"
-        ? `[КОНТЕКСТ: Это заметки психолога о сессии, а не дословная стенограмма разговора]\n\n${rawText}`
-        : rawText;
+    // Tell AI what kind of text it's dealing with
+    const transcript = hasTranscript
+      ? rawText
+      : `[КОНТЕКСТ: Это заметки психолога о сессии, а не дословная стенограмма. Психолог описывает своими словами что происходило.]\n\n${rawText}`;
 
     // Build clientContext from stored data
     const clientContext = await assembleClientContext(

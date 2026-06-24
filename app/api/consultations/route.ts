@@ -39,7 +39,10 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    if ((source === "transcript" || source === "notes") && body.transcriptText) {
+    if (source === "notes" && body.transcriptText) {
+      // Notes go to dedicated field — never overwritten by Whisper
+      record.notes = body.transcriptText;
+    } else if (source === "transcript" && body.transcriptText) {
       record.transcript = {
         text:      body.transcriptText,
         origin:    body.transcriptFileName ? "file" : "manual",

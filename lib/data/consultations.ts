@@ -23,6 +23,7 @@ function rowToConsultation(row: Record<string, unknown>): StoredConsultation {
       fileUrl:  row.audio_file_url as string,
       fileSize: (row.audio_file_size as number) ?? 0,
     } : undefined,
+    notes: (row.notes as string) ?? undefined,
     transcript: row.transcript_text ? {
       text:      row.transcript_text as string,
       origin:    (row.transcript_origin as "whisper" | "file" | "manual") ?? "manual",
@@ -46,6 +47,7 @@ function consultationToRow(c: StoredConsultation) {
     audio_file_name:       c.audio?.fileName ?? null,
     audio_file_url:        c.audio?.fileUrl ?? null,
     audio_file_size:       c.audio?.fileSize ?? null,
+    notes:                 c.notes ?? null,
     transcript_text:       c.transcript?.text ?? null,
     transcript_origin:     c.transcript?.origin ?? null,
     transcript_file_name:  c.transcript?.fileName ?? null,
@@ -120,6 +122,7 @@ export async function updateConsultation(id: string, updates: Partial<StoredCons
       patch.audio_file_url  = updates.audio?.fileUrl  ?? null;
       patch.audio_file_size = updates.audio?.fileSize ?? null;
     }
+    if (updates.notes      !== undefined) patch.notes               = updates.notes ?? null;
     if (updates.transcript !== undefined) {
       patch.transcript_text       = updates.transcript?.text       ?? null;
       patch.transcript_origin     = updates.transcript?.origin     ?? null;

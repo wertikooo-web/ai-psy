@@ -69,14 +69,21 @@ export async function POST(req: NextRequest) {
       language: "ru",
     });
 
-    await updateConsultation(consultationId, {
+    // Preserve existing notes if consultation was notes-based
+    const updates: Parameters<typeof updateConsultation>[1] = {
       status: "ready",
       transcript: {
         text:      transcription.text,
         origin:    "whisper",
         createdAt: new Date().toISOString(),
       },
-    });
+    };
+    // Migrate old-style notes stored in transcript.text → notes field
+    if (consultation.source === "notes" && consultation.transcript?.text && !consultation.notes) {
+      updates.notes = consultation.transcript.text;
+    }
+
+    await updateConsultation(consultationId, updates);
 
     return NextResponse.json({ text: transcription.text });
 

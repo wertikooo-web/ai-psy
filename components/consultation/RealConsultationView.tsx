@@ -175,10 +175,13 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   // ── Derived display values ────────────────────────────────────────────────
   const source    = c.source ?? (audioFile ? "audio" : "transcript");
   const dateStr   = c.createdAt ?? c.uploadedAt ?? "";
-  const hasAudio  = !!audioFile;
-  const hasText   = !!transcriptText;
-  const hasResult  = !!analysisResult;
-  const isNotes    = source === "notes";
+  const hasAudio       = !!audioFile;
+  const hasText        = !!(transcriptText ?? c.notes);
+  const hasResult      = !!analysisResult;
+  const isNotesOnly    = source === "notes" && !c.transcript?.text;
+  const hasWhisper     = !!c.transcript?.text;
+  const notesText      = c.notes ?? null;
+  const whisperText    = c.transcript?.text ?? null;
   const [panelCollapsed, setPanelCollapsed] = useState({ transcript: false, chat: false });
 
   const clientHref  = c.clientId ? `/client/${c.clientId}` : "/";
@@ -233,8 +236,9 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
         <div className="flex-1 min-h-0 flex overflow-hidden divide-x divide-slate-100">
           <TranscriptPanel
             segments={segments}
-            plainText={isNotes ? transcriptText ?? undefined : undefined}
-            isNotes={isNotes}
+            plainText={whisperText ?? undefined}
+            notesText={notesText ?? undefined}
+            isNotes={isNotesOnly}
             collapsed={panelCollapsed.transcript}
             onToggle={() => setPanelCollapsed(p => ({ ...p, transcript: !p.transcript }))}
           />
@@ -485,6 +489,19 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               <div className="px-5 py-4 max-h-72 overflow-y-auto">
                 <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap font-mono text-xs">
                   {transcriptText}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Transcript upgraded banner ──────────────────────────────── */}
+          {hasWhisper && notesText && (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 flex items-start gap-3">
+              <FileText size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-blue-800">Транскрипт обновлён</p>
+                <p className="text-xs text-blue-600 mt-0.5">
+                  Аудио расшифровано — анализ будет по полному транскрипту. Заметки психолога сохранены во вкладке «Заметки».
                 </p>
               </div>
             </div>

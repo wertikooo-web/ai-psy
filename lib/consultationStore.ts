@@ -27,7 +27,10 @@ export interface StoredConsultation {
     fileSize: number;
   };
 
-  // Populated after Whisper (audio) or immediately (transcript/notes)
+  // Psychologist's own notes (never overwritten by Whisper)
+  notes?: string;
+
+  // Whisper / uploaded transcript (populated after audio transcription)
   transcript?: {
     text: string;
     origin: TranscriptOrigin;

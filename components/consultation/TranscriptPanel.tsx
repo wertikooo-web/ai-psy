@@ -2,21 +2,30 @@
 
 import { useState } from "react";
 import { TranscriptSegment } from "@/lib/mockData";
-import { Search, User, Stethoscope, ChevronsLeft, ChevronsRight, Mic, NotebookPen } from "lucide-react";
+import { Search, User, Stethoscope, ChevronsLeft, ChevronsRight, Mic, NotebookPen, FileText } from "lucide-react";
 import clsx from "clsx";
 
+type ActiveTab = "transcript" | "notes";
+
 interface TranscriptPanelProps {
-  segments: TranscriptSegment[];
-  collapsed: boolean;
-  onToggle: () => void;
-  plainText?: string;   // for notes-based consultations
-  isNotes?: boolean;
+  segments:      TranscriptSegment[];
+  collapsed:     boolean;
+  onToggle:      () => void;
+  plainText?:    string;  // Whisper/uploaded transcript as plain text
+  notesText?:    string;  // Psychologist's own notes
+  isNotes?:      boolean; // consultation was created from notes only (no audio)
 }
 
-export function TranscriptPanel({ segments, collapsed, onToggle, plainText, isNotes }: TranscriptPanelProps) {
-  const [query, setQuery] = useState("");
-  const title    = isNotes ? "Заметки" : "Транскрипт";
-  const subtitle = isNotes ? "Записи психолога о сессии" : "Реплики клиента и психолога";
+export function TranscriptPanel({ segments, collapsed, onToggle, plainText, notesText, isNotes }: TranscriptPanelProps) {
+  const [query, setQuery]       = useState("");
+  const hasBoth   = !!plainText && !!notesText;
+  const [activeTab, setActiveTab] = useState<ActiveTab>(plainText ? "transcript" : "notes");
+
+  const showTranscript = hasBoth ? activeTab === "transcript" : !!plainText || (!isNotes && segments.length > 0);
+  const showNotes      = hasBoth ? activeTab === "notes"      : isNotes && !!notesText;
+
+  const title    = isNotes && !hasBoth ? "Заметки" : "Транскрипт";
+  const subtitle = isNotes && !hasBoth ? "Записи психолога о сессии" : "Реплики клиента и психолога";
 
   const filtered = segments.filter((s) =>
     s.text.toLowerCase().includes(query.toLowerCase())
@@ -71,34 +80,77 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, isNo
         </div>
       </div>
 
-      {/* Search — white zone below header */}
-      <div className="px-4 py-2.5 border-b border-slate-100 flex-shrink-0 bg-white">
-        <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по тексту..."
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300"
-          />
+      {/* Tabs — shown only when both transcript and notes exist */}
+      {hasBoth && (
+        <div className="flex border-b border-slate-100 flex-shrink-0 bg-white">
+          <button
+            onClick={() => setActiveTab("transcript")}
+            className={clsx("flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors",
+              activeTab === "transcript"
+                ? "border-brand-500 text-brand-600"
+                : "border-transparent text-slate-400 hover:text-slate-600"
+            )}
+          >
+            <Mic size={12} /> Транскрипт
+          </button>
+          <button
+            onClick={() => setActiveTab("notes")}
+            className={clsx("flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors",
+              activeTab === "notes"
+                ? "border-amber-500 text-amber-600"
+                : "border-transparent text-slate-400 hover:text-slate-600"
+            )}
+          >
+            <NotebookPen size={12} /> Заметки психолога
+          </button>
         </div>
-      </div>
+      )}
 
-      {/* Plain text mode for notes */}
-      {isNotes && plainText && (
+      {/* Search — only for transcript with segments */}
+      {showTranscript && segments.length > 0 && (
+        <div className="px-4 py-2.5 border-b border-slate-100 flex-shrink-0 bg-white">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Поиск по тексту..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Notes tab / notes-only view */}
+      {showNotes && notesText && (
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
-          <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-3">
+          <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-4">
             <div className="flex items-center gap-2 text-xs text-amber-700 font-medium">
               <NotebookPen size={12} />
               Заметки психолога — не дословный транскрипт
             </div>
           </div>
+          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{notesText}</p>
+        </div>
+      )}
+
+      {/* Plain text transcript (when no segments) */}
+      {showTranscript && plainText && segments.length === 0 && (
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
+          {hasBoth && (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-4">
+              <div className="flex items-center gap-2 text-xs text-blue-700 font-medium">
+                <FileText size={12} />
+                Транскрипт получен после расшифровки аудио
+              </div>
+            </div>
+          )}
           <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{plainText}</p>
         </div>
       )}
 
       {/* Segments — scrolls independently */}
-      {!isNotes && (
+      {showTranscript && segments.length > 0 && (
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
           {filtered.length === 0 && (
             <p className="text-xs text-slate-400 text-center py-8">Ничего не найдено</p>
@@ -136,7 +188,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, isNo
       )}
 
       {/* Footer */}
-      {!isNotes && (
+      {showTranscript && segments.length > 0 && (
         <div className="px-5 py-3 border-t border-slate-100 flex-shrink-0">
           <p className="text-xs text-slate-500 text-center font-medium">
             {segments.length} реплик
