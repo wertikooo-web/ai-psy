@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { readVoiceNotes, saveVoiceNote } from "@/lib/voiceNoteStore";
+import { getVoiceNotes, saveVoiceNote } from "@/lib/data/voiceNotes";
 
 export async function GET() {
-  const notes = await readVoiceNotes();
-  return NextResponse.json(notes);
+  try {
+    const notes = await getVoiceNotes();
+    return NextResponse.json(notes);
+  } catch (err) {
+    console.error("[voice-notes GET]", err);
+    return NextResponse.json({ error: "Ошибка загрузки" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -18,8 +23,8 @@ export async function POST(req: NextRequest) {
     const clientName  = (form.get("clientName")  as string) || undefined;
     const consultationId    = (form.get("consultationId")    as string) || undefined;
     const consultationTitle = (form.get("consultationTitle") as string) || undefined;
-
     const textContent = (form.get("text") as string) || undefined;
+
     let audioPath: string | undefined;
 
     if (audio && audio.size > 0) {

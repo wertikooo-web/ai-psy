@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addConsultation, readAll, StoredConsultation } from "@/lib/consultationStore";
+import { addConsultation, getConsultations } from "@/lib/data/consultations";
+import type { StoredConsultation } from "@/lib/consultationStore";
 import { randomUUID } from "crypto";
 
 export async function GET() {
-  const all = await readAll();
-  return NextResponse.json(all);
+  try {
+    const all = await getConsultations();
+    return NextResponse.json(all);
+  } catch (err) {
+    console.error("[consultations GET]", err);
+    return NextResponse.json({ error: "Ошибка загрузки" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-
     const source = body.source ?? "audio";
     const now    = new Date().toISOString();
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getForClient, addMaterial } from "@/lib/clientMaterialsStore";
+import { getMaterialsForClient, addMaterial } from "@/lib/data/clientMaterials";
 import type { MaterialType } from "@/lib/types";
 import { MATERIAL_TYPE_LABELS } from "@/lib/types";
 import { randomUUID } from "crypto";
@@ -9,8 +9,13 @@ export async function GET(
   { params }: { params: Promise<{ clientId: string }> }
 ) {
   const { clientId } = await params;
-  const items = await getForClient(clientId);
-  return NextResponse.json(items);
+  try {
+    const items = await getMaterialsForClient(clientId);
+    return NextResponse.json(items);
+  } catch (err) {
+    console.error("[client-materials GET]", err);
+    return NextResponse.json({ error: "Ошибка загрузки" }, { status: 500 });
+  }
 }
 
 export async function POST(
@@ -20,8 +25,8 @@ export async function POST(
   const { clientId } = await params;
   try {
     const body = await req.json();
-    const type: MaterialType  = body.type ?? "other";
-    const content: string     = (body.content ?? "").trim();
+    const type: MaterialType = body.type ?? "other";
+    const content: string    = (body.content ?? "").trim();
     if (!content) return NextResponse.json({ error: "content обязателен" }, { status: 400 });
 
     const material = {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteMaterial } from "@/lib/clientMaterialsStore";
+import { deleteMaterial } from "@/lib/data/clientMaterials";
 
 export async function DELETE(
   _req: NextRequest,

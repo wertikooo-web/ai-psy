@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
-import { updateVoiceNote } from "@/lib/voiceNoteStore";
+import { updateVoiceNote } from "@/lib/data/voiceNotes";
 
 export async function POST(req: NextRequest) {
   try {

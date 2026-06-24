@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
-import { getConsultation, updateConsultation } from "@/lib/consultationStore";
+import { getConsultation, updateConsultation } from "@/lib/data/consultations";
 
 function getOpenAI(): OpenAI {
   const apiKey = process.env.OPENAI_API_KEY;

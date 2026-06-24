@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteItem } from "@/lib/clientHistoryStore";
+import { deleteHistoryItem } from "@/lib/data/clientHistory";
 
 export async function DELETE(
   _req: NextRequest,
@@ -7,7 +7,7 @@ export async function DELETE(
 ) {
   const { itemId } = await params;
   try {
-    await deleteItem(itemId);
+    await deleteHistoryItem(itemId);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[client-history DELETE]", err);

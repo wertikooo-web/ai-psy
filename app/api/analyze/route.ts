@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { getConsultation, updateConsultation } from "@/lib/consultationStore";
+import { getConsultation, updateConsultation } from "@/lib/data/consultations";
 import { generateAnalysis } from "@/lib/analysisService";
 import type { AnalysisMode } from "@/lib/knowledgeBase";
 import { readAll as readAllClients } from "@/lib/clientStore";
 import { getForClient as getHistory } from "@/lib/clientHistoryStore";
 import { getForClient as getMaterials } from "@/lib/clientMaterialsStore";
-import { readAll as readAllConsultations } from "@/lib/consultationStore";
+import { getConsultations as readAllConsultations } from "@/lib/data/consultations";
 
 export async function POST(req: NextRequest) {
   try {

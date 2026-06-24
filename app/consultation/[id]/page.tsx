@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { consultations } from "@/lib/mockData";
-import { getConsultation } from "@/lib/consultationStore";
-import { readProfile } from "@/lib/userProfileStore";
+import { getConsultation } from "@/lib/data/consultations";
+import { readProfile } from "@/lib/data/userProfile";
 import { ConsultationClient } from "@/components/consultation/ConsultationClient";
 import { RealConsultationView } from "@/components/consultation/RealConsultationView";
 import { Avatar } from "@/components/ui/Avatar";

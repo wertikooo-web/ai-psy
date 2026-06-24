@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getForClient, addItem } from "@/lib/clientHistoryStore";
+import { getHistoryForClient, addHistoryItem } from "@/lib/data/clientHistory";
 import type { HistorySection } from "@/lib/types";
 import { randomUUID } from "crypto";
 
@@ -8,8 +8,13 @@ export async function GET(
   { params }: { params: Promise<{ clientId: string }> }
 ) {
   const { clientId } = await params;
-  const items = await getForClient(clientId);
-  return NextResponse.json(items);
+  try {
+    const items = await getHistoryForClient(clientId);
+    return NextResponse.json(items);
+  } catch (err) {
+    console.error("[client-history GET]", err);
+    return NextResponse.json({ error: "Ошибка загрузки" }, { status: 500 });
+  }
 }
 
 export async function POST(
@@ -21,7 +26,7 @@ export async function POST(
     const body = await req.json();
     const text: string = (body.text ?? "").trim();
     const section: HistorySection = body.section;
-    if (!text) return NextResponse.json({ error: "text обязателен" }, { status: 400 });
+    if (!text)    return NextResponse.json({ error: "text обязателен" }, { status: 400 });
     if (!section) return NextResponse.json({ error: "section обязателен" }, { status: 400 });
 
     const item = {
@@ -34,7 +39,7 @@ export async function POST(
       createdAt: new Date().toISOString(),
     };
 
-    await addItem(item);
+    await addHistoryItem(item);
     return NextResponse.json(item, { status: 201 });
   } catch (err) {
     console.error("[client-history POST]", err);

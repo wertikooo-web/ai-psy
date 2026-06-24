@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateClientStatus, softDeleteClient } from "@/lib/data/clients";
+import { softDeleteConsultationsForClient } from "@/lib/data/consultations";
+import { deleteHistoryForClient } from "@/lib/data/clientHistory";
+import { deleteMaterialsForClient } from "@/lib/data/clientMaterials";
 import type { ClientStatus } from "@/lib/clientStore";
-import { readAll, writeAll } from "@/lib/consultationStore";
-import { deleteForClient as deleteHistoryForClient } from "@/lib/clientHistoryStore";
-import { deleteForClient as deleteMaterialsForClient } from "@/lib/clientMaterialsStore";
 
 export async function PATCH(
   req: NextRequest,
@@ -26,15 +26,10 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    // Soft delete the client record (sets deleted_at, keeps the row)
     await softDeleteClient(id);
-
-    // Cascade-delete related data from JSON stores (unchanged)
-    const all = await readAll();
-    await writeAll(all.filter((c) => c.clientId !== id));
+    await softDeleteConsultationsForClient(id);
     await deleteHistoryForClient(id);
     await deleteMaterialsForClient(id);
-
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[clients DELETE]", err);
