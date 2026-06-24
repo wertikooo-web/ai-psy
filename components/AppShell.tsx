@@ -37,17 +37,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <button
           onClick={() => setVoiceNoteOpen(true)}
           title="Добавить голосовую или текстовую заметку"
-          className="fixed right-6 z-40 flex items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95"
+          className="fixed right-6 z-40 flex items-center justify-center shadow-xl transition-all hover:scale-105 active:scale-95 active:brightness-110 group"
           style={{
-            background: "#4A3C2E",
-            width: 52, height: 52,
-            borderRadius: "14px",
+            width: 56, height: 56,
+            borderRadius: "50%",
             bottom: onConsultation ? "90px" : "24px",
-            border: "2px solid #6B5D4F",
+            background: "white",
+            border: "2.5px solid #D8CFBE",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
           }}
           aria-label="Добавить голосовую или текстовую заметку"
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "#6B5D4F"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "#D8CFBE"; }}
+          onMouseDown={e  => { e.currentTarget.style.background = "#D1FAE5"; e.currentTarget.style.borderColor = "#34D399"; }}
+          onMouseUp={e    => { e.currentTarget.style.background = "white";   e.currentTarget.style.borderColor = "#D8CFBE"; }}
         >
-          <Mic size={22} color="white" />
+          <div
+            className="flex items-center justify-center rounded-full transition-colors"
+            style={{ width: 36, height: 36, background: "#4A3C2E" }}
+          >
+            <Mic size={18} color="white" />
+          </div>
         </button>
       </main>
 
