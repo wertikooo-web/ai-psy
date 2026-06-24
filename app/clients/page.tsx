@@ -96,17 +96,21 @@ const FILTERS: { id: FilterTab; label: string }[] = [
   { id: "all",      label: "Все"      },
 ];
 
-// ── Large status badge ────────────────────────────────────────────────────────
+// ── Small status badge (26 px) ────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_BADGE[status as keyof typeof STATUS_BADGE] ?? STATUS_BADGE.active;
+  const cfg = STATUS_BADGE[(status ?? "active") as keyof typeof STATUS_BADGE] ?? STATUS_BADGE.active;
   const Icon = cfg.icon;
   return (
     <Tip text={cfg.tip}>
       <div
-        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 cursor-default"
-        style={{ background: cfg.bg, border: `2px solid ${cfg.ring}` }}
+        className="flex items-center justify-center flex-shrink-0 cursor-default rounded-full"
+        style={{
+          width: 26, height: 26,
+          background: cfg.bg,
+          border: `1.5px solid ${cfg.ring}`,
+        }}
       >
-        <Icon size={22} style={{ color: cfg.color }} />
+        <Icon size={13} style={{ color: cfg.color }} />
       </div>
     </Tip>
   );
@@ -130,7 +134,7 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
   return (
     <div
       className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col relative"
-      style={{ background: CARD_BG, borderColor: "#DDD4C6" }}
+      style={{ background: CARD_BG, borderColor: "#DDD4C6", minHeight: 292 }}
     >
       {/* ── Action buttons — absolute top-right, always visible ── */}
       {!client.isMock && (
@@ -202,7 +206,7 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
         </div>
       )}
 
-      {/* ── Top: avatar + name ── */}
+      {/* ── Top: avatar + name (фиксируем pr чтобы кнопки не перекрывали) ── */}
       <div className="p-5 pb-3 flex items-start gap-3">
         <Avatar initials={client.initials} color={client.color} size="lg" />
         <div className="min-w-0 flex-1 pr-20">
@@ -213,9 +217,9 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
         </div>
       </div>
 
-      {/* ── Body: stats + concern + tags + status badge ── */}
-      <div className="px-5 pb-4 flex-1">
-        <div className="flex items-center gap-3 mb-2.5 text-xs text-stone-400">
+      {/* ── Middle: stats + concern + tags — flex-1 заполняет оставшееся ── */}
+      <div className="px-5 flex-1 flex flex-col">
+        <div className="flex items-center gap-3 mb-2 text-xs text-stone-400">
           <div className="flex items-center gap-1">
             <Users size={11} />
             <span>{client.totalConsultations} встреч</span>
@@ -228,31 +232,31 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
         </div>
 
         {client.concern && (
-          <p className="text-sm text-stone-600 line-clamp-2 leading-relaxed">{client.concern}</p>
+          <p className="text-sm text-stone-600 line-clamp-2 leading-relaxed mb-2">{client.concern}</p>
         )}
 
-        {/* Tags + large status badge in bottom row */}
-        <div className="flex items-end justify-between mt-3 gap-3">
-          <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
-            {client.mainTopics?.slice(0, 3).map((t) => (
-              <span key={t} className="px-2 py-0.5 rounded-full text-xs text-stone-500"
-                style={{ background: "#E8E0D0", border: "1px solid #D8CFBE" }}>
-                {t}
-              </span>
-            ))}
-            {(client.mainTopics?.length ?? 0) > 3 && (
-              <span className="px-2 py-0.5 rounded-full text-xs text-stone-400">
-                +{client.mainTopics.length - 3}
-              </span>
-            )}
-          </div>
-
-          {/* Large status badge — bottom right */}
-          <StatusBadge status={client.status} />
+        {/* Tags — максимум 2 строки */}
+        <div className="flex flex-wrap gap-1.5 overflow-hidden" style={{ maxHeight: "3.2rem" }}>
+          {client.mainTopics?.slice(0, 4).map((t) => (
+            <span key={t} className="px-2 py-0.5 rounded-full text-xs text-stone-500 flex-shrink-0"
+              style={{ background: "#E8E0D0", border: "1px solid #D8CFBE" }}>
+              {t}
+            </span>
+          ))}
+          {(client.mainTopics?.length ?? 0) > 4 && (
+            <span className="px-2 py-0.5 rounded-full text-xs text-stone-400 flex-shrink-0">
+              +{client.mainTopics.length - 4}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* ── Folder-tab CTA ── */}
+      {/* ── Bottom: status badge закреплён над кнопкой ── */}
+      <div className="px-5 py-3 flex justify-end">
+        <StatusBadge status={client.status} />
+      </div>
+
+      {/* ── Folder-tab CTA — всегда внизу ── */}
       <button
         onClick={onOpen}
         onMouseEnter={() => setTabHov(true)}
