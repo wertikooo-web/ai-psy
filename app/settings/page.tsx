@@ -128,7 +128,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#FDFCFA" }}>
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
       <div className="max-w-2xl mx-auto px-6 py-10 space-y-6">
         <div className="flex items-center gap-3">
           <button

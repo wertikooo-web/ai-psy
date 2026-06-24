@@ -131,7 +131,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#F7F3EE" }}>
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
       <div className="p-6 max-w-2xl mx-auto space-y-6">
 
         {/* Back */}

@@ -60,7 +60,7 @@ export default function HelpPage() {
   }, []);
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#F8F4EC" }}>
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
 
         <div>

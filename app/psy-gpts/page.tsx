@@ -63,7 +63,7 @@ export default function PsyGptsPage() {
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#F8F4EC" }}>
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
       <div className="p-8 max-w-4xl mx-auto">
 
         <div className="flex items-center justify-between mb-8">

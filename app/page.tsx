@@ -61,7 +61,7 @@ export default function HomePage() {
       {/* Hero section */}
       <div
         className="relative overflow-hidden"
-        style={{ background: "linear-gradient(145deg, #f8fafc 0%, #eef2ff 50%, #f0fdf4 100%)" }}
+        style={{ background: "#FDFCFA" }}
       >
         {/* Dot grid background */}
         <div

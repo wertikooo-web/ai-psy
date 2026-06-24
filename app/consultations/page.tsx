@@ -173,7 +173,7 @@ export default function ConsultationsPage() {
   const total = consultations.length;
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#FAF7F2" }}>
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
       <div className="p-8 max-w-3xl mx-auto">
 
         {/* Header */}
