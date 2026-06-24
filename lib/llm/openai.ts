@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import type { LLMProviderClient, GenerateTextInput, GenerateTextOutput } from "./provider";
 
-export const DEFAULT_MODEL = "o4-mini";
+export const DEFAULT_MODEL = "gpt-4o";
 
 function getClient(): OpenAI {
   const apiKey = process.env.OPENAI_API_KEY;
