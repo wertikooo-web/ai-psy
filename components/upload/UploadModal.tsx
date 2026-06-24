@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { ModalPortal } from "@/components/ui/ModalPortal";
 import { useRouter } from "next/navigation";
 import { clients as mockClients } from "@/lib/mockData";
 import type { StoredClient } from "@/lib/clientStore";
@@ -247,6 +248,7 @@ export function UploadModal({
   const stages       = selectedSource === "audio" ? audioStages : textStages;
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm"
@@ -596,6 +598,7 @@ export function UploadModal({
 
       </div>
     </div>
+    </ModalPortal>
   );
 }
 

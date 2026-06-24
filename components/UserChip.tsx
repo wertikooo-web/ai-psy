@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { UserProfile } from "@/lib/userProfile";
 import { resolveDisplayName, resolveInitials } from "@/lib/userProfile";
 import { Settings, X, Mail, Brain, Layers } from "lucide-react";
+import { ModalPortal } from "@/components/ui/ModalPortal";
 
 export function UserChip() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -47,8 +48,9 @@ export function UserChip() {
         </div>
       </button>
 
-      {/* ── Модальное окно профиля ── */}
+      {/* ── Модальное окно профиля — через Portal, поверх всего ── */}
       {open && (
+        <ModalPortal>
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
           onClick={() => setOpen(false)}
@@ -118,6 +120,7 @@ export function UserChip() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
     </>
   );

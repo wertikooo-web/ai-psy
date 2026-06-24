@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ModalPortal } from "@/components/ui/ModalPortal";
 import {
   Plus, Trash2, ArrowRight, Users,
   Pause, Archive, RotateCcw, CheckCircle2,
@@ -91,20 +92,22 @@ interface ConfirmProps {
 }
 function Confirm({ title, body, action, color, onConfirm, onCancel, loading }: ConfirmProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
-        <h2 className="text-base font-semibold text-slate-800 mb-2">{title}</h2>
-        <p className="text-sm text-slate-500 mb-6 leading-relaxed">{body}</p>
-        <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-            Отмена
-          </button>
-          <button onClick={onConfirm} disabled={loading} className={`flex-1 py-2.5 rounded-xl text-white text-sm font-medium transition-colors disabled:bg-slate-200 ${color}`}>
-            {loading ? "Подождите..." : action}
-          </button>
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+          <h2 className="text-base font-semibold text-slate-800 mb-2">{title}</h2>
+          <p className="text-sm text-slate-500 mb-6 leading-relaxed">{body}</p>
+          <div className="flex gap-3">
+            <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+              Отмена
+            </button>
+            <button onClick={onConfirm} disabled={loading} className={`flex-1 py-2.5 rounded-xl text-white text-sm font-medium transition-colors disabled:bg-slate-200 ${color}`}>
+              {loading ? "Подождите..." : action}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
