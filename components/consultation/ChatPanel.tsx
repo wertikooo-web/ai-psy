@@ -198,7 +198,7 @@ export function ChatPanel({
       </div>
 
       {/* Input — fixed at bottom */}
-      <div className="px-4 py-3 border-t border-slate-100 flex-shrink-0">
+      <div className="px-4 pt-3 pb-24 lg:pb-3 border-t border-slate-100 flex-shrink-0">
         <div className="flex gap-2 items-end">
           <textarea
             ref={textareaRef}
