@@ -1,17 +1,17 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { ArrowRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Trash2, CheckCircle2, CircleDashed } from "lucide-react";
 import Link from "next/link";
 import type { StoredConsultation } from "@/lib/consultationStore";
 
-// ── Craft palette ─────────────────────────────────────────────────────────────
+// в”Ђв”Ђ Craft palette в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 const S = {
-  bg:      "#EDE7DA",
+  bg:      "#FBF8F2",
   border:  "#D8CFBE",
-  header:  "#E4DDD0",
-  divider: "#DDD5C8",
-  num:     "#E4DDD0",
+  header:  "#E9DCC7",
+  divider: "#EDE8DE",
+  num:     "#E9DCC7",
   numBdr:  "#D0C8B8",
   numTxt:  "#7A6E63",
   title:   "#6B5D4F",
@@ -38,15 +38,15 @@ interface MockSession {
 }
 
 const sessionStatus: Record<string, { label: string; cls: string }> = {
-  done:          { label: "Проанализирована",      cls: "bg-brand-50 text-brand-500" },
-  analyzed:      { label: "Проанализирована",      cls: "bg-brand-50 text-brand-500" },
-  ready:         { label: "Готово к анализу",      cls: "bg-emerald-50 text-emerald-600" },
-  transcribing:  { label: "Транскрипция...",        cls: "bg-stone-100 text-stone-500" },
-  analyzing:     { label: "Анализ...",              cls: "bg-stone-100 text-stone-500" },
-  created:       { label: "Ожидает транскрипции",  cls: "bg-amber-50 text-amber-600" },
-  uploaded:      { label: "Ожидает транскрипции",  cls: "bg-amber-50 text-amber-600" },
-  new:           { label: "Ожидает анализа",       cls: "bg-amber-50 text-amber-600" },
-  error:         { label: "Ошибка",                cls: "bg-red-50 text-red-500" },
+  done:          { label: "РџСЂРѕР°РЅР°Р»РёР·РёСЂРѕРІР°РЅР°",      cls: "bg-brand-50 text-brand-500" },
+  analyzed:      { label: "РџСЂРѕР°РЅР°Р»РёР·РёСЂРѕРІР°РЅР°",      cls: "bg-brand-50 text-brand-500" },
+  ready:         { label: "Р“РѕС‚РѕРІРѕ Рє Р°РЅР°Р»РёР·Сѓ",      cls: "bg-emerald-50 text-emerald-600" },
+  transcribing:  { label: "РўСЂР°РЅСЃРєСЂРёРїС†РёСЏ...",        cls: "bg-stone-100 text-stone-500" },
+  analyzing:     { label: "РђРЅР°Р»РёР·...",              cls: "bg-stone-100 text-stone-500" },
+  created:       { label: "РћР¶РёРґР°РµС‚ С‚СЂР°РЅСЃРєСЂРёРїС†РёРё",  cls: "bg-amber-50 text-amber-600" },
+  uploaded:      { label: "РћР¶РёРґР°РµС‚ С‚СЂР°РЅСЃРєСЂРёРїС†РёРё",  cls: "bg-amber-50 text-amber-600" },
+  new:           { label: "РћР¶РёРґР°РµС‚ Р°РЅР°Р»РёР·Р°",       cls: "bg-amber-50 text-amber-600" },
+  error:         { label: "РћС€РёР±РєР°",                cls: "bg-red-50 text-red-500" },
 };
 
 interface Props {
@@ -63,14 +63,14 @@ export function ConsultationsTab({
   mockSessions  = [],
   realSessions  = [],
   onUpload,
-  uploadBtnLabel = "Загрузить запись",
+  uploadBtnLabel = "Р—Р°РіСЂСѓР·РёС‚СЊ Р·Р°РїРёСЃСЊ",
   onDeleteSession,
 }: Props) {
   const [openCompare, setOpenCompare] = useState<string | null>(null);
   const [deletingId, setDeletingId]   = useState<string | null>(null);
 
   async function handleDelete(id: string) {
-    if (!confirm("Удалить эту запись консультации?")) return;
+    if (!confirm("РЈРґР°Р»РёС‚СЊ СЌС‚Сѓ Р·Р°РїРёСЃСЊ РєРѕРЅСЃСѓР»СЊС‚Р°С†РёРё?")) return;
     setDeletingId(id);
     await onDeleteSession?.(id);
     setDeletingId(null);
@@ -95,7 +95,7 @@ export function ConsultationsTab({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: S.title }}>{c.topic}</p>
                   <p className="text-xs text-stone-400 mt-0.5">
-                    {formatDate(c.date)}{c.duration ? ` · ${c.duration}` : ""}
+                    {formatDate(c.date)}{c.duration ? ` В· ${c.duration}` : ""}
                   </p>
                 </div>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.cls} flex-shrink-0`}>
@@ -105,7 +105,7 @@ export function ConsultationsTab({
                   href={`/consultation/${c.id}`}
                   className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 font-medium flex-shrink-0 transition-colors"
                 >
-                  Открыть <ArrowRight size={12} />
+                  РћС‚РєСЂС‹С‚СЊ <ArrowRight size={12} />
                 </Link>
               </div>
               {hasPrev && c.compareData && (
@@ -132,7 +132,7 @@ export function ConsultationsTab({
         const hasTranscript = !!c.transcript?.text;
         const hasAnalysis   = !!(c.analyses?.length);
         const displayTitle  = /\.(mp3|m4a|wav|ogg|webm|flac)$/i.test(c.title)
-          ? `Консультация #${idx + 1}`
+          ? `РљРѕРЅСЃСѓР»СЊС‚Р°С†РёСЏ #${idx + 1}`
           : c.title;
         return (
           <div
@@ -146,22 +146,22 @@ export function ConsultationsTab({
                 <p className="text-sm font-medium truncate" style={{ color: S.title }}>{displayTitle}</p>
                 <p className="text-xs text-stone-400 mt-0.5">{formatDate(c.createdAt ?? c.uploadedAt ?? "")}</p>
                 <div className="flex items-center gap-1.5 mt-1.5">
-                  <MiniStatus ok={hasAudio}       label="Аудио" />
-                  <MiniStatus ok={hasTranscript}  label="Транскрипт" />
-                  <MiniStatus ok={hasAnalysis}    label="Анализ" />
+                  <MiniStatus ok={hasAudio}       label="РђСѓРґРёРѕ" />
+                  <MiniStatus ok={hasTranscript}  label="РўСЂР°РЅСЃРєСЂРёРїС‚" />
+                  <MiniStatus ok={hasAnalysis}    label="РђРЅР°Р»РёР·" />
                 </div>
               </div>
               <Link
                 href={`/consultation/${c.id}`}
                 className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 font-medium flex-shrink-0 transition-colors"
               >
-                Открыть <ArrowRight size={12} />
+                РћС‚РєСЂС‹С‚СЊ <ArrowRight size={12} />
               </Link>
               <button
                 onClick={() => handleDelete(c.id)}
                 disabled={deletingId === c.id}
                 className="p-1.5 text-stone-300 hover:text-rose-400 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0"
-                title="Удалить запись"
+                title="РЈРґР°Р»РёС‚СЊ Р·Р°РїРёСЃСЊ"
               >
                 <Trash2 size={13} />
               </button>
@@ -198,9 +198,9 @@ function SessionNumber({ n }: { n: number }) {
 function Empty({ onUpload, label }: { onUpload: () => void; label: string }) {
   return (
     <div className="text-center py-10 text-stone-400 text-sm">
-      <p>Записей пока нет.</p>
+      <p>Р—Р°РїРёСЃРµР№ РїРѕРєР° РЅРµС‚.</p>
       <button onClick={onUpload} className="mt-3 text-brand-500 hover:text-brand-600 font-medium transition-colors">
-        {label} →
+        {label} в†’
       </button>
     </div>
   );
@@ -216,7 +216,7 @@ function ComparePanel({
         className="w-full flex items-center justify-between px-4 py-2.5 text-xs text-stone-400 hover:text-stone-600 transition-colors"
         style={{ background: S.bg }}
       >
-        <span>Сравнить с сессией {data.prevSession}</span>
+        <span>РЎСЂР°РІРЅРёС‚СЊ СЃ СЃРµСЃСЃРёРµР№ {data.prevSession}</span>
         {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
       </button>
       {open && (
@@ -224,15 +224,15 @@ function ComparePanel({
           <p className="text-xs text-stone-500 pt-3 leading-relaxed italic">{data.requestChange}</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {data.newTopics.length > 0 && (
-              <TagGroup label="Новое" icon={<TrendingUp size={10} />} items={data.newTopics}
+              <TagGroup label="РќРѕРІРѕРµ" icon={<TrendingUp size={10} />} items={data.newTopics}
                 itemCls="bg-emerald-50 text-emerald-700 border-emerald-100" labelCls="text-emerald-600" />
             )}
             {data.strengthened.length > 0 && (
-              <TagGroup label="Усилилось" icon={<TrendingUp size={10} />} items={data.strengthened}
+              <TagGroup label="РЈСЃРёР»РёР»РѕСЃСЊ" icon={<TrendingUp size={10} />} items={data.strengthened}
                 itemCls="bg-brand-50 text-brand-600 border-brand-100" labelCls="text-brand-500" />
             )}
             {data.weakened.length > 0 && (
-              <TagGroup label="Ослабло" icon={<TrendingDown size={10} />} items={data.weakened}
+              <TagGroup label="РћСЃР»Р°Р±Р»Рѕ" icon={<TrendingDown size={10} />} items={data.weakened}
                 itemCls="bg-rose-50 text-rose-600 border-rose-100" labelCls="text-rose-500" />
             )}
           </div>
@@ -258,3 +258,4 @@ function TagGroup({ label, icon, items, itemCls, labelCls }: {
     </div>
   );
 }
+

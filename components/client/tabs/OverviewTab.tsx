@@ -1,12 +1,12 @@
-"use client";
+﻿"use client";
 
 import { TrendingUp, TrendingDown } from "lucide-react";
 
-// ── Craft palette (consistent with clients page) ──────────────────────────────
+// в”Ђв”Ђ Craft palette (consistent with clients page) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 const S = {
-  bg:     "#EDE7DA",   // section background
+  bg:     "#FBF8F2",   // section background
   border: "#D8CFBE",   // section border
-  tag:    "#E4DDD0",   // tag background
+  tag:    "#E9DCC7",   // tag background
   tagBdr: "#D0C8B8",   // tag border
   title:  "#6B5D4F",   // section title color
 };
@@ -32,7 +32,7 @@ interface Props {
 function SectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border" style={{ background: S.bg, borderColor: S.border }}>
-      <div className="px-5 py-3 border-b" style={{ borderColor: S.border, background: "#E4DDD0" }}>
+      <div className="px-5 py-3 border-b" style={{ borderColor: S.border, background: "#E9DCC7" }}>
         <h3 className="text-sm font-bold" style={{ color: "#3A2E22" }}>{title}</h3>
       </div>
       <div className="px-5 py-4">{children}</div>
@@ -51,7 +51,7 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
   if (!hasContent) {
     return (
       <div className="py-10 text-center text-stone-400 text-sm">
-        Обзор пополнится после первых консультаций
+        РћР±Р·РѕСЂ РїРѕРїРѕР»РЅРёС‚СЃСЏ РїРѕСЃР»Рµ РїРµСЂРІС‹С… РєРѕРЅСЃСѓР»СЊС‚Р°С†РёР№
       </div>
     );
   }
@@ -59,7 +59,7 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
   return (
     <div className="space-y-3">
       {(client.mainTopics?.length ?? 0) > 0 && (
-        <SectionBlock title="Повторяющиеся темы">
+        <SectionBlock title="РџРѕРІС‚РѕСЂСЏСЋС‰РёРµСЃСЏ С‚РµРјС‹">
           <div className="flex flex-wrap gap-2">
             {client.mainTopics!.map((t) => (
               <span
@@ -75,19 +75,19 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
       )}
 
       {client.lastShift && (
-        <SectionBlock title="Последний значимый сдвиг">
+        <SectionBlock title="РџРѕСЃР»РµРґРЅРёР№ Р·РЅР°С‡РёРјС‹Р№ СЃРґРІРёРі">
           <p className="text-sm text-stone-700 leading-relaxed italic">{client.lastShift}</p>
         </SectionBlock>
       )}
 
       {client.currentFocus && (
-        <SectionBlock title="Текущий фокус">
+        <SectionBlock title="РўРµРєСѓС‰РёР№ С„РѕРєСѓСЃ">
           <p className="text-sm font-medium text-slate-700">{client.currentFocus}</p>
         </SectionBlock>
       )}
 
       {dynamics.length > 0 && (
-        <SectionBlock title="Динамика терапии">
+        <SectionBlock title="Р”РёРЅР°РјРёРєР° С‚РµСЂР°РїРёРё">
           <div className="flex flex-wrap gap-2">
             {dynamics.map((d) => (
               <span
@@ -108,3 +108,5 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
     </div>
   );
 }
+
+

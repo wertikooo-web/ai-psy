@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Plus, Trash2, Bot, User } from "lucide-react";
@@ -9,15 +9,15 @@ import {
   type HistorySection,
 } from "@/lib/types";
 
-// ── Craft palette ─────────────────────────────────────────────────────────────
+// в”Ђв”Ђ Craft palette в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 const S = {
-  bg:       "#EDE7DA",
+  bg:       "#FBF8F2",
   border:   "#D8CFBE",
-  header:   "#E4DDD0",
-  divider:  "#DDD5C8",
-  addArea:  "#E8E1D4",
+  header:   "#E9DCC7",
+  divider:  "#EDE8DE",
+  addArea:  "#F5F0E6",
   title:    "#6B5D4F",
-  count:    "#E0D8CC",
+  count:    "#E4D9C8",
   countTxt: "#9C8E80",
 };
 
@@ -59,7 +59,7 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Удалить запись?")) return;
+    if (!confirm("РЈРґР°Р»РёС‚СЊ Р·Р°РїРёСЃСЊ?")) return;
     setDeletingId(id);
     try {
       await fetch(`/api/client-history/${clientId}/${id}`, { method: "DELETE" });
@@ -73,7 +73,7 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
     <div className="space-y-3">
       {items.length === 0 && !isMock && (
         <p className="text-sm text-stone-400 text-center py-6">
-          История клиента пуста. Добавьте первую запись вручную или она появится после AI-анализа консультации.
+          РСЃС‚РѕСЂРёСЏ РєР»РёРµРЅС‚Р° РїСѓСЃС‚Р°. Р”РѕР±Р°РІСЊС‚Рµ РїРµСЂРІСѓСЋ Р·Р°РїРёСЃСЊ РІСЂСѓС‡РЅСѓСЋ РёР»Рё РѕРЅР° РїРѕСЏРІРёС‚СЃСЏ РїРѕСЃР»Рµ AI-Р°РЅР°Р»РёР·Р° РєРѕРЅСЃСѓР»СЊС‚Р°С†РёРё.
         </p>
       )}
 
@@ -114,7 +114,7 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   <Plus size={12} />
-                  Добавить
+                  Р”РѕР±Р°РІРёС‚СЊ
                 </button>
               )}
             </div>
@@ -137,7 +137,7 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
                         onClick={() => handleDelete(item.id)}
                         disabled={deletingId === item.id}
                         className="p-1 text-stone-300 hover:text-rose-400 rounded-md transition-colors"
-                        title="Удалить"
+                        title="РЈРґР°Р»РёС‚СЊ"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -147,7 +147,7 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
               ))}
 
               {sectionItems.length === 0 && !isAdding && (
-                <p className="px-5 py-3.5 text-xs text-stone-300 italic">Нет записей</p>
+                <p className="px-5 py-3.5 text-xs text-stone-300 italic">РќРµС‚ Р·Р°РїРёСЃРµР№</p>
               )}
             </div>
 
@@ -162,7 +162,7 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
                   rows={2}
                   value={draftText}
                   onChange={(e) => setDraftText(e.target.value)}
-                  placeholder="Введите наблюдение или заметку..."
+                  placeholder="Р’РІРµРґРёС‚Рµ РЅР°Р±Р»СЋРґРµРЅРёРµ РёР»Рё Р·Р°РјРµС‚РєСѓ..."
                   className="w-full px-3 py-2 rounded-xl border text-sm text-slate-800 placeholder:text-stone-300 focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-50 transition-all resize-none"
                   style={{ background: S.bg, borderColor: S.border }}
                   onKeyDown={(e) => {
@@ -175,14 +175,14 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
                     onClick={() => { setAddingSection(null); setDraftText(""); }}
                     className="text-xs text-stone-400 hover:text-stone-600 px-3 py-1.5 rounded-lg transition-colors"
                   >
-                    Отмена
+                    РћС‚РјРµРЅР°
                   </button>
                   <button
                     onClick={() => handleAdd(section)}
                     disabled={saving || !draftText.trim()}
                     className="text-xs bg-brand-500 hover:bg-brand-600 disabled:bg-stone-300 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
                   >
-                    {saving ? "Сохраняю..." : "Сохранить"}
+                    {saving ? "РЎРѕС…СЂР°РЅСЏСЋ..." : "РЎРѕС…СЂР°РЅРёС‚СЊ"}
                   </button>
                 </div>
               </div>
@@ -198,7 +198,7 @@ function SourceBadge({ source }: { source: "ai" | "manual" }) {
   if (source === "ai") {
     return (
       <span
-        title="Добавлено AI на основе транскрипта"
+        title="Р”РѕР±Р°РІР»РµРЅРѕ AI РЅР° РѕСЃРЅРѕРІРµ С‚СЂР°РЅСЃРєСЂРёРїС‚Р°"
         className="mt-0.5 flex-shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-violet-50 text-violet-500 border border-violet-100"
       >
         <Bot size={10} />
@@ -207,7 +207,7 @@ function SourceBadge({ source }: { source: "ai" | "manual" }) {
   }
   return (
     <span
-      title="Добавлено психологом вручную"
+      title="Р”РѕР±Р°РІР»РµРЅРѕ РїСЃРёС…РѕР»РѕРіРѕРј РІСЂСѓС‡РЅСѓСЋ"
       className="mt-0.5 flex-shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-stone-400"
       style={{ background: "#E4DDD0", border: "1px solid #D8CFBE" }}
     >
@@ -215,3 +215,4 @@ function SourceBadge({ source }: { source: "ai" | "manual" }) {
     </span>
   );
 }
+
