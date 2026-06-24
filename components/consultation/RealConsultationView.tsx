@@ -107,8 +107,9 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const [analyzedMode, setAnalyzedMode]   = useState<ModeId | null>((lastAnalysis?.mode as ModeId) ?? null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
-  // Client context preview (materials + history count)
-  const [contextInfo, setContextInfo] = useState<{ materials: number; history: number } | null>(null);
+  // Client context: materials (full objects) + history count
+  const [clientMaterials, setClientMaterials] = useState<import("@/lib/types").ClientMaterial[]>([]);
+  const [historyCount,    setHistoryCount]    = useState(0);
 
   useEffect(() => {
     if (!c.clientId) return;
@@ -116,7 +117,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
       fetch(`/api/client-materials/${c.clientId}`).then(r => r.ok ? r.json() : []),
       fetch(`/api/client-history/${c.clientId}`).then(r => r.ok ? r.json() : []),
     ]).then(([mats, hist]) => {
-      setContextInfo({ materials: (mats as unknown[]).length, history: (hist as unknown[]).length });
+      setClientMaterials(mats as import("@/lib/types").ClientMaterial[]);
+      setHistoryCount((hist as unknown[]).length);
     }).catch(() => {});
   }, [c.clientId]);
 
@@ -252,6 +254,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             plainText={whisperText ?? undefined}
             notesText={notesText ?? undefined}
             isNotes={isNotesOnly}
+            materials={clientMaterials}
             collapsed={panelCollapsed.transcript}
             onToggle={() => setPanelCollapsed(p => ({ ...p, transcript: !p.transcript }))}
           />
@@ -554,17 +557,29 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                 </p>
               </div>
 
-              {/* Context summary */}
-              {contextInfo && (contextInfo.materials > 0 || contextInfo.history > 0) && (
-                <div className="rounded-xl border px-4 py-3 flex flex-wrap gap-x-4 gap-y-1" style={{ background: "#F8F5F0", borderColor: "#E4DDD0" }}>
-                  <p className="text-xs font-semibold w-full" style={{ color: "#6B5D4F" }}>В анализ войдёт:</p>
-                  <span className="text-xs text-stone-500">📄 Транскрипт / заметки</span>
-                  {contextInfo.history > 0 && (
-                    <span className="text-xs text-stone-500">🗂 История клиента ({contextInfo.history} записей)</span>
-                  )}
-                  {contextInfo.materials > 0 && (
-                    <span className="text-xs text-emerald-600 font-medium">📎 Материалы ({contextInfo.materials} шт) — включены</span>
-                  )}
+              {/* Вариант Б — баннер с материалами и кнопка */}
+              {(clientMaterials.length > 0 || historyCount > 0) && (
+                <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#BBF7D0" }}>
+                  <div className="px-4 py-3" style={{ background: "#F0FDF4" }}>
+                    <p className="text-xs font-semibold text-emerald-700 mb-2">В анализ войдёт:</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-xs text-emerald-700">
+                        <span className="text-emerald-500">✓</span> Транскрипт / заметки консультации
+                      </div>
+                      {historyCount > 0 && (
+                        <div className="flex items-center gap-2 text-xs text-emerald-700">
+                          <span className="text-emerald-500">✓</span> История клиента ({historyCount} записей)
+                        </div>
+                      )}
+                      {clientMaterials.map((m) => (
+                        <div key={m.id} className="flex items-center gap-2 text-xs text-emerald-700">
+                          <span className="text-emerald-500">✓</span>
+                          <span className="font-medium">{m.title || m.type}</span>
+                          <span className="text-emerald-500 opacity-60">— материал</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -572,6 +587,21 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                 <div className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-50 border border-brand-100 text-sm text-brand-600 font-medium">
                   <Loader2 size={14} className="animate-spin" />
                   Анализирую...
+                </div>
+              ) : clientMaterials.length > 0 ? (
+                <div className="space-y-2">
+                  <button
+                    onClick={runAnalysis}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm"
+                  >
+                    <Play size={14} />
+                    {hasResult ? "Запустить с новыми данными" : "Запустить анализ"}
+                  </button>
+                  {hasResult && (
+                    <p className="text-xs text-center text-stone-400">
+                      Материалы клиента уже включены в контекст
+                    </p>
+                  )}
                 </div>
               ) : (
                 <button

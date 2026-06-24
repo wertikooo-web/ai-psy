@@ -2,27 +2,40 @@
 
 import { useState } from "react";
 import { TranscriptSegment } from "@/lib/mockData";
-import { Search, User, Stethoscope, ChevronsLeft, ChevronsRight, Mic, NotebookPen, FileText } from "lucide-react";
+import { Search, User, Stethoscope, ChevronsLeft, ChevronsRight, Mic, NotebookPen, FileText, Paperclip, ChevronDown, ChevronUp } from "lucide-react";
 import clsx from "clsx";
+import type { ClientMaterial } from "@/lib/types";
+import { MATERIAL_TYPE_LABELS } from "@/lib/types";
 
-type ActiveTab = "transcript" | "notes";
+type ActiveTab = "transcript" | "notes" | "materials";
 
 interface TranscriptPanelProps {
   segments:      TranscriptSegment[];
   collapsed:     boolean;
   onToggle:      () => void;
-  plainText?:    string;  // Whisper/uploaded transcript as plain text
-  notesText?:    string;  // Psychologist's own notes
-  isNotes?:      boolean; // consultation was created from notes only (no audio)
+  plainText?:    string;
+  notesText?:    string;
+  isNotes?:      boolean;
+  materials?:    ClientMaterial[];
 }
 
-export function TranscriptPanel({ segments, collapsed, onToggle, plainText, notesText, isNotes }: TranscriptPanelProps) {
-  const [query, setQuery]       = useState("");
-  const hasBoth   = !!plainText && !!notesText;
-  const [activeTab, setActiveTab] = useState<ActiveTab>(plainText ? "transcript" : "notes");
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+}
 
-  const showTranscript = hasBoth ? activeTab === "transcript" : !!plainText || (!isNotes && segments.length > 0);
-  const showNotes      = hasBoth ? activeTab === "notes"      : isNotes && !!notesText;
+export function TranscriptPanel({ segments, collapsed, onToggle, plainText, notesText, isNotes, materials = [] }: TranscriptPanelProps) {
+  const [query, setQuery]           = useState("");
+  const [expandedMat, setExpandedMat] = useState<string | null>(null);
+
+  const hasBoth      = !!plainText && !!notesText;
+  const hasMaterials = materials.length > 0;
+
+  const defaultTab: ActiveTab = plainText ? "transcript" : notesText ? "notes" : "materials";
+  const [activeTab, setActiveTab] = useState<ActiveTab>(defaultTab);
+
+  const showTranscript = activeTab === "transcript" && (!!plainText || segments.length > 0);
+  const showNotes      = activeTab === "notes"      && !!notesText;
+  const showMaterials  = activeTab === "materials";
 
   const title    = isNotes && !hasBoth ? "Заметки" : "Транскрипт";
   const subtitle = isNotes && !hasBoth ? "Записи психолога о сессии" : "Реплики клиента и психолога";
@@ -31,7 +44,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
     s.text.toLowerCase().includes(query.toLowerCase())
   );
 
-  // ── Collapsed: narrow vertical tab ──────────────────────────────────────────
+  // ── Collapsed ─────────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
       <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-slate-50 border-r border-slate-100">
@@ -54,11 +67,11 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
     );
   }
 
-  // ── Expanded ─────────────────────────────────────────────────────────────────
+  // ── Expanded ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
 
-      {/* Panel header — fixed */}
+      {/* Header */}
       <div className="px-5 py-4 border-b border-slate-600 flex-shrink-0 bg-slate-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -80,29 +93,48 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
         </div>
       </div>
 
-      {/* Tabs — shown only when both transcript and notes exist */}
-      {hasBoth && (
-        <div className="flex border-b border-slate-100 flex-shrink-0 bg-white">
-          <button
-            onClick={() => setActiveTab("transcript")}
-            className={clsx("flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors",
-              activeTab === "transcript"
-                ? "border-brand-500 text-brand-600"
-                : "border-transparent text-slate-400 hover:text-slate-600"
-            )}
-          >
-            <Mic size={12} /> Транскрипт
-          </button>
-          <button
-            onClick={() => setActiveTab("notes")}
-            className={clsx("flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors",
-              activeTab === "notes"
-                ? "border-amber-500 text-amber-600"
-                : "border-transparent text-slate-400 hover:text-slate-600"
-            )}
-          >
-            <NotebookPen size={12} /> Заметки психолога
-          </button>
+      {/* Tabs */}
+      {(hasBoth || hasMaterials) && (
+        <div className="flex border-b border-slate-100 flex-shrink-0 bg-white overflow-x-auto">
+          {/* Transcript tab — show if there's any transcript content */}
+          {(!!plainText || (!isNotes && segments.length > 0)) && (
+            <button
+              onClick={() => setActiveTab("transcript")}
+              className={clsx("flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+                activeTab === "transcript"
+                  ? "border-brand-500 text-brand-600"
+                  : "border-transparent text-slate-400 hover:text-slate-600"
+              )}
+            >
+              <Mic size={12} /> Транскрипт
+            </button>
+          )}
+          {/* Notes tab */}
+          {!!notesText && (
+            <button
+              onClick={() => setActiveTab("notes")}
+              className={clsx("flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+                activeTab === "notes"
+                  ? "border-amber-500 text-amber-600"
+                  : "border-transparent text-slate-400 hover:text-slate-600"
+              )}
+            >
+              <NotebookPen size={12} /> Заметки
+            </button>
+          )}
+          {/* Materials tab — always shown if any materials */}
+          {hasMaterials && (
+            <button
+              onClick={() => setActiveTab("materials")}
+              className={clsx("flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+                activeTab === "materials"
+                  ? "border-emerald-500 text-emerald-600"
+                  : "border-transparent text-slate-400 hover:text-slate-600"
+              )}
+            >
+              <Paperclip size={12} /> Материалы ({materials.length})
+            </button>
+          )}
         </div>
       )}
 
@@ -121,7 +153,54 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
         </div>
       )}
 
-      {/* Notes tab / notes-only view */}
+      {/* ── Materials tab ─────────────────────────────────────────────────── */}
+      {showMaterials && (
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
+          <div className="rounded-xl border px-4 py-3 flex items-start gap-2" style={{ background: "#F0FDF4", borderColor: "#BBF7D0" }}>
+            <Paperclip size={13} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-emerald-700 leading-relaxed">
+              Эти материалы <span className="font-semibold">автоматически включаются</span> в контекст каждого нового анализа
+            </p>
+          </div>
+
+          {materials.map((m) => {
+            const isOpen  = expandedMat === m.id;
+            const preview = m.content.slice(0, 200);
+            const hasMore = m.content.length > 200;
+            return (
+              <div key={m.id} className="rounded-xl border overflow-hidden" style={{ background: "#F8F5F0", borderColor: "#E4DDD0" }}>
+                <div className="px-4 py-3" style={{ background: "#F0EBE0", borderBottom: "1px solid #E4DDD0" }}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-semibold" style={{ color: "#4A3C2E" }}>
+                      {m.title || MATERIAL_TYPE_LABELS[m.type]}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#E4DDD0", color: "#7A6E63", border: "1px solid #D0C8B8" }}>
+                      {MATERIAL_TYPE_LABELS[m.type]}
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-400 mt-0.5">{formatDate(m.createdAt)}</p>
+                </div>
+                <div className="px-4 py-3">
+                  <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+                    {isOpen ? m.content : preview}
+                    {!isOpen && hasMore && <span className="text-stone-400">…</span>}
+                  </p>
+                  {hasMore && (
+                    <button
+                      onClick={() => setExpandedMat(isOpen ? null : m.id)}
+                      className="mt-2 flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 font-medium"
+                    >
+                      {isOpen ? <><ChevronUp size={11} /> Свернуть</> : <><ChevronDown size={11} /> Показать полностью</>}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Notes view */}
       {showNotes && notesText && (
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
           <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-4">
@@ -134,7 +213,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
         </div>
       )}
 
-      {/* Plain text transcript (when no segments) */}
+      {/* Plain text transcript */}
       {showTranscript && plainText && segments.length === 0 && (
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
           {hasBoth && (
@@ -149,7 +228,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
         </div>
       )}
 
-      {/* Segments — scrolls independently */}
+      {/* Segments */}
       {showTranscript && segments.length > 0 && (
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3">
           {filtered.length === 0 && (
