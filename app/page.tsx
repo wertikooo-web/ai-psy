@@ -34,7 +34,7 @@ function BackgroundIllustration() {
         bottom: 0,
         left: 0,
         width: "100%",
-        opacity: 0.5,
+        opacity: 0.25,
         zIndex: 0,
       }}
     />
