@@ -1,26 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Users, FileText, BookOpen, Bot,
-  Settings, HelpCircle, BrainCircuit, Mic,
+  Settings, HelpCircle, BrainCircuit, Mic, X,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
 
 // ── Craft palette ─────────────────────────────────────────────────────────────
 const C = {
-  bg:          "#F7F7F8",   // sidebar background
-  border:      "#E5E7EB",   // dividers / borders
-  active:      "#E7DDCC",   // active nav item bg
-  hover:       "#E2D8C7",   // hover nav item bg
-  activeTxt:   "#4A3C2E",   // active item text
-  idleTxt:     "#7A6E60",   // idle item text
-  groupLabel:  "#A8997F",   // section label ("Основное" etc.)
-  logoBg:      "#E2D9CC",   // logo area bg
-  uploadBdr:   "#D4C9B5",   // dashed upload button border
+  bg:         "#F7F7F8",
+  border:     "#E5E7EB",
+  active:     "#E7DDCC",
+  hover:      "#E2D8C7",
+  activeTxt:  "#4A3C2E",
+  idleTxt:    "#7A6E60",
+  groupLabel: "#A8997F",
+  uploadBdr:  "#D4C9B5",
 };
 
 const mainNav = [
@@ -28,31 +27,32 @@ const mainNav = [
   { href: "/clients",       label: "Клиенты",      icon: Users    },
   { href: "/consultations", label: "Консультации", icon: FileText },
 ];
-
 const toolsNav = [
   { href: "/knowledge-base", label: "База знаний", icon: BookOpen },
   { href: "/psy-gpts",       label: "PSY-GPTs",    icon: Bot      },
 ];
-
 const systemNav = [
   { href: "/settings", label: "Настройки", icon: Settings   },
   { href: "/help",     label: "Помощь",    icon: HelpCircle },
 ];
 
-
 // ── Nav item ──────────────────────────────────────────────────────────────────
 function NavItem({
-  href, label, icon: Icon, exact = false,
-}: { href: string; label: string; icon: React.ElementType; exact?: boolean }) {
+  href, label, icon: Icon, exact = false, onNavigate,
+}: {
+  href: string; label: string; icon: React.ElementType; exact?: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const active   = exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
 
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
       style={{
-        background: active ? C.active  : "transparent",
+        background: active ? C.active : "transparent",
         color:      active ? C.activeTxt : C.idleTxt,
       }}
       onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = C.hover; }}
@@ -65,18 +65,40 @@ function NavItem({
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-export function Sidebar() {
+interface SidebarProps {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ open, onClose }: SidebarProps) {
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  return (
+  // Close on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && onClose) onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Prevent body scroll when mobile overlay is open
+  useEffect(() => {
+    if (open) document.body.style.overflow = "hidden";
+    else       document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  const nav = (
     <>
       <aside
-        className="w-60 flex-shrink-0 flex flex-col h-screen sticky top-0"
+        className="w-60 flex-shrink-0 flex flex-col h-full"
         style={{ background: C.bg, borderRight: `1px solid ${C.border}` }}
       >
         {/* Logo */}
         <Link
           href="/"
+          onClick={onClose}
           className="px-5 py-5 flex items-center gap-2.5 transition-opacity hover:opacity-80"
           style={{ borderBottom: `1px solid ${C.border}` }}
         >
@@ -94,18 +116,27 @@ export function Sidebar() {
               PSY
             </div>
           </div>
+          {/* Mobile close button */}
+          {onClose && (
+            <button
+              onClick={(e) => { e.preventDefault(); onClose(); }}
+              className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center lg:hidden"
+              style={{ color: C.idleTxt }}
+            >
+              <X size={16} />
+            </button>
+          )}
         </Link>
 
         {/* Nav groups */}
         <nav className="flex-1 px-3 py-5 overflow-y-auto flex flex-col gap-8">
 
-          {/* Группа 1: Основное + Загрузить запись */}
           <div className="space-y-0.5">
             <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
               Основное
             </div>
             {mainNav.map(({ href, label, icon }) => (
-              <NavItem key={href} href={href} label={label} icon={icon} exact={href === "/"} />
+              <NavItem key={href} href={href} label={label} icon={icon} exact={href === "/"} onNavigate={onClose} />
             ))}
             <button
               onClick={() => setUploadOpen(true)}
@@ -119,35 +150,66 @@ export function Sidebar() {
             </button>
           </div>
 
-          {/* Группа 2: Инструменты */}
           <div className="space-y-0.5">
             <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
               Инструменты
             </div>
             {toolsNav.map(({ href, label, icon }) => (
-              <NavItem key={href} href={href} label={label} icon={icon} />
+              <NavItem key={href} href={href} label={label} icon={icon} onNavigate={onClose} />
             ))}
           </div>
 
-          {/* Группа 3: Система */}
           <div className="space-y-0.5">
             <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
               Система
             </div>
             {systemNav.map(({ href, label, icon }) => (
-              <NavItem key={href} href={href} label={label} icon={icon} />
+              <NavItem key={href} href={href} label={label} icon={icon} onNavigate={onClose} />
             ))}
           </div>
 
         </nav>
 
-        {/* UserChip — отдельно в самом низу */}
+        {/* UserChip */}
         <div className="px-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
           <UserChip />
         </div>
       </aside>
 
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+    </>
+  );
+
+  // Desktop: always visible inline
+  // Mobile: controlled overlay via props
+  return (
+    <>
+      {/* Desktop sidebar — always in flow */}
+      <div className="hidden lg:flex h-screen sticky top-0 flex-shrink-0">
+        {nav}
+      </div>
+
+      {/* Mobile sidebar — overlay */}
+      <div className="lg:hidden">
+        {/* Backdrop */}
+        {open && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            onClick={onClose}
+          />
+        )}
+        {/* Slide-in panel */}
+        <div
+          className="fixed top-0 left-0 h-full z-50 flex flex-col"
+          style={{
+            transform: open ? "translateX(0)" : "translateX(-100%)",
+            transition: "transform 0.28s cubic-bezier(0.4,0,0.2,1)",
+            willChange: "transform",
+          }}
+        >
+          {nav}
+        </div>
+      </div>
     </>
   );
 }
