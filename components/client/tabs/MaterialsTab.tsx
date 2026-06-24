@@ -105,8 +105,17 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
                   <button
                     onClick={() => handleDelete(m.id)}
                     disabled={deletingId === m.id}
-                    className="p-1.5 text-stone-300 hover:text-rose-400 hover:bg-rose-50 rounded-lg transition-colors"
-                    title="Удалить"
+                    title="Удалить материал"
+                    className="flex items-center justify-center rounded-lg transition-colors flex-shrink-0 disabled:opacity-40"
+                    style={{
+                      width: 30, height: 30,
+                      background: "#FFFFFF",
+                      border: "1px solid #D8CFBE",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+                      color: "#6B5D4F",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FECACA"; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = "#6B5D4F"; e.currentTarget.style.background = "#FFFFFF"; e.currentTarget.style.borderColor = "#D8CFBE"; }}
                   >
                     <Trash2 size={13} />
                   </button>
