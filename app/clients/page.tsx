@@ -37,7 +37,7 @@ function Tip({ text, children }: { text: string; children: React.ReactNode }) {
   return (
     <div className="relative group/tip">
       {children}
-      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity z-20 max-w-[220px] text-center leading-tight shadow-lg">
+      <div className="pointer-events-none absolute bottom-full right-0 mb-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs rounded-lg opacity-0 group-hover/tip:opacity-100 transition-opacity z-50 w-max max-w-[200px] text-center leading-snug shadow-lg">
         {text}
       </div>
     </div>
