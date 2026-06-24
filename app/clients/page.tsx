@@ -11,15 +11,15 @@ import type { StoredClient } from "@/lib/clientStore";
 type AnyClient = StoredClient & { isMock?: boolean };
 
 const statusLabel: Record<string, string> = {
-  active: "активный",
-  paused: "пауза",
+  active:    "активный",
+  paused:    "пауза",
   completed: "завершён",
 };
 
 const statusColor: Record<string, string> = {
-  active: "bg-emerald-50 text-emerald-600",
-  paused: "bg-amber-50 text-amber-600",
-  completed: "bg-slate-100 text-slate-500",
+  active:    "bg-emerald-50 text-emerald-700 border border-emerald-100",
+  paused:    "bg-amber-50 text-amber-700 border border-amber-100",
+  completed: "bg-stone-100 text-stone-500 border border-stone-200",
 };
 
 interface DeleteConfirmProps {
@@ -61,9 +61,9 @@ function DeleteConfirm({ client, onCancel, onConfirm, loading }: DeleteConfirmPr
 
 export default function ClientsPage() {
   const router = useRouter();
-  const [clients, setClients] = useState<AnyClient[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [addOpen, setAddOpen] = useState(false);
+  const [clients, setClients]         = useState<AnyClient[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [addOpen, setAddOpen]         = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AnyClient | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -72,13 +72,10 @@ export default function ClientsPage() {
       const res = await fetch("/api/clients");
       const real: StoredClient[] = res.ok ? await res.json() : [];
       const realIds = new Set(real.map((c) => c.id));
-      const merged: AnyClient[] = [
+      setClients([
         ...real,
-        ...mockClients
-          .filter((m) => !realIds.has(m.id))
-          .map((m) => ({ ...m, isMock: true } as AnyClient)),
-      ];
-      setClients(merged);
+        ...mockClients.filter((m) => !realIds.has(m.id)).map((m) => ({ ...m, isMock: true } as AnyClient)),
+      ]);
     } catch {
       setClients(mockClients.map((m) => ({ ...m, isMock: true } as AnyClient)));
     } finally {
@@ -89,11 +86,7 @@ export default function ClientsPage() {
   useEffect(() => { loadClients(); }, []);
 
   async function handleDelete() {
-    if (!deleteTarget) return;
-    if (deleteTarget.isMock) {
-      setDeleteTarget(null);
-      return;
-    }
+    if (!deleteTarget || deleteTarget.isMock) { setDeleteTarget(null); return; }
     setDeleteLoading(true);
     try {
       await fetch(`/api/clients/${deleteTarget.id}`, { method: "DELETE" });
@@ -107,15 +100,15 @@ export default function ClientsPage() {
   const activeCount = clients.filter((c) => c.status === "active").length;
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#F7F3EE" }}>
       <div className="p-8 max-w-6xl mx-auto">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-xl font-bold text-slate-800">Клиенты</h1>
-            <p className="text-sm text-slate-400 mt-0.5">
-              {activeCount} активных терапевтических {activeCount === 1 ? "процесс" : "процесса"}
+            <p className="text-sm text-stone-500 mt-0.5">
+              {activeCount} активных {activeCount === 1 ? "процесс" : "процесса"}
             </p>
           </div>
           <button
@@ -131,19 +124,7 @@ export default function ClientsPage() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-100 p-6 h-52 animate-pulse">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-11 h-11 rounded-full bg-slate-100" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-slate-100 rounded w-2/3" />
-                    <div className="h-3 bg-slate-100 rounded w-1/3" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 bg-slate-100 rounded w-full" />
-                  <div className="h-3 bg-slate-100 rounded w-4/5" />
-                </div>
-              </div>
+              <div key={i} className="rounded-2xl border p-6 h-52 animate-pulse" style={{ background: "#F0EBE1", borderColor: "#E2D9CC" }} />
             ))}
           </div>
         ) : (
@@ -151,11 +132,11 @@ export default function ClientsPage() {
             {clients.map((client) => (
               <div
                 key={client.id}
-                className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-brand-100 transition-all flex flex-col"
+                className="rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col"
+                style={{ background: "#F0EBE1", borderColor: "#E2D9CC" }}
               >
-                {/* Card top */}
+                {/* Card body */}
                 <div className="p-5 flex-1">
-                  {/* Avatar + name row */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <Avatar initials={client.initials} color={client.color} size="lg" />
@@ -169,31 +150,28 @@ export default function ClientsPage() {
                     <button
                       onClick={(e) => { e.stopPropagation(); setDeleteTarget(client); }}
                       title="Удалить клиента"
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0 ml-2"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-stone-400 hover:text-rose-500 hover:bg-rose-50 transition-colors flex-shrink-0 ml-2"
                     >
                       <Trash2 size={14} />
                     </button>
                   </div>
 
-                  {/* Stats row */}
-                  <div className="flex items-center gap-4 mb-3 text-xs text-slate-400">
+                  {/* Stats */}
+                  <div className="flex items-center gap-4 mb-3 text-xs text-stone-500">
                     <div className="flex items-center gap-1">
                       <Users size={11} />
                       <span>{client.totalConsultations} встреч</span>
                     </div>
                     {client.lastConsultation && (
                       <span>
-                        {new Date(client.lastConsultation).toLocaleDateString("ru-RU", {
-                          day: "numeric",
-                          month: "short",
-                        })}
+                        {new Date(client.lastConsultation).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                       </span>
                     )}
                   </div>
 
                   {/* Concern */}
                   {client.concern && (
-                    <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
+                    <p className="text-sm text-stone-600 line-clamp-2 leading-relaxed">
                       {client.concern}
                     </p>
                   )}
@@ -204,13 +182,14 @@ export default function ClientsPage() {
                       {client.mainTopics.slice(0, 3).map((t) => (
                         <span
                           key={t}
-                          className="px-2 py-0.5 rounded-full text-xs text-slate-500 bg-slate-50 border border-slate-100"
+                          className="px-2 py-0.5 rounded-full text-xs text-stone-600"
+                          style={{ background: "#E8E0D0", border: "1px solid #D8CFBE" }}
                         >
                           {t}
                         </span>
                       ))}
                       {client.mainTopics.length > 3 && (
-                        <span className="px-2 py-0.5 rounded-full text-xs text-slate-400">
+                        <span className="px-2 py-0.5 rounded-full text-xs text-stone-400">
                           +{client.mainTopics.length - 3}
                         </span>
                       )}
@@ -222,21 +201,23 @@ export default function ClientsPage() {
                 <div className="px-5 pb-4">
                   <button
                     onClick={() => router.push(`/client/${client.id}`)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-brand-50 hover:text-brand-600 text-slate-600 text-sm font-medium transition-colors group"
+                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-stone-600 text-sm font-medium transition-colors group hover:bg-brand-50 hover:text-brand-600"
+                    style={{ background: "#E8E0D0" }}
                   >
                     Открыть карточку
-                    <ArrowRight size={14} className="text-slate-300 group-hover:text-brand-400 transition-colors" />
+                    <ArrowRight size={14} className="text-stone-400 group-hover:text-brand-400 transition-colors" />
                   </button>
                 </div>
               </div>
             ))}
 
-            {/* Add client card */}
+            {/* Add card */}
             <button
               onClick={() => setAddOpen(true)}
-              className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 text-slate-400 hover:border-brand-300 hover:text-brand-500 hover:bg-brand-50/30 transition-all min-h-[220px]"
+              className="rounded-2xl border-2 border-dashed p-6 flex flex-col items-center justify-center gap-3 text-stone-400 hover:text-brand-500 hover:border-brand-300 hover:bg-brand-50/30 transition-all min-h-[220px]"
+              style={{ borderColor: "#D8CFBE" }}
             >
-              <div className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "#E8E0D0" }}>
                 <Plus size={20} />
               </div>
               <span className="text-sm font-medium">Добавить клиента</span>

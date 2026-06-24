@@ -4,11 +4,13 @@
  */
 
 export interface UserProfile {
-  firstName:      string;
-  lastName:       string;
-  displayName:    string;
-  specialization: string;
-  email?:         string;
+  firstName:           string;
+  lastName:            string;
+  displayName:         string;
+  specialization:      string;
+  approach?:           string;
+  email?:              string;
+  defaultAnalysisMode?: string;
 }
 
 export const DEFAULT_PROFILE: UserProfile = {
