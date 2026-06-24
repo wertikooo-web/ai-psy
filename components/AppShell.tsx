@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Menu, Mic } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { VoiceNoteModal } from "@/components/voice/VoiceNoteModal";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [sidebarOpen,   setSidebarOpen]   = useState(false);
   const [voiceNoteOpen, setVoiceNoteOpen] = useState(false);
+  const hideFab = pathname.startsWith("/consultation/");
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -30,8 +33,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
 
-        {/* Voice note FAB */}
-        <button
+        {/* Voice note FAB — hidden on consultation pages (chat panel has its own input) */}
+        {!hideFab && <button
           onClick={() => setVoiceNoteOpen(true)}
           title="Голосовая заметка"
           className="fixed bottom-6 right-6 z-40 w-13 h-13 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95"
@@ -39,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           aria-label="Записать голосовую заметку"
         >
           <Mic size={20} color="white" />
-        </button>
+        </button>}
       </main>
 
       {voiceNoteOpen && (
