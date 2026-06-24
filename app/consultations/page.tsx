@@ -1,22 +1,23 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { consultations as mockConsultations } from "@/lib/mockData";
 import type { StoredConsultation } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
 import {
-  Mic, ArrowRight, ArrowLeft, CheckCircle2, Clock, AlertCircle, ChevronDown,
+  Mic, ArrowRight, ArrowLeft, CheckCircle2, Clock, AlertCircle, ChevronDown, Trash2,
 } from "lucide-react";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
 
 type SortOption  = "date_desc" | "date_asc" | "client";
 type GroupOption = "none" | "month" | "client" | "status";
 
-const CARD_BG = "#F4F0E8";
-const TAB_BG  = "#C9BBAA";
-const TAB_HOV = "#BEB09E";
+const PAGE_SIZE = 5;
+const CARD_BG   = "#F4F0E8";
+const TAB_BG    = "#C9BBAA";
+const TAB_HOV   = "#BEB09E";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
@@ -42,11 +43,51 @@ function Badge({ label, state }: { label: string; state: "ok" | "warn" | "none" 
   );
 }
 
+// ── Confirm modal ─────────────────────────────────────────────────────────────
+function DeleteModal({
+  title, onConfirm, onCancel, loading,
+}: { title: string; onConfirm: () => void; onCancel: () => void; loading: boolean }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.35)" }}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+        <h2 className="text-base font-bold text-slate-800 mb-2">Удалить консультацию?</h2>
+        <p className="text-sm text-slate-500 leading-relaxed mb-5">
+          Будут удалены запись консультации, транскрипт, анализ и связанные материалы
+          <span className="font-medium text-slate-700"> «{title}»</span>.
+          Это действие нельзя отменить.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40"
+          >
+            Отмена
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-40"
+          >
+            {loading ? "Удаление..." : "Удалить"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Card ──────────────────────────────────────────────────────────────────────
 function ConsultationCard({
-  c, num, onOpen,
-}: { c: AnyConsultation; num: number; onOpen: () => void }) {
+  c, num, onOpen, onDeleteClick,
+}: {
+  c: AnyConsultation;
+  num: number;
+  onOpen: () => void;
+  onDeleteClick: () => void;
+}) {
   const [hovered, setHovered] = useState(false);
+  const [delHovered, setDelHovered] = useState(false);
 
   const title         = c.title || c.topic || `Консультация #${num}`;
   const showTopic     = title !== `Консультация #${num}`;
@@ -58,39 +99,37 @@ function ConsultationCard({
       className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col"
       style={{ background: CARD_BG, borderColor: "#DDD4C6" }}
     >
-      {/* ── Body: desktop = horizontal, mobile = vertical ── */}
+      {/* ── Body ── */}
       <div className="px-4 sm:px-5 pt-4 pb-3">
 
-        {/* ── Mobile layout (< sm) ── */}
-        <div className="flex sm:hidden items-center gap-3 mb-2">
+        {/* Mobile layout */}
+        <div className="flex sm:hidden items-start gap-3 mb-2">
           <Avatar initials={c.clientInitials} color={c.clientColor} size="sm" />
-          <span className="text-sm font-medium text-slate-700 truncate">{c.clientName}</span>
-        </div>
-
-        <div className="sm:hidden">
-          {/* Session # + duration */}
-          <div className="flex items-center gap-2 mb-0.5">
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-medium text-slate-700 truncate block">{c.clientName}</span>
             <span className="font-semibold text-slate-800 text-sm">Консультация #{num}</span>
-            {c.duration && (
-              <span className="text-xs text-stone-400 flex items-center gap-0.5">
-                <Clock size={10} />
-                {c.duration}
-              </span>
-            )}
+            {showTopic && <p className="text-xs text-stone-400 line-clamp-1">{title}</p>}
+            <p className="text-xs text-stone-400">{formatDate(c.createdAt)}</p>
           </div>
-          {/* Topic */}
-          {showTopic && (
-            <p className="text-xs text-stone-400 line-clamp-1 mb-0.5">{title}</p>
-          )}
-          {/* Date */}
-          <p className="text-xs text-stone-400 mb-1">{formatDate(c.createdAt)}</p>
-          {/* Summary */}
-          {c.summary && (
-            <p className="text-sm text-stone-400 line-clamp-2 leading-relaxed">{c.summary}</p>
+          {/* Delete — mobile */}
+          {!c.isMock && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDeleteClick(); }}
+              title="Удалить консультацию"
+              className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+              style={{
+                background: delHovered ? "#FECACA" : "#FEE2E2",
+                color: "#DC2626",
+              }}
+              onMouseEnter={() => setDelHovered(true)}
+              onMouseLeave={() => setDelHovered(false)}
+            >
+              <Trash2 size={12} />
+            </button>
           )}
         </div>
 
-        {/* ── Desktop layout (≥ sm) ── */}
+        {/* Desktop layout */}
         <div className="hidden sm:flex items-start gap-4">
           <Avatar initials={c.clientInitials} color={c.clientColor} size="md" />
           <div className="flex-1 min-w-0">
@@ -111,23 +150,33 @@ function ConsultationCard({
               <p className="text-sm text-stone-400 line-clamp-2 mt-1 leading-relaxed">{c.summary}</p>
             )}
           </div>
-          <div className="flex-shrink-0 text-xs text-stone-400 pt-0.5">
-            {formatDate(c.createdAt)}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs text-stone-400 pt-0.5">{formatDate(c.createdAt)}</span>
+            {/* Delete — desktop */}
+            {!c.isMock && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDeleteClick(); }}
+                title="Удалить консультацию"
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-colors flex-shrink-0"
+                style={{
+                  background: delHovered ? "#FECACA" : "#FEE2E2",
+                  color: "#DC2626",
+                }}
+                onMouseEnter={() => setDelHovered(true)}
+                onMouseLeave={() => setDelHovered(false)}
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── Status badges + calendar ── */}
+      {/* Status badges + calendar */}
       <div className="px-4 sm:px-5 pb-4 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex flex-wrap gap-1.5">
-          <Badge
-            label={hasTranscript ? "Транскрипт готов" : "Транскрипт не создан"}
-            state={hasTranscript ? "ok" : "none"}
-          />
-          <Badge
-            label={hasAnalysis ? "Анализ готов" : "Анализ не готов"}
-            state={hasAnalysis ? "ok" : "none"}
-          />
+          <Badge label={hasTranscript ? "Транскрипт готов" : "Транскрипт не создан"} state={hasTranscript ? "ok" : "none"} />
+          <Badge label={hasAnalysis   ? "Анализ готов"     : "Анализ не готов"}      state={hasAnalysis   ? "ok" : "none"} />
         </div>
         <CalendarButtons
           clientName={c.clientName ?? ""}
@@ -139,7 +188,7 @@ function ConsultationCard({
         />
       </div>
 
-      {/* ── CTA ── */}
+      {/* CTA */}
       <button
         onClick={onOpen}
         onMouseEnter={() => setHovered(true)}
@@ -185,6 +234,11 @@ export default function ConsultationsPage() {
   const [loading, setLoading]             = useState(true);
   const [sort,  setSort]                  = useState<SortOption>("date_desc");
   const [group, setGroup]                 = useState<GroupOption>("none");
+  const [visibleCount, setVisibleCount]   = useState(PAGE_SIZE);
+
+  // Delete modal state
+  const [deleteTarget, setDeleteTarget]   = useState<AnyConsultation | null>(null);
+  const [deleting, setDeleting]           = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -220,6 +274,17 @@ export default function ConsultationsPage() {
     load();
   }, []);
 
+  // Reset visible count when sort/group changes
+  const handleSort = useCallback((v: SortOption) => {
+    setSort(v);
+    setVisibleCount(PAGE_SIZE);
+  }, []);
+
+  const handleGroup = useCallback((v: GroupOption) => {
+    setGroup(v);
+    setVisibleCount(PAGE_SIZE);
+  }, []);
+
   const total = consultations.length;
 
   const sorted = useMemo(() => {
@@ -230,10 +295,13 @@ export default function ConsultationsPage() {
     return arr;
   }, [consultations, sort]);
 
+  // Slice first, then group — so pagination applies to final sorted list
+  const visible = sorted.slice(0, visibleCount);
+
   const grouped = useMemo((): { label: string; items: AnyConsultation[] }[] => {
-    if (group === "none") return [{ label: "", items: sorted }];
+    if (group === "none") return [{ label: "", items: visible }];
     const map = new Map<string, AnyConsultation[]>();
-    for (const c of sorted) {
+    for (const c of visible) {
       const key =
         group === "month"  ? getMonthLabel(c.createdAt) :
         group === "client" ? (c.clientName ?? "Без клиента") :
@@ -242,7 +310,19 @@ export default function ConsultationsPage() {
       map.get(key)!.push(c);
     }
     return Array.from(map.entries()).map(([label, items]) => ({ label, items }));
-  }, [sorted, group]);
+  }, [visible, group]);
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await fetch(`/api/consultations/${deleteTarget.id}`, { method: "DELETE" });
+      setConsultations(prev => prev.filter(c => c.id !== deleteTarget.id));
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  }
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
@@ -250,10 +330,7 @@ export default function ConsultationsPage() {
         className="px-4 sm:p-8 max-w-3xl mx-auto"
         style={{ paddingTop: "max(1.5rem, env(safe-area-inset-top, 0px) + 1rem)" }}
       >
-
-        {/* Header — mobile: two rows; desktop: one row */}
-
-        {/* Mobile upload button — own row, sits above the title */}
+        {/* Mobile upload button */}
         <div className="flex justify-end mb-3 sm:hidden">
           <button
             onClick={() => setUploadOpen(true)}
@@ -280,8 +357,6 @@ export default function ConsultationsPage() {
             <div className="w-px h-5" style={{ background: "#DDD4C6" }} />
             <h1 className="text-xl font-bold text-slate-800">Консультации</h1>
           </div>
-
-          {/* Desktop button */}
           <button
             onClick={() => setUploadOpen(true)}
             className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
@@ -297,7 +372,7 @@ export default function ConsultationsPage() {
             <div className="relative">
               <select
                 value={sort}
-                onChange={(e) => setSort(e.target.value as SortOption)}
+                onChange={(e) => handleSort(e.target.value as SortOption)}
                 className="appearance-none pl-3 pr-7 py-1.5 rounded-lg border text-xs font-medium cursor-pointer focus:outline-none"
                 style={{ background: "#F0EBE1", borderColor: "#D8CFBE", color: "#6B5D4F" }}
               >
@@ -310,7 +385,7 @@ export default function ConsultationsPage() {
             <div className="relative">
               <select
                 value={group}
-                onChange={(e) => setGroup(e.target.value as GroupOption)}
+                onChange={(e) => handleGroup(e.target.value as GroupOption)}
                 className="appearance-none pl-3 pr-7 py-1.5 rounded-lg border text-xs font-medium cursor-pointer focus:outline-none"
                 style={{ background: "#F0EBE1", borderColor: "#D8CFBE", color: "#6B5D4F" }}
               >
@@ -328,11 +403,7 @@ export default function ConsultationsPage() {
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="rounded-2xl border h-28 animate-pulse"
-                style={{ background: CARD_BG, borderColor: "#DDD4C6" }}
-              />
+              <div key={i} className="rounded-2xl border h-28 animate-pulse" style={{ background: CARD_BG, borderColor: "#DDD4C6" }} />
             ))}
           </div>
         ) : consultations.length === 0 ? (
@@ -340,32 +411,65 @@ export default function ConsultationsPage() {
             Консультаций пока нет. Загрузите первую запись.
           </div>
         ) : (
-          <div className="space-y-6">
-            {grouped.map(({ label, items }) => (
-              <div key={label || "_"}>
-                {label && (
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>{label}</span>
-                    <div className="flex-1 h-px" style={{ background: "#E4DDD0" }} />
+          <>
+            <div className="space-y-6">
+              {grouped.map(({ label, items }) => (
+                <div key={label || "_"}>
+                  {label && (
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>{label}</span>
+                      <div className="flex-1 h-px" style={{ background: "#E4DDD0" }} />
+                    </div>
+                  )}
+                  <div className="space-y-3 sm:space-y-4">
+                    {items.map((c) => (
+                      <ConsultationCard
+                        key={c.id}
+                        c={c}
+                        num={c.sessionNumber ?? (total - sorted.indexOf(c))}
+                        onOpen={() => router.push(`/consultation/${c.id}`)}
+                        onDeleteClick={() => setDeleteTarget(c)}
+                      />
+                    ))}
                   </div>
-                )}
-                <div className="space-y-3 sm:space-y-4">
-                  {items.map((c, i) => (
-                    <ConsultationCard
-                      key={c.id}
-                      c={c}
-                      num={c.sessionNumber ?? (total - sorted.indexOf(c))}
-                      onOpen={() => router.push(`/consultation/${c.id}`)}
-                    />
-                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            {/* Footer: status + load more */}
+            <div className="mt-6 flex flex-col items-center gap-3">
+              {visibleCount < sorted.length && (
+                <button
+                  onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
+                  className="px-6 py-2.5 rounded-xl text-sm font-medium border transition-colors"
+                  style={{ background: "#F0EBE1", borderColor: "#D8CFBE", color: "#6B5D4F" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#E8E0D0"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "#F0EBE1"; }}
+                >
+                  Показать ещё
+                </button>
+              )}
+              <p className="text-xs text-stone-400">
+                {visibleCount >= sorted.length
+                  ? "Показаны все консультации"
+                  : `Показано ${Math.min(visibleCount, sorted.length)} из ${sorted.length} консультаций`
+                }
+              </p>
+            </div>
+          </>
         )}
       </div>
 
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+
+      {deleteTarget && (
+        <DeleteModal
+          title={deleteTarget.title || deleteTarget.topic || "консультацию"}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
+          loading={deleting}
+        />
+      )}
     </div>
   );
 }
