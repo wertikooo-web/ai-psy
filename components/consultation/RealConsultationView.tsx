@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { StoredConsultation, ConsultationStatus } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import {
@@ -106,6 +106,19 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const [analysisResult, setResult]       = useState<string | null>(lastAnalysis?.result ?? null);
   const [analyzedMode, setAnalyzedMode]   = useState<ModeId | null>((lastAnalysis?.mode as ModeId) ?? null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  // Client context preview (materials + history count)
+  const [contextInfo, setContextInfo] = useState<{ materials: number; history: number } | null>(null);
+
+  useEffect(() => {
+    if (!c.clientId) return;
+    Promise.all([
+      fetch(`/api/client-materials/${c.clientId}`).then(r => r.ok ? r.json() : []),
+      fetch(`/api/client-history/${c.clientId}`).then(r => r.ok ? r.json() : []),
+    ]).then(([mats, hist]) => {
+      setContextInfo({ materials: (mats as unknown[]).length, history: (hist as unknown[]).length });
+    }).catch(() => {});
+  }, [c.clientId]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
   async function runTranscription() {
@@ -540,6 +553,20 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                   {MODE_HINTS[selectedMode]}
                 </p>
               </div>
+
+              {/* Context summary */}
+              {contextInfo && (contextInfo.materials > 0 || contextInfo.history > 0) && (
+                <div className="rounded-xl border px-4 py-3 flex flex-wrap gap-x-4 gap-y-1" style={{ background: "#F8F5F0", borderColor: "#E4DDD0" }}>
+                  <p className="text-xs font-semibold w-full" style={{ color: "#6B5D4F" }}>В анализ войдёт:</p>
+                  <span className="text-xs text-stone-500">📄 Транскрипт / заметки</span>
+                  {contextInfo.history > 0 && (
+                    <span className="text-xs text-stone-500">🗂 История клиента ({contextInfo.history} записей)</span>
+                  )}
+                  {contextInfo.materials > 0 && (
+                    <span className="text-xs text-emerald-600 font-medium">📎 Материалы ({contextInfo.materials} шт) — включены</span>
+                  )}
+                </div>
+              )}
 
               {analyzing ? (
                 <div className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-50 border border-brand-100 text-sm text-brand-600 font-medium">

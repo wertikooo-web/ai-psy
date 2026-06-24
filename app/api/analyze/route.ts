@@ -144,16 +144,17 @@ async function assembleClientContext(
     }
   } catch { /* no history yet */ }
 
-  // 3. Materials (first 3, truncated to 500 chars each)
+  // 3. Materials (up to 10, up to 2000 chars each)
   try {
     const materials = await getMaterials(clientId);
     if (materials.length > 0) {
       parts.push("\nМатериалы клиента:");
-      for (const m of materials.slice(0, 3)) {
-        const preview = m.content.length > 500
-          ? m.content.slice(0, 500) + "…"
+      for (const m of materials.slice(0, 10)) {
+        const label   = m.title ? `${m.title} [${m.type}]` : `[${m.type}]`;
+        const preview = m.content.length > 2000
+          ? m.content.slice(0, 2000) + "…"
           : m.content;
-        parts.push(`[${m.type}] ${preview}`);
+        parts.push(`${label}:\n${preview}`);
       }
     }
   } catch { /* no materials yet */ }
