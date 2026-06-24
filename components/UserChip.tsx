@@ -10,12 +10,13 @@ export function UserChip() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [open, setOpen]       = useState(false);
 
+  // Fetch on mount and every time the modal opens
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
       .then(setProfile)
       .catch(() => {});
-  }, []);
+  }, [open]);
 
   const name     = profile ? resolveDisplayName(profile) : "Психолог";
   const abbr     = profile ? resolveInitials(profile) : "П";
