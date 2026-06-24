@@ -7,7 +7,7 @@ import type { StoredConsultation } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
 import {
-  Mic, ArrowRight, ArrowLeft, CheckCircle2, Clock, AlertCircle, ChevronDown,
+  Mic, ArrowRight, ArrowLeft, CheckCircle2, Clock, AlertCircle, ChevronDown, CalendarPlus,
 } from "lucide-react";
 
 type SortOption  = "date_desc" | "date_asc" | "client";
@@ -116,16 +116,30 @@ function ConsultationCard({
         </div>
       </div>
 
-      {/* ── Status badges ── */}
-      <div className="px-4 sm:px-5 pb-4 flex flex-wrap gap-1.5">
-        <Badge
-          label={hasTranscript ? "Транскрипт готов" : "Транскрипт не создан"}
-          state={hasTranscript ? "ok" : "none"}
-        />
-        <Badge
-          label={hasAnalysis ? "Анализ готов" : "Анализ не готов"}
-          state={hasAnalysis ? "ok" : "none"}
-        />
+      {/* ── Status badges + calendar ── */}
+      <div className="px-4 sm:px-5 pb-4 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex flex-wrap gap-1.5">
+          <Badge
+            label={hasTranscript ? "Транскрипт готов" : "Транскрипт не создан"}
+            state={hasTranscript ? "ok" : "none"}
+          />
+          <Badge
+            label={hasAnalysis ? "Анализ готов" : "Анализ не готов"}
+            state={hasAnalysis ? "ok" : "none"}
+          />
+        </div>
+        <a
+          href={`/api/calendar?clientName=${encodeURIComponent(c.clientName ?? "")}&date=${encodeURIComponent(c.createdAt)}&duration=${encodeURIComponent(c.duration ?? "")}&topic=${encodeURIComponent(c.topic ?? c.title ?? "")}&session=${encodeURIComponent(String(num))}`}
+          download
+          title="Добавить в календарь"
+          className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border transition-colors flex-shrink-0"
+          style={{ borderColor: "#D8CFBE", color: "#A8997F", background: "#F4F0E8" }}
+          onMouseEnter={e => { e.currentTarget.style.color = "#6B5D4F"; e.currentTarget.style.background = "#EAE3D5"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "#F4F0E8"; }}
+        >
+          <CalendarPlus size={12} />
+          В календарь
+        </a>
       </div>
 
       {/* ── CTA ── */}

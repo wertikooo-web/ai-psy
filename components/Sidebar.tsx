@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Users, FileText, BookOpen, Bot,
-  Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info,
+  Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, MicVocal,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
@@ -23,9 +23,10 @@ const C = {
 };
 
 const mainNav = [
-  { href: "/",              label: "Главная",      icon: Home     },
-  { href: "/clients",       label: "Клиенты",      icon: Users    },
-  { href: "/consultations", label: "Консультации", icon: FileText },
+  { href: "/",              label: "Главная",      icon: Home      },
+  { href: "/clients",       label: "Клиенты",      icon: Users     },
+  { href: "/consultations", label: "Консультации", icon: FileText  },
+  { href: "/voice-notes",   label: "Заметки",      icon: MicVocal  },
 ];
 const toolsNav = [
   { href: "/ai-chat",        label: "AI Чат",      icon: MessageSquare },
