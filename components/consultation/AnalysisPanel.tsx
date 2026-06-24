@@ -123,78 +123,77 @@ export function AnalysisPanel({
 
       {/* Panel header — fixed */}
       <div className="px-5 pt-4 pb-3 border-b border-brand-600 flex-shrink-0 bg-brand-500">
-        <div className="flex items-start justify-between">
+        {/* Row 1: title + collapse */}
+        <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
               <BrainCircuit size={15} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">AI-анализ</h2>
-              <p className="text-xs text-brand-100">Ключевые наблюдения и направления</p>
+              <h2 className="text-lg font-bold text-white leading-tight">AI-анализ</h2>
+              <p className="text-xs text-brand-100 leading-tight">Ключевые наблюдения и направления</p>
             </div>
           </div>
+          {/* Collapse button */}
+          <button
+            onClick={onToggle}
+            title="Свернуть"
+            className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors flex-shrink-0"
+          >
+            <ChevronsLeft size={14} className="text-white" />
+          </button>
+        </div>
+        {/* Row 2: extra actions */}
+        <div className="flex items-center gap-2">
+          <div ref={menuRef} className="relative">
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className={clsx(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border",
+                menuOpen
+                  ? "bg-white/30 text-white border-white/30"
+                  : "text-white/80 border-white/15 bg-white/10 hover:bg-white/20 hover:text-white"
+              )}
+            >
+              Дополнительные режимы
+              <ChevronDown size={12} className={clsx("transition-transform", menuOpen && "rotate-180")} />
+            </button>
 
-          <div className="flex items-center gap-1">
-            {/* "Ещё" dropdown */}
-            <div ref={menuRef} className="relative">
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
-                className={clsx(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border",
-                  menuOpen
-                    ? "bg-white/30 text-white border-white/30"
-                    : "text-white/80 border-white/30 hover:bg-white/20 hover:text-white"
-                )}
-              >
-                Ещё
-                <ChevronDown size={12} className={clsx("transition-transform", menuOpen && "rotate-180")} />
-              </button>
-
-              {menuOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-60 bg-white rounded-xl border border-slate-100 shadow-lg z-20 py-1 overflow-hidden">
-                  <div className="px-3 py-1.5">
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      Дополнительные режимы
-                    </span>
-                  </div>
-                  {EXTRA_MODES.map(({ icon, label, chatPrompt }) => (
-                    <button
-                      key={label}
-                      onClick={() => handleExtraMode(chatPrompt)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors text-left"
-                    >
-                      <span className="text-slate-400">{icon}</span>
-                      {label}
-                    </button>
-                  ))}
-                  <div className="my-1 border-t border-slate-100" />
+            {menuOpen && (
+              <div className="absolute left-0 top-full mt-1.5 w-60 bg-white rounded-xl border border-slate-100 shadow-lg z-20 py-1 overflow-hidden">
+                <div className="px-3 py-1.5">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Дополнительные режимы
+                  </span>
+                </div>
+                {EXTRA_MODES.map(({ icon, label, chatPrompt }) => (
                   <button
-                    onClick={handleCompare}
+                    key={label}
+                    onClick={() => handleExtraMode(chatPrompt)}
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors text-left"
                   >
-                    <GitCompare size={13} className="text-slate-400" />
-                    Сравнить с предыдущей сессией
+                    <span className="text-slate-400">{icon}</span>
+                    {label}
                   </button>
-                  <button
-                    disabled
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left cursor-not-allowed"
-                  >
-                    <Download size={13} className="text-slate-300" />
-                    <span className="text-slate-300">Экспорт отчёта</span>
-                    <span className="ml-auto text-xs text-slate-200">скоро</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Collapse button */}
-            <button
-              onClick={onToggle}
-              title="Свернуть"
-              className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
-            >
-              <ChevronsLeft size={14} className="text-white" />
-            </button>
+                ))}
+                <div className="my-1 border-t border-slate-100" />
+                <button
+                  onClick={handleCompare}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <GitCompare size={13} className="text-slate-400" />
+                  Сравнить с предыдущей сессией
+                </button>
+                <button
+                  disabled
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left cursor-not-allowed"
+                >
+                  <Download size={13} className="text-slate-300" />
+                  <span className="text-slate-300">Экспорт отчёта</span>
+                  <span className="ml-auto text-xs text-slate-200">скоро</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

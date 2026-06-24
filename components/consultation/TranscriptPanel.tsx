@@ -46,15 +46,16 @@ export function TranscriptPanel({ segments, collapsed, onToggle }: TranscriptPan
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
 
       {/* Panel header — fixed */}
-      <div className="px-5 pt-4 pb-3 border-b border-slate-200 flex-shrink-0 bg-slate-700">
-        <div className="flex items-start justify-between mb-3">
+      <div className="px-5 pt-4 pb-3 border-b border-slate-600 flex-shrink-0 bg-slate-700">
+        {/* Row 1: title + collapse */}
+        <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
               <Mic size={15} className="text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Транскрипт</h2>
-              <p className="text-xs text-slate-300">Реплики клиента и психолога</p>
+              <h2 className="text-lg font-bold text-white leading-tight">Транскрипт</h2>
+              <p className="text-xs text-slate-300 leading-tight">Реплики клиента и психолога</p>
             </div>
           </div>
           <button
@@ -65,13 +66,14 @@ export function TranscriptPanel({ segments, collapsed, onToggle }: TranscriptPan
             <ChevronsLeft size={15} className="text-white" />
           </button>
         </div>
+        {/* Row 2: search */}
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по тексту..."
-            className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-white/20 bg-white/10 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/30"
+            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-white/15 bg-white/10 text-white placeholder:text-white/40 focus:outline-none focus:border-white/30 focus:bg-white/15"
           />
         </div>
       </div>
