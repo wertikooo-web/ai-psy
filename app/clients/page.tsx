@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 import {
-  Plus, Trash2, ArrowRight, Users,
+  Plus, Trash2, ArrowRight, ArrowLeft, Users,
   Pause, Archive, RotateCcw, CheckCircle2,
   Search, ChevronDown,
 } from "lucide-react";
@@ -446,7 +446,20 @@ export default function ClientsPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h1 className="text-xl font-bold text-slate-800">Клиенты</h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-1.5 text-sm transition-colors"
+              style={{ color: "#A8997F" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#4A3C2E"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; }}
+            >
+              <ArrowLeft size={16} />
+              Назад
+            </button>
+            <div className="w-px h-5" style={{ background: "#DDD4C6" }} />
+            <h1 className="text-xl font-bold text-slate-800">Клиенты</h1>
+          </div>
           <button
             onClick={() => setAddOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm"

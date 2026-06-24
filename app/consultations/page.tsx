@@ -7,7 +7,7 @@ import type { StoredConsultation } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
 import {
-  Mic, ArrowRight, CheckCircle2, Clock, AlertCircle,
+  Mic, ArrowRight, ArrowLeft, CheckCircle2, Clock, AlertCircle,
 } from "lucide-react";
 
 const CARD_BG = "#F4F0E8";
@@ -199,7 +199,20 @@ export default function ConsultationsPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-slate-800">Консультации</h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-1.5 text-sm transition-colors"
+              style={{ color: "#A8997F" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#4A3C2E"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; }}
+            >
+              <ArrowLeft size={16} />
+              Назад
+            </button>
+            <div className="w-px h-5" style={{ background: "#DDD4C6" }} />
+            <h1 className="text-xl font-bold text-slate-800">Консультации</h1>
+          </div>
 
           {/* Desktop button */}
           <button
