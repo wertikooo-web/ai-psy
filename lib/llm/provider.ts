@@ -10,6 +10,7 @@ export interface GenerateTextInput {
   userPrompt: string;
   model?: string;
   temperature?: number;
+  maxTokens?: number;
 }
 
 export interface GenerateTextOutput {

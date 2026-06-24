@@ -42,12 +42,23 @@ export async function generateAnalysis(
   // 2. Select provider
   const providerClient = getProvider(providerName);
 
-  // 3. Call LLM (real or mock)
+  const maxTokensByMode: Record<string, number> = {
+    working:           3000,
+    deep:              6000,
+    therapist_process: 4000,
+    gestalt:           4000,
+    hypothesis:        3000,
+    next_session:      2500,
+  };
+  const maxTokens = maxTokensByMode[mode] ?? 3000;
+
+  // 3. Call LLM
   const result = await providerClient.generateText({
     systemPrompt,
     userPrompt: "Выполни анализ согласно инструкциям выше.",
     model,
     temperature,
+    maxTokens,
   });
 
   return {

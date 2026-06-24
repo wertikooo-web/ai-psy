@@ -20,11 +20,13 @@ export const openaiProvider: LLMProviderClient = {
     const model = input.model ?? DEFAULT_MODEL;
     const client = getClient();
 
-    // o-series models (o1, o3, o4-mini, etc.) don't support custom temperature
     const isOModel = /^o\d/.test(model);
+    const maxTokens = input.maxTokens ?? 4000;
     const completion = await client.chat.completions.create({
       model,
-      ...(isOModel ? {} : { temperature: input.temperature ?? 0.7 }),
+      ...(isOModel
+        ? { max_completion_tokens: maxTokens }
+        : { temperature: input.temperature ?? 0.7, max_tokens: maxTokens }),
       messages: [
         { role: "system", content: input.systemPrompt },
         { role: "user",   content: input.userPrompt },
