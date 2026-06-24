@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { consultations as mockConsultations } from "@/lib/mockData";
 import type { StoredConsultation } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
 import {
-  Mic, ArrowRight, ArrowLeft, CheckCircle2, Clock, AlertCircle,
+  Mic, ArrowRight, ArrowLeft, CheckCircle2, Clock, AlertCircle, ChevronDown,
 } from "lucide-react";
+
+type SortOption  = "date_desc" | "date_asc" | "client";
+type GroupOption = "none" | "month" | "client" | "status";
 
 const CARD_BG = "#F4F0E8";
 const TAB_BG  = "#C9BBAA";
@@ -150,12 +153,27 @@ function ConsultationCard({
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getStatusLabel(c: AnyConsultation): string {
+  const hasTranscript = !!(c as StoredConsultation).transcript?.text || c.isMock;
+  const hasAnalysis   = !!((c as StoredConsultation).analyses?.length) || c.isMock;
+  if (hasAnalysis)   return "Анализ готов";
+  if (hasTranscript) return "Транскрипт готов";
+  return "Без обработки";
+}
+
+function getMonthLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ConsultationsPage() {
   const router = useRouter();
   const [uploadOpen, setUploadOpen]       = useState(false);
   const [consultations, setConsultations] = useState<AnyConsultation[]>([]);
   const [loading, setLoading]             = useState(true);
+  const [sort,  setSort]                  = useState<SortOption>("date_desc");
+  const [group, setGroup]                 = useState<GroupOption>("none");
 
   useEffect(() => {
     async function load() {
@@ -192,6 +210,28 @@ export default function ConsultationsPage() {
   }, []);
 
   const total = consultations.length;
+
+  const sorted = useMemo(() => {
+    const arr = [...consultations];
+    if (sort === "date_desc") arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    if (sort === "date_asc")  arr.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    if (sort === "client")    arr.sort((a, b) => (a.clientName ?? "").localeCompare(b.clientName ?? "", "ru"));
+    return arr;
+  }, [consultations, sort]);
+
+  const grouped = useMemo((): { label: string; items: AnyConsultation[] }[] => {
+    if (group === "none") return [{ label: "", items: sorted }];
+    const map = new Map<string, AnyConsultation[]>();
+    for (const c of sorted) {
+      const key =
+        group === "month"  ? getMonthLabel(c.createdAt) :
+        group === "client" ? (c.clientName ?? "Без клиента") :
+        getStatusLabel(c);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(c);
+    }
+    return Array.from(map.entries()).map(([label, items]) => ({ label, items }));
+  }, [sorted, group]);
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
@@ -240,6 +280,39 @@ export default function ConsultationsPage() {
           </button>
         </div>
 
+        {/* Sort + Group controls */}
+        {!loading && consultations.length > 0 && (
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <div className="relative">
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortOption)}
+                className="appearance-none pl-3 pr-7 py-1.5 rounded-lg border text-xs font-medium cursor-pointer focus:outline-none"
+                style={{ background: "#F0EBE1", borderColor: "#D8CFBE", color: "#6B5D4F" }}
+              >
+                <option value="date_desc">Сначала новые</option>
+                <option value="date_asc">Сначала старые</option>
+                <option value="client">По клиенту</option>
+              </select>
+              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#A8997F" }} />
+            </div>
+            <div className="relative">
+              <select
+                value={group}
+                onChange={(e) => setGroup(e.target.value as GroupOption)}
+                className="appearance-none pl-3 pr-7 py-1.5 rounded-lg border text-xs font-medium cursor-pointer focus:outline-none"
+                style={{ background: "#F0EBE1", borderColor: "#D8CFBE", color: "#6B5D4F" }}
+              >
+                <option value="none">Без группировки</option>
+                <option value="month">По месяцу</option>
+                <option value="client">По клиенту</option>
+                <option value="status">По статусу</option>
+              </select>
+              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#A8997F" }} />
+            </div>
+          </div>
+        )}
+
         {/* List */}
         {loading ? (
           <div className="space-y-3">
@@ -256,14 +329,26 @@ export default function ConsultationsPage() {
             Консультаций пока нет. Загрузите первую запись.
           </div>
         ) : (
-          <div className="space-y-3 sm:space-y-4">
-            {consultations.map((c, i) => (
-              <ConsultationCard
-                key={c.id}
-                c={c}
-                num={c.sessionNumber ?? (total - i)}
-                onOpen={() => router.push(`/consultation/${c.id}`)}
-              />
+          <div className="space-y-6">
+            {grouped.map(({ label, items }) => (
+              <div key={label || "_"}>
+                {label && (
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>{label}</span>
+                    <div className="flex-1 h-px" style={{ background: "#E4DDD0" }} />
+                  </div>
+                )}
+                <div className="space-y-3 sm:space-y-4">
+                  {items.map((c, i) => (
+                    <ConsultationCard
+                      key={c.id}
+                      c={c}
+                      num={c.sessionNumber ?? (total - sorted.indexOf(c))}
+                      onOpen={() => router.push(`/consultation/${c.id}`)}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}

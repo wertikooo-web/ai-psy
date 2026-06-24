@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { BookOpen, Upload, Trash2, Download, FileText, ExternalLink, RefreshCw, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { getFileStatus } from "@/lib/knowledgeBaseConfig";
 
 interface KBFile {
   name:       string;
@@ -10,7 +11,7 @@ interface KBFile {
   modifiedAt: string;
 }
 
-const CORE_FILES = new Set([
+const PROTECTED_FILES = new Set([
   "000_CORE_INSTRUCTIONS.md",
   "00_КАРТА_БАЗЫ_ЗНАНИЙ.md",
 ]);
@@ -201,11 +202,12 @@ export default function KnowledgeBasePage() {
                         <td className="px-4 py-3.5 text-xs hidden sm:table-cell" style={{ color: "#A8997F" }}>{formatSize(file.size)}</td>
                         <td className="px-4 py-3.5 text-xs hidden md:table-cell" style={{ color: "#A8997F" }}>{formatDate(file.modifiedAt)}</td>
                         <td className="px-4 py-3.5">
-                          {CORE_FILES.has(file.name) ? (
-                            <span className="text-xs bg-brand-50 text-brand-600 px-2 py-0.5 rounded-full font-medium">используется</span>
-                          ) : (
-                            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#E4DDD0", color: "#A8997F" }}>не подключён</span>
-                          )}
+                          {(() => {
+                            const s = getFileStatus(file.name);
+                            if (s === "always") return <span className="text-xs bg-brand-50 text-brand-600 px-2 py-0.5 rounded-full font-medium">всегда</span>;
+                            if (s === "used")   return <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-medium">используется</span>;
+                            return <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#E4DDD0", color: "#A8997F" }}>не подключён</span>;
+                          })()}
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-1 justify-end">
@@ -220,7 +222,7 @@ export default function KnowledgeBasePage() {
                             >
                               <Download size={13} />
                             </a>
-                            {!CORE_FILES.has(file.name) && (
+                            {!PROTECTED_FILES.has(file.name) && (
                               <button
                                 onClick={() => setDeleteTarget(file.name)}
                                 className="p-1.5 rounded-lg text-stone-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
