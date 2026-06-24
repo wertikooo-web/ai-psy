@@ -1,184 +1,149 @@
 "use client";
 
 import { useState } from "react";
-import { Bot, ExternalLink, Plus, X, Save } from "lucide-react";
+import { ExternalLink, X, Bot } from "lucide-react";
+import { PSY_GPTS_GROUPS, type GptItem } from "@/lib/psyGpts";
 
-interface GPT {
-  id:          string;
-  name:        string;
-  description: string;
-  url:         string;
+// ── Card ──────────────────────────────────────────────────────────────────────
+function GptCard({
+  item,
+  onRemove,
+}: {
+  item: GptItem;
+  onRemove: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      className="rounded-2xl border flex flex-col shadow-sm hover:shadow-md transition-shadow"
+      style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}
+    >
+      {/* Top: emoji + name + remove */}
+      <div
+        className="px-5 pt-4 pb-3 border-b flex items-start gap-3"
+        style={{ background: "#E8E0D0", borderColor: "#DDD4C6", borderRadius: "1rem 1rem 0 0" }}
+      >
+        <span className="text-xl leading-none flex-shrink-0 mt-0.5">{item.emoji}</span>
+        <h3 className="flex-1 text-sm font-semibold leading-snug" style={{ color: "#3A2E22" }}>
+          {item.name}
+        </h3>
+        <button
+          onClick={onRemove}
+          title="Убрать из списка"
+          className="flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-colors"
+          style={{ color: "#A8997F" }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "#6B5D4F"; e.currentTarget.style.background = "#D8CFBE"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}
+        >
+          <X size={13} />
+        </button>
+      </div>
+
+      {/* Description */}
+      <div className="px-5 py-3 flex-1">
+        <p className="text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
+          {item.description}
+        </p>
+      </div>
+
+      {/* CTA */}
+      <a
+        href={item.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="w-full flex items-center justify-between px-5 py-2.5 text-sm font-medium rounded-b-2xl transition-colors"
+        style={{
+          background:  hovered ? "#BEB09E" : "#C9BBAA",
+          color:       "#3A2E22",
+          borderTop:   "1px solid #B8AC9A",
+          boxShadow:   "inset 0 1px 0 rgba(255,255,255,0.22)",
+        }}
+      >
+        <span>Открыть GPT</span>
+        <ExternalLink
+          size={13}
+          className="flex-shrink-0"
+          style={{ color: "#6B5D4F", transform: hovered ? "translateX(2px)" : "none", transition: "transform 0.15s" }}
+        />
+      </a>
+    </div>
+  );
 }
 
-const initialGPTs: GPT[] = [
-  {
-    id:          "gestalt",
-    name:        "Gestalt Assistant",
-    description: "Помогает применять гештальт-подход в анализе сессий: цикл контакта, фигура и фон, незавершённые ситуации.",
-    url:         "https://chat.openai.com/g/g-gestalt",
-  },
-  {
-    id:          "cbt",
-    name:        "CBT Coach",
-    description: "Инструмент для когнитивно-поведенческой терапии: дисфункциональные убеждения, ABC-модель, поведенческие эксперименты.",
-    url:         "https://chat.openai.com/g/g-cbt",
-  },
-  {
-    id:          "schema",
-    name:        "Schema Therapy Guide",
-    description: "Работа со схемами и режимами клиента. Идентификация ранних дезадаптивных схем, ограниченное родительство.",
-    url:         "https://chat.openai.com/g/g-schema",
-  },
-  {
-    id:          "trauma",
-    name:        "Trauma-Informed",
-    description: "Помощник для работы с травматическим опытом. Нейробиология травмы, ресурсирование, окна толерантности.",
-    url:         "https://chat.openai.com/g/g-trauma",
-  },
-  {
-    id:          "supervision",
-    name:        "Supervision Support",
-    description: "Поддержка в процессе супервизии. Анализ контрпереноса, сложных случаев и терапевтических отношений.",
-    url:         "https://chat.openai.com/g/g-supervision",
-  },
-];
-
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function PsyGptsPage() {
-  const [gpts, setGpts]       = useState<GPT[]>(initialGPTs);
-  const [adding, setAdding]   = useState(false);
-  const [form, setForm]       = useState({ name: "", description: "", url: "" });
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
 
-  function handleAdd() {
-    if (!form.name.trim() || !form.url.trim()) return;
-    setGpts((prev) => [
-      ...prev,
-      { id: Date.now().toString(), ...form },
-    ]);
-    setForm({ name: "", description: "", url: "" });
-    setAdding(false);
+  function hide(id: string) {
+    setHidden((prev) => new Set([...prev, id]));
   }
 
-  function handleRemove(id: string) {
-    setGpts((prev) => prev.filter((g) => g.id !== id));
-  }
+  const groups = PSY_GPTS_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((item) => !hidden.has(item.id)),
+  }));
+
+  const hiddenCount = hidden.size;
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
-      <div className="p-8 max-w-4xl mx-auto">
+      <div className="p-8 max-w-6xl mx-auto">
 
+        {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: "#3D3228" }}>PSY-GPTs</h1>
-            <p className="text-sm mt-0.5" style={{ color: "#A8997F" }}>Персональные GPTs для психологической работы</p>
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "#E8E0D0", border: "1px solid #D8CFBE" }}
+            >
+              <Bot size={18} style={{ color: "#6B5D4F" }} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold" style={{ color: "#3A2E22" }}>PSY-GPTs</h1>
+              <p className="text-sm" style={{ color: "#A8997F" }}>
+                Специализированные AI-ассистенты для профессиональной работы
+              </p>
+            </div>
           </div>
-          <button
-            onClick={() => setAdding(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm"
-          >
-            <Plus size={16} />
-            Добавить GPT
-          </button>
+          {hiddenCount > 0 && (
+            <button
+              onClick={() => setHidden(new Set())}
+              className="text-sm px-3 py-1.5 rounded-xl border transition-colors"
+              style={{ color: "#6B5D4F", borderColor: "#D8CFBE", background: "#F0EBE1" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#E8E0D0"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#F0EBE1"; }}
+            >
+              Восстановить скрытые ({hiddenCount})
+            </button>
+          )}
         </div>
 
-        {/* Add form */}
-        {adding && (
-          <div className="mb-6 rounded-2xl border shadow-sm p-5" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
-            <h2 className="text-sm font-semibold mb-4" style={{ color: "#4A3C2E" }}>Новый GPT</h2>
-            <div className="space-y-3">
-              <input
-                autoFocus
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Название"
-                className="w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-50 placeholder:text-stone-300"
-                style={{ background: "#FAF7F1", borderColor: "#D4C9B5", color: "#3D3228" }}
-              />
-              <textarea
-                rows={2}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Краткое описание"
-                className="w-full px-3.5 py-2.5 rounded-xl border text-sm resize-none focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-50 placeholder:text-stone-300"
-                style={{ background: "#FAF7F1", borderColor: "#D4C9B5", color: "#3D3228" }}
-              />
-              <input
-                value={form.url}
-                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-                placeholder="https://chat.openai.com/g/..."
-                className="w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-50 placeholder:text-stone-300"
-                style={{ background: "#FAF7F1", borderColor: "#D4C9B5", color: "#3D3228" }}
-              />
-            </div>
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => setAdding(false)}
-                className="flex-1 py-2 rounded-xl border text-sm transition-colors"
-                style={{ borderColor: "#D4C9B5", color: "#6B5D4F", background: "#EDE7DA" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#E4DDD0"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#EDE7DA"; }}
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleAdd}
-                className="flex-1 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <Save size={14} />
-                Добавить
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Groups */}
+        <div className="space-y-10">
+          {groups.map((group) => (
+            <section key={group.id}>
+              <h2 className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: "#A8997F" }}>
+                {group.label}
+              </h2>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {gpts.map((gpt) => (
-            <div
-              key={gpt.id}
-              className="rounded-2xl border shadow-sm transition-all flex flex-col overflow-hidden"
-              style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}
-            >
-              <div className="flex items-start justify-between px-5 py-4 border-b" style={{ background: "#E8E0D0", borderColor: "#DDD4C6" }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#DDD4C6" }}>
-                    <Bot size={18} style={{ color: "#6B5D4F" }} />
-                  </div>
-                  <h2 className="font-semibold" style={{ color: "#4A3C2E" }}>{gpt.name}</h2>
-                </div>
-                <button
-                  onClick={() => handleRemove(gpt.id)}
-                  className="p-1 rounded-lg text-stone-300 hover:text-rose-400 hover:bg-rose-50 transition-colors"
-                  title="Удалить"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              <div className="px-5 py-4 flex-1 flex flex-col">
-                <p className="text-sm leading-relaxed flex-1 mb-4" style={{ color: "#6B5D4F" }}>
-                  {gpt.description}
+              {group.items.length === 0 ? (
+                <p className="text-sm py-6 text-center" style={{ color: "#C9BBAA" }}>
+                  Все GPTs в этой группе скрыты
                 </p>
-
-                <a
-                  href={gpt.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-b-2xl -mx-5 -mb-4 text-sm font-medium transition-colors border-t"
-                  style={{ background: "#C9BBAA", color: "#4A3C2E", borderColor: "#D4C9B5" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#BEB09E"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "#C9BBAA"; }}
-                >
-                  Открыть GPT
-                  <ExternalLink size={13} />
-                </a>
-              </div>
-            </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {group.items.map((item) => (
+                    <GptCard key={item.id} item={item} onRemove={() => hide(item.id)} />
+                  ))}
+                </div>
+              )}
+            </section>
           ))}
         </div>
 
-        <p className="text-xs text-center mt-8" style={{ color: "#C9BBAA" }}>
-          Ссылки открываются в ChatGPT. Список сохраняется только в текущей сессии — постоянное хранение будет добавлено позже.
-        </p>
       </div>
     </div>
   );
