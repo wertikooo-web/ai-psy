@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { consultations } from "@/lib/mockData";
 import { getConsultation } from "@/lib/consultationStore";
+import { readProfile } from "@/lib/userProfileStore";
 import { ConsultationClient } from "@/components/consultation/ConsultationClient";
 import { RealConsultationView } from "@/components/consultation/RealConsultationView";
 import { Avatar } from "@/components/ui/Avatar";
@@ -65,8 +66,10 @@ export default async function ConsultationPage({ params }: Props) {
   }
 
   // 2. Fallback: real consultation from local JSON store
-  const real = await getConsultation(id);
+  const [real, profile] = await Promise.all([getConsultation(id), readProfile()]);
   if (!real) notFound();
 
-  return <RealConsultationView consultation={real} />;
+  const defaultMode = (profile.defaultAnalysisMode ?? "working") as "working" | "deep" | "therapist_process" | "gestalt";
+
+  return <RealConsultationView consultation={real} defaultMode={defaultMode} />;
 }

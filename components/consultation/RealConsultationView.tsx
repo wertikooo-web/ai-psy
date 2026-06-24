@@ -14,6 +14,7 @@ import Link from "next/link";
 
 interface Props {
   consultation: StoredConsultation;
+  defaultMode?: ModeId;
 }
 
 function formatBytes(bytes: number): string {
@@ -77,7 +78,7 @@ function cleanTitle(title: string, idx = 1): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function RealConsultationView({ consultation: c }: Props) {
+export function RealConsultationView({ consultation: c, defaultMode = "working" }: Props) {
   // ── Derived initial state ─────────────────────────────────────────────────
   const audioFile = c.audio ?? (c.fileUrl
     ? { fileName: c.fileName ?? "", fileUrl: c.fileUrl, fileSize: c.fileSize ?? 0 }
@@ -94,7 +95,7 @@ export function RealConsultationView({ consultation: c }: Props) {
   const [transcribing, setTranscribing]   = useState(false);
   const [transcribeErr, setTranscribeErr] = useState<string | null>(null);
 
-  const [selectedMode, setSelectedMode]   = useState<ModeId>("working");
+  const [selectedMode, setSelectedMode]   = useState<ModeId>(defaultMode);
   const [analyzing, setAnalyzing]         = useState(false);
   const [analysisResult, setResult]       = useState<string | null>(lastAnalysis?.result ?? null);
   const [analyzedMode, setAnalyzedMode]   = useState<ModeId | null>((lastAnalysis?.mode as ModeId) ?? null);
