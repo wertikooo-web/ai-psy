@@ -39,6 +39,7 @@ const systemNav = [
   { href: "/help",     label: "Помощь",    icon: HelpCircle },
 ];
 
+
 // ── Nav item ──────────────────────────────────────────────────────────────────
 function NavItem({
   href, label, icon: Icon, exact = false,
@@ -60,23 +61,6 @@ function NavItem({
       <Icon size={16} strokeWidth={active ? 2.2 : 1.8} />
       {label}
     </Link>
-  );
-}
-
-// ── Nav group ─────────────────────────────────────────────────────────────────
-function NavGroup({ label, items }: { label: string; items: typeof mainNav }) {
-  return (
-    <div className="space-y-0.5">
-      <div
-        className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider"
-        style={{ color: C.groupLabel }}
-      >
-        {label}
-      </div>
-      {items.map(({ href, label: l, icon }) => (
-        <NavItem key={href} href={href} label={l} icon={icon} exact={href === "/"} />
-      ))}
-    </div>
   );
 }
 
@@ -112,35 +96,53 @@ export function Sidebar() {
           </div>
         </Link>
 
-        {/* Main nav */}
-        <nav className="flex-1 px-3 py-5 space-y-5 overflow-y-auto">
-          <NavGroup label="Основное"    items={mainNav}   />
-          <NavGroup label="Инструменты" items={toolsNav}  />
+        {/* Nav groups */}
+        <nav className="flex-1 px-3 py-5 overflow-y-auto flex flex-col gap-8">
+
+          {/* Группа 1: Основное + Загрузить запись */}
+          <div className="space-y-0.5">
+            <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+              Основное
+            </div>
+            {mainNav.map(({ href, label, icon }) => (
+              <NavItem key={href} href={href} label={label} icon={icon} exact={href === "/"} />
+            ))}
+            <button
+              onClick={() => setUploadOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              style={{ color: C.idleTxt, background: "transparent" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = C.hover; e.currentTarget.style.color = C.activeTxt; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.idleTxt; }}
+            >
+              <Mic size={16} strokeWidth={1.8} />
+              Загрузить запись
+            </button>
+          </div>
+
+          {/* Группа 2: Инструменты */}
+          <div className="space-y-0.5">
+            <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+              Инструменты
+            </div>
+            {toolsNav.map(({ href, label, icon }) => (
+              <NavItem key={href} href={href} label={label} icon={icon} />
+            ))}
+          </div>
+
+          {/* Группа 3: Система */}
+          <div className="space-y-0.5">
+            <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+              Система
+            </div>
+            {systemNav.map(({ href, label, icon }) => (
+              <NavItem key={href} href={href} label={label} icon={icon} />
+            ))}
+          </div>
+
         </nav>
 
-        {/* Upload quick action */}
-        <div className="px-3 pb-3">
-          <button
-            onClick={() => setUploadOpen(true)}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
-            style={{
-              color:         C.idleTxt,
-              border:        `1px dashed ${C.uploadBdr}`,
-              background:    "transparent",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = C.hover; e.currentTarget.style.color = C.activeTxt; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.idleTxt; }}
-          >
-            <Mic size={16} strokeWidth={1.8} />
-            Загрузить запись
-          </button>
-        </div>
-
-        {/* System nav + UserChip */}
-        <div className="px-3 py-3 space-y-0.5" style={{ borderTop: `1px solid ${C.border}` }}>
-          {systemNav.map(({ href, label, icon }) => (
-            <NavItem key={href} href={href} label={label} icon={icon} />
-          ))}
+        {/* UserChip — отдельно в самом низу */}
+        <div className="px-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
           <UserChip />
         </div>
       </aside>
