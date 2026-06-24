@@ -301,7 +301,9 @@ export default function SettingsPage() {
                 </label>
               ))}
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+              {status === "saved" && <span className="flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 size={13} />Настройки сохранены</span>}
+              {status === "error"  && <span className="flex items-center gap-1 text-xs text-red-500"><AlertCircle size={13} />Ошибка сохранения</span>}
               <button
                 onClick={handleSave}
                 disabled={status === "saving"}
