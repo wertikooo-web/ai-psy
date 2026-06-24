@@ -134,7 +134,7 @@ export default function HomePage() {
           </h1>
         </div>
         <p className="text-sm leading-relaxed mb-7" style={{ color: "#A8997F" }}>
-          AI-помощник для работы с консультациями, транскриптами и историей клиентов
+          Я ваш AI-помощник для работы с консультациями, транскриптами и историей клиентов
         </p>
 
         {/* Action buttons */}
