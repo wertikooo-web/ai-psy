@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, X, MessageSquare, Plus, Save } from "lucide-react";
+import { ExternalLink, X, MessageSquare, Plus, Save, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { DEFAULT_AI_SERVICES, type AiService } from "@/lib/aiServices";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 
@@ -225,6 +226,7 @@ function AddCard({ onClick }: { onClick: () => void }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function AiChatPage() {
+  const router = useRouter();
   const [services, setServices] = useState<AiService[]>(DEFAULT_AI_SERVICES);
   const [hidden,   setHidden]   = useState<Set<string>>(new Set());
   const [addOpen,  setAddOpen]  = useState(false);
@@ -236,19 +238,24 @@ export default function AiChatPage() {
       <div className="p-8 max-w-6xl mx-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "#E8E0D0", border: "1px solid #D8CFBE" }}
-            >
-              <MessageSquare size={18} style={{ color: "#6B5D4F" }} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold" style={{ color: "#3A2E22" }}>AI Чат</h1>
-              <p className="text-sm" style={{ color: "#A8997F" }}>Быстрый доступ к AI-сервисам</p>
-            </div>
-          </div>
+        <div className="flex items-center gap-3 mb-2">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1.5 text-sm transition-colors"
+            style={{ color: "#A8997F" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#4A3C2E"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; }}
+          >
+            <ArrowLeft size={16} />
+            Назад
+          </button>
+          <div className="w-px h-5" style={{ background: "#DDD4C6" }} />
+          <h1 className="text-xl font-bold" style={{ color: "#3A2E22" }}>AI Чат</h1>
+        </div>
+        <p className="text-sm mb-8" style={{ color: "#A8997F" }}>Быстрый доступ к AI-сервисам</p>
+
+        <div className="flex items-center justify-between mb-6">
+          <div />
 
           <div className="flex items-center gap-2">
             {hidden.size > 0 && (

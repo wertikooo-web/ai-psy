@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { BookOpen, Upload, Trash2, Download, FileText, ExternalLink, RefreshCw } from "lucide-react";
+import { BookOpen, Upload, Trash2, Download, FileText, ExternalLink, RefreshCw, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface KBFile {
   name:       string;
@@ -50,6 +51,7 @@ function DeleteConfirm({ filename, onCancel, onConfirm, loading }: DeleteConfirm
 }
 
 export default function KnowledgeBasePage() {
+  const router = useRouter();
   const [files, setFiles]           = useState<KBFile[]>([]);
   const [loading, setLoading]       = useState(true);
   const [uploading, setUploading]   = useState(false);
@@ -109,8 +111,21 @@ export default function KnowledgeBasePage() {
       <div className="p-8 max-w-4xl mx-auto">
 
         <div className="mb-8">
-          <h1 className="text-xl font-bold" style={{ color: "#3D3228" }}>База знаний</h1>
-          <p className="text-sm mt-0.5" style={{ color: "#A8997F" }}>Файлы, которые используются в AI-анализе консультаций</p>
+          <div className="flex items-center gap-3 mb-1">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-1.5 text-sm transition-colors"
+              style={{ color: "#A8997F" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#4A3C2E"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; }}
+            >
+              <ArrowLeft size={16} />
+              Назад
+            </button>
+            <div className="w-px h-5" style={{ background: "#DDD4C6" }} />
+            <h1 className="text-xl font-bold" style={{ color: "#3D3228" }}>База знаний</h1>
+          </div>
+          <p className="text-sm" style={{ color: "#A8997F" }}>Файлы, которые используются в AI-анализе консультаций</p>
         </div>
 
         {/* Block 1: Internal KB */}
