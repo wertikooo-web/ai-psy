@@ -128,7 +128,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#F8F4EC" }}>
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#FDFCFA" }}>
       <div className="max-w-2xl mx-auto px-6 py-10 space-y-6">
         <div className="flex items-center gap-3">
           <button
@@ -344,9 +344,9 @@ function Block({ icon, title, sub, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
-      <div className="px-6 py-4 border-b flex items-center gap-3" style={{ background: "#E8E0D0", borderColor: "#DDD4C6" }}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#DDD4C6" }}>{icon}</div>
+    <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F7F4EF", borderColor: "#E5DDD2" }}>
+      <div className="px-6 py-4 border-b flex items-center gap-3" style={{ background: "#F0EBE3", borderColor: "#E5DDD2" }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#E5DDD2" }}>{icon}</div>
         <div>
           <h2 className="text-sm font-semibold" style={{ color: "#4A3C2E" }}>{title}</h2>
           <p className="text-xs" style={{ color: "#A8997F" }}>{sub}</p>

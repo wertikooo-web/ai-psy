@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 // ── Palette (same as /clients) ────────────────────────────────────────────────
-const CARD_BG  = "#F0EBE1";
+const CARD_BG  = "#F4F0E8";
 const TAB_BG   = "#C9BBAA";
 const TAB_HOV  = "#BEB09E";
 
@@ -173,7 +173,7 @@ export default function ConsultationsPage() {
   const total = consultations.length;
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#F7F3EE" }}>
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#FAF7F2" }}>
       <div className="p-8 max-w-3xl mx-auto">
 
         {/* Header */}
