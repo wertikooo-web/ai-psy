@@ -87,23 +87,31 @@ function Tip({ text, children }: { text: string; children: React.ReactNode }) {
 
 // ── Confirm modal ─────────────────────────────────────────────────────────────
 interface ConfirmProps {
-  title: string; body: string; action: string; color: string;
+  title: string; body: string; action: string; color: string; isMock?: boolean;
   onConfirm: () => void; onCancel: () => void; loading: boolean;
 }
-function Confirm({ title, body, action, color, onConfirm, onCancel, loading }: ConfirmProps) {
+function Confirm({ title, body, action, color, isMock, onConfirm, onCancel, loading }: ConfirmProps) {
   return (
     <ModalPortal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
           <h2 className="text-base font-semibold text-slate-800 mb-2">{title}</h2>
-          <p className="text-sm text-slate-500 mb-6 leading-relaxed">{body}</p>
+          {isMock ? (
+            <p className="text-sm text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 mb-6 leading-relaxed">
+              Это демо-клиент. Создайте реального клиента через «Добавить клиента», чтобы управлять статусами.
+            </p>
+          ) : (
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">{body}</p>
+          )}
           <div className="flex gap-3">
             <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-              Отмена
+              {isMock ? "Закрыть" : "Отмена"}
             </button>
-            <button onClick={onConfirm} disabled={loading} className={`flex-1 py-2.5 rounded-xl text-white text-sm font-medium transition-colors disabled:bg-slate-200 ${color}`}>
-              {loading ? "Подождите..." : action}
-            </button>
+            {!isMock && (
+              <button onClick={onConfirm} disabled={loading} className={`flex-1 py-2.5 rounded-xl text-white text-sm font-medium transition-colors disabled:bg-slate-200 ${color}`}>
+                {loading ? "Подождите..." : action}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -167,8 +175,6 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
           background: "#FFFFFF",
           border: "1px solid #D8CFBE",
           boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-          opacity: client.isMock ? 0.35 : 1,
-          pointerEvents: client.isMock ? "none" : "auto",
         }}
       >
         {status === "active" && (
@@ -317,14 +323,24 @@ export default function ClientsPage() {
   }
 
   async function handleConfirmedStatus(status: ClientStatus) {
-    if (!target || target.isMock) { setModal(null); return; }
+    if (!target) { setModal(null); return; }
+    if (target.isMock) {
+      setModal(null);
+      setTarget(null);
+      return;
+    }
     setActionLoading(true);
     try { await patchStatus(target.id, status); }
     finally { setActionLoading(false); setModal(null); setTarget(null); }
   }
 
   async function handleDelete() {
-    if (!target || target.isMock) { setModal(null); return; }
+    if (!target) { setModal(null); return; }
+    if (target.isMock) {
+      setModal(null);
+      setTarget(null);
+      return;
+    }
     setActionLoading(true);
     try {
       await fetch(`/api/clients/${target.id}`, { method: "DELETE" });
@@ -442,6 +458,7 @@ export default function ClientsPage() {
           body="Клиент останется в системе. Все консультации, материалы и история сохранятся."
           action="Перевести в паузу"
           color="bg-amber-500 hover:bg-amber-600"
+          isMock={!!target.isMock}
           onCancel={() => { setModal(null); setTarget(null); }}
           onConfirm={() => handleConfirmedStatus("paused")}
           loading={actionLoading}
@@ -453,6 +470,7 @@ export default function ClientsPage() {
           body="Клиент исчезнет из активных клиентов, но все консультации, материалы и история сохранятся."
           action="Переместить в архив"
           color="bg-stone-600 hover:bg-stone-700"
+          isMock={!!target.isMock}
           onCancel={() => { setModal(null); setTarget(null); }}
           onConfirm={() => handleConfirmedStatus("archived")}
           loading={actionLoading}
@@ -464,6 +482,7 @@ export default function ClientsPage() {
           body="Клиент снова появится в списке активных клиентов."
           action="Вернуть в активные"
           color="bg-emerald-500 hover:bg-emerald-600"
+          isMock={!!target.isMock}
           onCancel={() => { setModal(null); setTarget(null); }}
           onConfirm={() => handleConfirmedStatus("active")}
           loading={actionLoading}
@@ -475,6 +494,7 @@ export default function ClientsPage() {
           body="Будут удалены клиент, консультации, материалы и история. Это действие нельзя отменить."
           action="Удалить"
           color="bg-rose-500 hover:bg-rose-600"
+          isMock={!!target.isMock}
           onCancel={() => { setModal(null); setTarget(null); }}
           onConfirm={handleDelete}
           loading={actionLoading}
