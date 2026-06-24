@@ -4,13 +4,14 @@
  */
 
 export interface UserProfile {
-  firstName:           string;
-  lastName:            string;
-  displayName:         string;
-  specialization:      string;
-  approach?:           string;
-  email?:              string;
+  firstName:            string;
+  lastName:             string;
+  displayName:          string;
+  specialization:       string;
+  approach?:            string;
+  email?:               string;
   defaultAnalysisMode?: string;
+  photoUrl?:            string;   // base64 data URL, max ~200×200
 }
 
 export const DEFAULT_PROFILE: UserProfile = {

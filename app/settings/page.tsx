@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Save, Trash2, User, CheckCircle2, AlertCircle,
-  Key, BrainCircuit, Database, Loader2,
+  Key, BrainCircuit, Database, Loader2, Camera, X,
 } from "lucide-react";
 import type { UserProfile } from "@/lib/userProfile";
 
@@ -15,6 +15,7 @@ const EMPTY: UserProfile = {
   approach:            "",
   email:               "",
   defaultAnalysisMode: "working",
+  photoUrl:            "",
 };
 
 const APPROACHES = ["Гештальт", "КПТ", "ACT", "Схема-терапия", "Интегративный", "Другой"];
@@ -71,6 +72,33 @@ export default function SettingsPage() {
     }
   }
 
+  function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const src = ev.target?.result as string;
+      // Resize to max 200x200 via canvas before storing
+      const img = new Image();
+      img.onload = () => {
+        const maxSize = 200;
+        const scale   = Math.min(maxSize / img.width, maxSize / img.height, 1);
+        const w = Math.round(img.width  * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width  = w;
+        canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        setProfile((p) => ({ ...p, photoUrl: dataUrl }));
+        if (status === "saved") setStatus("idle");
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
   async function handleDelete() {
     if (!confirm("Очистить профиль? Имя и специализация вернутся к значениям по умолчанию.")) return;
     setDeleting(true);
@@ -108,6 +136,38 @@ export default function SettingsPage() {
         {/* ── Block 1: Profile ─────────────────────────────────────────────── */}
         <Block icon={<User size={15} className="text-brand-500" />} title="Профиль психолога" sub="Имя отображается в боковой панели и на главной">
           <div className="px-6 py-5 space-y-4">
+            {/* Photo */}
+            <div className="flex items-center gap-4">
+              <div className="relative flex-shrink-0">
+                {profile.photoUrl ? (
+                  <img src={profile.photoUrl} alt="Фото" className="w-16 h-16 rounded-full object-cover border-2 border-slate-100" />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-brand-500 flex items-center justify-center text-white text-lg font-bold border-2 border-slate-100">
+                    {profile.firstName?.[0]?.toUpperCase() || "П"}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors">
+                    <Camera size={13} />
+                    {profile.photoUrl ? "Сменить фото" : "Загрузить фото"}
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                  </label>
+                  {profile.photoUrl && (
+                    <button
+                      onClick={() => { setProfile((p) => ({ ...p, photoUrl: "" })); }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs text-rose-400 hover:bg-rose-50 hover:border-rose-200 transition-colors"
+                    >
+                      <X size={11} />
+                      Удалить
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400">JPG, PNG · отображается в боковой панели</p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <Field label="Имя" value={profile.firstName} onChange={(v) => set("firstName", v)} placeholder="Наталья" />
               <Field label="Фамилия" value={profile.lastName} onChange={(v) => set("lastName", v)} placeholder="Веселова" />
