@@ -157,6 +157,7 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
       {/* ── Body: stats + concern + tags ── */}
       <div className="px-5 pb-4 flex-1">
         <div className="flex items-center gap-3 mb-2.5 text-xs text-stone-400">
+          {client.age && <span>{client.age} лет</span>}
           <div className="flex items-center gap-1">
             <Users size={11} />
             <span>{client.totalConsultations} встреч</span>
