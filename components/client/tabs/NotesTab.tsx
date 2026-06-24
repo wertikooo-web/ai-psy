@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { NotebookPen, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
@@ -47,7 +47,7 @@ export function NotesTab({ clientId, notes, onAdd, onDelete, isMock }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type:    "therapist_notes",
-          title:   "Р—Р°РјРµС‚РєРё РїСЃРёС…РѕР»РѕРіР°",
+          title:   "Заметки психолога",
           content,
         }),
       });
@@ -62,7 +62,7 @@ export function NotesTab({ clientId, notes, onAdd, onDelete, isMock }: Props) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("РЈРґР°Р»РёС‚СЊ СЌС‚Сѓ Р·Р°РјРµС‚РєСѓ?")) return;
+    if (!confirm("Удалить эту заметку?")) return;
     setDeletingId(id);
     try {
       await fetch(`/api/client-materials/${clientId}/${id}`, { method: "DELETE" });
@@ -75,18 +75,18 @@ export function NotesTab({ clientId, notes, onAdd, onDelete, isMock }: Props) {
   return (
     <div className="space-y-5">
 
-      {/* РќРѕРІР°СЏ Р·Р°РјРµС‚РєР° */}
+      {/* Новая заметка */}
       <div className="rounded-2xl border overflow-hidden" style={{ background: S.bg, borderColor: S.border }}>
         <div className="flex items-center gap-2 px-5 py-4" style={{ background: "#F0EBE0", borderBottom: `1px solid ${S.divider}` }}>
           <NotebookPen size={14} style={{ color: S.muted }} />
-          <span className="text-sm font-semibold" style={{ color: S.title }}>РќРѕРІР°СЏ Р·Р°РјРµС‚РєР°</span>
-          <span className="text-xs ml-1" style={{ color: S.muted }}>вЂ” С‚РѕР»СЊРєРѕ РґР»СЏ РІР°СЃ, РЅРµ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ РІ AI</span>
+          <span className="text-sm font-semibold" style={{ color: S.title }}>Новая заметка</span>
+          <span className="text-xs ml-1" style={{ color: S.muted }}>— только для вас, не отправляется в AI</span>
         </div>
         <div className="px-5 py-4">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Р’Р°С€Рё РЅР°Р±Р»СЋРґРµРЅРёСЏ, РјС‹СЃР»Рё, РІР°Р¶РЅС‹Рµ РґРµС‚Р°Р»Рё Рѕ РєР»РёРµРЅС‚Рµ..."
+            placeholder="Ваши наблюдения, мысли, важные детали о клиенте..."
             rows={4}
             className="w-full text-sm rounded-xl border px-4 py-3 resize-none focus:outline-none focus:ring-2"
             style={{
@@ -107,26 +107,26 @@ export function NotesTab({ clientId, notes, onAdd, onDelete, isMock }: Props) {
               onMouseLeave={e => { e.currentTarget.style.background = "#4A3C2E"; }}
             >
               <Plus size={14} />
-              {saving ? "РЎРѕС…СЂР°РЅСЏСЋ..." : "Р”РѕР±Р°РІРёС‚СЊ Р·Р°РјРµС‚РєСѓ"}
+              {saving ? "Сохраняю..." : "Добавить заметку"}
             </button>
           </div>
         </div>
       </div>
 
-      {/* РЎРїРёСЃРѕРє Р·Р°РјРµС‚РѕРє */}
+      {/* Список заметок */}
       {sorted.length === 0 ? (
         <div className="rounded-2xl border py-12 text-center" style={{ background: S.bg, borderColor: S.border }}>
           <NotebookPen size={28} className="mx-auto mb-3" style={{ color: S.border }} />
-          <p className="text-sm font-medium" style={{ color: S.title }}>Р—Р°РјРµС‚РѕРє РїРѕРєР° РЅРµС‚</p>
+          <p className="text-sm font-medium" style={{ color: S.title }}>Заметок пока нет</p>
           <p className="text-xs max-w-xs mx-auto mt-1" style={{ color: S.muted }}>
-            Р’Р°С€Рё Р»РёС‡РЅС‹Рµ РЅР°Р±Р»СЋРґРµРЅРёСЏ Рѕ РєР»РёРµРЅС‚Рµ вЂ” РЅРµ РІРёРґРЅС‹ AI Рё РЅРµ СѓС‡Р°СЃС‚РІСѓСЋС‚ РІ Р°РЅР°Р»РёР·Рµ
+            Ваши личные наблюдения о клиенте — не видны AI и не участвуют в анализе
           </p>
         </div>
       ) : (
         <div className="rounded-2xl border overflow-hidden" style={{ background: S.bg, borderColor: S.border }}>
           <div className="px-5 py-3" style={{ background: "#F0EBE0", borderBottom: `1px solid ${S.divider}` }}>
             <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: S.muted }}>
-              Р—Р°РјРµС‚РєРё РїСЃРёС…РѕР»РѕРіР° вЂ” {sorted.length} Р·Р°РїРёСЃРµР№
+              Заметки психолога — {sorted.length} записей
             </span>
           </div>
 
@@ -152,7 +152,7 @@ export function NotesTab({ clientId, notes, onAdd, onDelete, isMock }: Props) {
                         style={{ width: 26, height: 26, color: S.muted }}
                         onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "#FEE2E2"; }}
                         onMouseLeave={e => { e.currentTarget.style.color = S.muted;  e.currentTarget.style.background = "transparent"; }}
-                        title="РЈРґР°Р»РёС‚СЊ Р·Р°РјРµС‚РєСѓ"
+                        title="Удалить заметку"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -162,7 +162,7 @@ export function NotesTab({ clientId, notes, onAdd, onDelete, isMock }: Props) {
                   {/* Text */}
                   <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: S.title }}>
                     {isOpen ? note.content : preview}
-                    {!isOpen && hasMore && <span style={{ color: S.muted }}>вЂ¦</span>}
+                    {!isOpen && hasMore && <span style={{ color: S.muted }}>…</span>}
                   </p>
                   {hasMore && (
                     <button
@@ -173,8 +173,8 @@ export function NotesTab({ clientId, notes, onAdd, onDelete, isMock }: Props) {
                       onMouseLeave={e => { e.currentTarget.style.color = "#A8997F"; }}
                     >
                       {isOpen
-                        ? <><ChevronUp size={11} /> РЎРІРµСЂРЅСѓС‚СЊ</>
-                        : <><ChevronDown size={11} /> РџРѕРєР°Р·Р°С‚СЊ РїРѕР»РЅРѕСЃС‚СЊСЋ</>
+                        ? <><ChevronUp size={11} /> Свернуть</>
+                        : <><ChevronDown size={11} /> Показать полностью</>
                       }
                     </button>
                   )}
@@ -187,4 +187,3 @@ export function NotesTab({ clientId, notes, onAdd, onDelete, isMock }: Props) {
     </div>
   );
 }
-

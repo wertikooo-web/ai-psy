@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { Upload, ChevronDown, ChevronUp, Trash2, FileText } from "lucide-react";
 import { ImportMaterialModal } from "@/components/client/ImportMaterialModal";
 import { MATERIAL_TYPE_LABELS, type ClientMaterial } from "@/lib/types";
 
-// в”Ђв”Ђ Craft palette в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ── Craft palette ─────────────────────────────────────────────────────────────
 const S = {
   bg:      "#FBF8F2",
   border:  "#D8CFBE",
@@ -34,7 +34,7 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleDelete(id: string) {
-    if (!confirm("РЈРґР°Р»РёС‚СЊ РјР°С‚РµСЂРёР°Р»?")) return;
+    if (!confirm("Удалить материал?")) return;
     setDeletingId(id);
     try {
       await fetch(`/api/client-materials/${clientId}/${id}`, { method: "DELETE" });
@@ -54,7 +54,7 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
             className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
           >
             <Upload size={14} />
-            Р”РѕР±Р°РІРёС‚СЊ РјР°С‚РµСЂРёР°Р»С‹
+            Добавить материалы
           </button>
         </div>
 
@@ -64,9 +64,9 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
             style={{ background: S.bg, borderColor: S.border }}
           >
             <FileText size={28} className="mx-auto mb-3" style={{ color: S.tagBdr }} />
-            <p className="text-sm font-medium" style={{ color: S.title }}>РњР°С‚РµСЂРёР°Р»РѕРІ РїРѕРєР° РЅРµС‚</p>
+            <p className="text-sm font-medium" style={{ color: S.title }}>Материалов пока нет</p>
             <p className="text-xs text-stone-400 max-w-xs mx-auto mt-1">
-              РРјРїРѕСЂС‚РёСЂСѓР№С‚Рµ Р·Р°РјРµС‚РєРё, СЃС‚Р°СЂС‹Рµ Р°РЅР°Р»РёР·С‹, С‚СЂР°РЅСЃРєСЂРёРїС‚С‹ РёР»Рё РёСЃС‚РѕСЂРёСЋ РєР»РёРµРЅС‚Р° РёР· РґСЂСѓРіРёС… СЃРёСЃС‚РµРј
+              Импортируйте заметки, старые анализы, транскрипты или историю клиента из других систем
             </p>
           </div>
         )}
@@ -105,7 +105,7 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
                   <button
                     onClick={() => handleDelete(m.id)}
                     disabled={deletingId === m.id}
-                    title="РЈРґР°Р»РёС‚СЊ РјР°С‚РµСЂРёР°Р»"
+                    title="Удалить материал"
                     className="flex items-center justify-center rounded-lg transition-colors flex-shrink-0 disabled:opacity-40"
                     style={{
                       width: 30, height: 30,
@@ -126,14 +126,14 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
               <div className="px-5 py-4" style={{ borderTop: `1px solid ${S.divider}` }}>
                 <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
                   {isOpen ? m.content : preview}
-                  {!isOpen && hasMore && <span style={{ color: S.tagBdr }}>вЂ¦</span>}
+                  {!isOpen && hasMore && <span style={{ color: S.tagBdr }}>…</span>}
                 </p>
                 {hasMore && (
                   <button
                     onClick={() => setExpanded(isOpen ? null : m.id)}
                     className="mt-2 flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 font-medium transition-colors"
                   >
-                    {isOpen ? <><ChevronUp size={12} /> РЎРІРµСЂРЅСѓС‚СЊ</> : <><ChevronDown size={12} /> РџРѕРєР°Р·Р°С‚СЊ РїРѕР»РЅРѕСЃС‚СЊСЋ</>}
+                    {isOpen ? <><ChevronUp size={12} /> Свернуть</> : <><ChevronDown size={12} /> Показать полностью</>}
                   </button>
                 )}
               </div>
@@ -151,4 +151,3 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
     </>
   );
 }
-

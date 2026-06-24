@@ -1,14 +1,14 @@
-﻿"use client";
+"use client";
 
 import { TrendingUp, TrendingDown } from "lucide-react";
 
-// в”Ђв”Ђ Craft palette (consistent with clients page) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ── Craft palette (consistent with clients page) ──────────────────────────────
 const S = {
-  bg:     "#FBF8F2",   // section background
-  border: "#D8CFBE",   // section border
-  tag:    "#E9DCC7",   // tag background
-  tagBdr: "#D0C8B8",   // tag border
-  title:  "#6B5D4F",   // section title color
+  bg:     "#FBF8F2",
+  border: "#D8CFBE",
+  tag:    "#E9DCC7",
+  tagBdr: "#D0C8B8",
+  title:  "#6B5D4F",
 };
 
 interface MockSession {
@@ -51,7 +51,7 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
   if (!hasContent) {
     return (
       <div className="py-10 text-center text-stone-400 text-sm">
-        РћР±Р·РѕСЂ РїРѕРїРѕР»РЅРёС‚СЃСЏ РїРѕСЃР»Рµ РїРµСЂРІС‹С… РєРѕРЅСЃСѓР»СЊС‚Р°С†РёР№
+        Обзор пополнится после первых консультаций
       </div>
     );
   }
@@ -59,7 +59,7 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
   return (
     <div className="space-y-3">
       {(client.mainTopics?.length ?? 0) > 0 && (
-        <SectionBlock title="РџРѕРІС‚РѕСЂСЏСЋС‰РёРµСЃСЏ С‚РµРјС‹">
+        <SectionBlock title="Повторяющиеся темы">
           <div className="flex flex-wrap gap-2">
             {client.mainTopics!.map((t) => (
               <span
@@ -75,19 +75,19 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
       )}
 
       {client.lastShift && (
-        <SectionBlock title="РџРѕСЃР»РµРґРЅРёР№ Р·РЅР°С‡РёРјС‹Р№ СЃРґРІРёРі">
+        <SectionBlock title="Последний значимый сдвиг">
           <p className="text-sm text-stone-700 leading-relaxed italic">{client.lastShift}</p>
         </SectionBlock>
       )}
 
       {client.currentFocus && (
-        <SectionBlock title="РўРµРєСѓС‰РёР№ С„РѕРєСѓСЃ">
+        <SectionBlock title="Текущий фокус">
           <p className="text-sm font-medium text-slate-700">{client.currentFocus}</p>
         </SectionBlock>
       )}
 
       {dynamics.length > 0 && (
-        <SectionBlock title="Р”РёРЅР°РјРёРєР° С‚РµСЂР°РїРёРё">
+        <SectionBlock title="Динамика терапии">
           <div className="flex flex-wrap gap-2">
             {dynamics.map((d) => (
               <span
@@ -108,5 +108,3 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
     </div>
   );
 }
-
-

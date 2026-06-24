@@ -107,7 +107,10 @@ function NoteCard({
           {/* Delete whole note */}
           <button
             onClick={onDelete}
-            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-stone-300 hover:text-rose-500 hover:bg-rose-50"
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-rose-50"
+            style={{ color: "#A8997F" }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "#A8997F"; }}
             title="Удалить заметку"
           >
             <Trash2 size={12} />
