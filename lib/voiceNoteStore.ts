@@ -5,8 +5,9 @@ export interface VoiceNote {
   id:              string;
   createdAt:       string;
   durationSec:     number;
-  audioPath?:      string;   // relative to public/: "uploads/voice-{id}.webm"
-  text?:           string;   // transcription result
+  audioPath?:      string;        // storage://... (Supabase) or /uploads/... (local)
+  audioDeleted?:   boolean;       // true after audio-only deletion; text kept
+  text?:           string;        // transcription result
   clientId?:       string;
   clientName?:     string;
   consultationId?: string;

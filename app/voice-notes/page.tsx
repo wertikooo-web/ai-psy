@@ -1,91 +1,229 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Mic, Trash2, Play, Pause, User, FileText } from "lucide-react";
+import {
+  ArrowLeft, Mic, Trash2, Play, Pause, User, FileText,
+  Loader2, Headphones, AlertCircle, PenLine,
+} from "lucide-react";
 import type { VoiceNote } from "@/lib/voiceNoteStore";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
 }
 function formatDur(sec: number) {
-  const m = Math.floor(sec / 60); const s = sec % 60;
+  if (!sec) return "";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
   return m > 0 ? `${m} мин ${s} с` : `${s} с`;
 }
 
-function NoteCard({ note, onDelete }: { note: VoiceNote; onDelete: () => void }) {
-  const [playing, setPlaying] = useState(false);
-  const [audio]   = useState(() => note.audioPath ? new Audio(note.audioPath) : null);
+const C = {
+  cardBg:   "#FBF8F2",
+  cardBdr:  "#CFC0A9",
+  head:     "#E9DCC7",
+  headBdr:  "#D8CFBE",
+  title:    "#3D3228",
+  muted:    "#A8997F",
+  tag:      "#E9DCC7",
+  tagBdr:   "#D8CFBE",
+  tagTxt:   "#6B5D4F",
+};
 
-  useEffect(() => {
-    if (!audio) return;
-    audio.onended = () => setPlaying(false);
-    return () => { audio.pause(); };
-  }, [audio]);
-
-  function togglePlay() {
-    if (!audio) return;
-    if (playing) { audio.pause(); setPlaying(false); }
-    else         { audio.play(); setPlaying(true); }
-  }
+function NoteCard({
+  note,
+  onDelete,
+  onTranscribed,
+  onAudioDeleted,
+}: {
+  note:           VoiceNote;
+  onDelete:       () => void;
+  onTranscribed:  (id: string, text: string) => void;
+  onAudioDeleted: (id: string) => void;
+}) {
+  const hasAudio      = !!note.audioPath && !note.audioDeleted;
+  const isVoice       = note.durationSec > 0 || hasAudio || note.audioDeleted;
+  const [transcribing, setTranscribing] = useState(false);
+  const [deletingAudio, setDeletingAudio] = useState(false);
+  const [audioError, setAudioError]     = useState(false);
+  const [confirmDel, setConfirmDel]     = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const where =
-    note.consultationTitle ? `Консультация: ${note.consultationTitle}` :
-    note.clientName        ? `Клиент: ${note.clientName}` :
+    note.consultationTitle ? note.consultationTitle :
+    note.clientName        ? note.clientName :
     "Без привязки";
+  const whereIcon = (note.clientName || note.consultationTitle) ? <User size={11} /> : <FileText size={11} />;
+
+  async function handleTranscribe() {
+    if (!note.audioPath) return;
+    setTranscribing(true);
+    try {
+      const res  = await fetch("/api/voice-notes/transcribe", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ id: note.id, audioPath: note.audioPath }),
+      });
+      const data = await res.json();
+      if (data.text) onTranscribed(note.id, data.text);
+    } finally {
+      setTranscribing(false);
+    }
+  }
+
+  async function handleDeleteAudio() {
+    setDeletingAudio(true);
+    setConfirmDel(false);
+    try {
+      await fetch(`/api/voice-notes/${note.id}/audio`, { method: "DELETE" });
+      onAudioDeleted(note.id);
+    } finally {
+      setDeletingAudio(false);
+    }
+  }
 
   return (
-    <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
-      {/* Header */}
-      <div className="px-5 py-3 border-b flex items-center justify-between gap-3" style={{ background: "#E8E0D0", borderColor: "#DDD4C6" }}>
+    <div
+      className="rounded-2xl border overflow-hidden"
+      style={{ background: C.cardBg, borderColor: C.cardBdr,
+        boxShadow: "0 1px 3px rgba(80,60,40,0.06), 0 4px 10px rgba(80,60,40,0.06)" }}
+    >
+      {/* ── Header ── */}
+      <div
+        className="px-5 py-3 flex items-center justify-between gap-3"
+        style={{ background: C.head, borderBottom: `1px solid ${C.headBdr}` }}
+      >
         <div className="flex items-center gap-2 min-w-0">
-          <Mic size={14} style={{ color: "#A8997F", flexShrink: 0 }} />
-          <span className="text-xs font-medium truncate" style={{ color: "#6B5D4F" }}>
-            {formatDate(note.createdAt)} · {formatDur(note.durationSec)}
+          {isVoice
+            ? <Mic size={13} style={{ color: C.muted, flexShrink: 0 }} />
+            : <PenLine size={13} style={{ color: C.muted, flexShrink: 0 }} />}
+          <span className="text-xs font-medium truncate" style={{ color: C.tagTxt }}>
+            {formatDate(note.createdAt)}
+            {note.durationSec > 0 && ` · ${formatDur(note.durationSec)}`}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {note.audioPath && (
-            <button
-              onClick={togglePlay}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-              style={{ background: playing ? "#C9BBAA" : "#D8CFBE" }}
-              title={playing ? "Пауза" : "Воспроизвести"}
-            >
-              {playing ? <Pause size={12} style={{ color: "#4A3C2E" }} /> : <Play size={12} style={{ color: "#4A3C2E" }} />}
-            </button>
-          )}
+
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Delete whole note */}
           <button
             onClick={onDelete}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-stone-300 hover:text-rose-500 hover:bg-rose-50"
-            title="Удалить"
+            title="Удалить заметку"
           >
             <Trash2 size={12} />
           </button>
         </div>
       </div>
 
-      <div className="px-5 py-3 space-y-2">
-        {/* Where */}
-        <div className="flex items-center gap-1.5 text-xs" style={{ color: "#A8997F" }}>
-          {note.clientName || note.consultationTitle
-            ? <User size={11} />
-            : <FileText size={11} />}
-          {where}
+      {/* ── Body ── */}
+      <div className="px-5 py-4 space-y-3">
+
+        {/* Context tag */}
+        <div className="flex items-center gap-1.5">
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
+            style={{ background: C.tag, border: `1px solid ${C.tagBdr}`, color: C.tagTxt }}
+          >
+            {whereIcon}
+            {where}
+          </span>
         </div>
 
-        {/* Text */}
-        {note.text ? (
-          <p className="text-sm leading-relaxed" style={{ color: "#3D3228" }}>{note.text}</p>
-        ) : (
-          <p className="text-sm italic" style={{ color: "#C9BBAA" }}>Транскрипция не создана</p>
+        {/* Audio player */}
+        {hasAudio && (
+          <div className="space-y-1.5">
+            <audio
+              ref={audioRef}
+              controls
+              preload="metadata"
+              src={`/api/voice-notes/${note.id}/audio`}
+              onError={() => setAudioError(true)}
+              className="w-full h-9"
+              style={{ borderRadius: 8, accentColor: "#6B5D4F" }}
+            />
+            {audioError && (
+              <p className="flex items-center gap-1 text-xs text-amber-600">
+                <AlertCircle size={11} />
+                Аудиофайл не найден — возможно, пропал после redeploy на Railway
+              </p>
+            )}
+          </div>
         )}
+
+        {/* Audio deleted notice */}
+        {note.audioDeleted && (
+          <div className="flex items-center gap-1.5 text-xs" style={{ color: C.muted }}>
+            <Headphones size={12} />
+            Аудио удалено, транскрипция сохранена
+          </div>
+        )}
+
+        {/* Transcript text */}
+        {note.text ? (
+          <p className="text-sm leading-relaxed" style={{ color: C.title }}>{note.text}</p>
+        ) : isVoice ? (
+          <p className="text-sm italic" style={{ color: "#C9BBAA" }}>Транскрипция не создана</p>
+        ) : null}
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 flex-wrap pt-0.5">
+
+          {/* Transcribe button — only if audio exists and no text yet */}
+          {hasAudio && !note.text && (
+            <button
+              onClick={handleTranscribe}
+              disabled={transcribing}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors disabled:opacity-60"
+              style={{ background: "#6B5D4F", color: "#FFFFFF" }}
+              onMouseEnter={e => { if (!transcribing) e.currentTarget.style.background = "#4A3C2E"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#6B5D4F"; }}
+            >
+              {transcribing
+                ? <><Loader2 size={11} className="animate-spin" /> Транскрибирую...</>
+                : <><Mic size={11} /> Транскрибировать</>}
+            </button>
+          )}
+
+          {/* Delete audio button — only if transcribed and audio still exists */}
+          {hasAudio && note.text && !note.audioDeleted && (
+            confirmDel ? (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span style={{ color: C.muted }}>Удалить только аудиофайл? Текст останется.</span>
+                <button
+                  onClick={handleDeleteAudio}
+                  disabled={deletingAudio}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-rose-100 text-rose-600 hover:bg-rose-200 transition-colors disabled:opacity-60"
+                >
+                  {deletingAudio ? "Удаляю..." : "Да, удалить"}
+                </button>
+                <button
+                  onClick={() => setConfirmDel(false)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+                  style={{ background: C.tag, color: C.tagTxt }}
+                >
+                  Отмена
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDel(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
+                style={{ background: "#FEE2E2", color: "#DC2626", border: "1px solid #FECACA" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#FECACA"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#FEE2E2"; }}
+              >
+                <Trash2 size={11} />
+                Удалить аудио
+              </button>
+            )
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-export default function VoiceNotesPage() {
+export default function NotesPage() {
   const router = useRouter();
   const [notes,   setNotes]   = useState<VoiceNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +244,14 @@ export default function VoiceNotesPage() {
     setNotes(prev => prev.filter(n => n.id !== id));
   }
 
+  function handleTranscribed(id: string, text: string) {
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, text } : n));
+  }
+
+  function handleAudioDeleted(id: string) {
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, audioPath: undefined, audioDeleted: true } : n));
+  }
+
   const filtered = notes.filter(n => {
     if (filter === "none")         return !n.clientId && !n.consultationId;
     if (filter === "client")       return !!n.clientId && !n.consultationId;
@@ -113,7 +259,7 @@ export default function VoiceNotesPage() {
     return true;
   });
 
-  const tabs: { id: typeof filter; label: string }[] = [
+  const filterTabs: { id: typeof filter; label: string }[] = [
     { id: "all",          label: "Все" },
     { id: "none",         label: "Без привязки" },
     { id: "client",       label: "По клиентам" },
@@ -129,32 +275,32 @@ export default function VoiceNotesPage() {
           <button
             onClick={() => router.back()}
             className="flex items-center gap-1.5 text-sm transition-colors"
-            style={{ color: "#A8997F" }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#4A3C2E"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#A8997F"; }}
+            style={{ color: C.muted }}
+            onMouseEnter={e => { e.currentTarget.style.color = C.title; }}
+            onMouseLeave={e => { e.currentTarget.style.color = C.muted; }}
           >
             <ArrowLeft size={16} />
             Назад
           </button>
-          <div className="w-px h-5" style={{ background: "#DDD4C6" }} />
-          <h1 className="text-xl font-bold" style={{ color: "#3D3228" }}>Голосовые заметки</h1>
+          <div className="w-px h-5" style={{ background: C.headBdr }} />
+          <h1 className="text-xl font-bold" style={{ color: C.title }}>Заметки</h1>
         </div>
         <p className="text-sm mb-6" style={{ color: "#C9BBAA" }}>
-          Все голосовые заметки · {notes.length}
+          Голосовые и текстовые · {notes.length}
         </p>
 
         {/* Filter tabs */}
         {notes.length > 0 && (
           <div className="flex gap-1.5 mb-5 flex-wrap">
-            {tabs.map(t => (
+            {filterTabs.map(t => (
               <button
                 key={t.id}
                 onClick={() => setFilter(t.id)}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                 style={{
-                  background: filter === t.id ? "#6B5D4F" : "#F0EBE1",
-                  color:      filter === t.id ? "#FFFFFF"  : "#6B5D4F",
-                  border:     `1px solid ${filter === t.id ? "#6B5D4F" : "#D8CFBE"}`,
+                  background: filter === t.id ? "#6B5D4F" : C.cardBg,
+                  color:      filter === t.id ? "#FFFFFF"  : C.tagTxt,
+                  border:     `1px solid ${filter === t.id ? "#6B5D4F" : C.cardBdr}`,
                 }}
               >
                 {t.label}
@@ -167,7 +313,8 @@ export default function VoiceNotesPage() {
         {loading ? (
           <div className="space-y-3">
             {[1,2,3].map(i => (
-              <div key={i} className="rounded-2xl border h-24 animate-pulse" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }} />
+              <div key={i} className="rounded-2xl border h-28 animate-pulse"
+                style={{ background: C.cardBg, borderColor: C.cardBdr }} />
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -179,7 +326,13 @@ export default function VoiceNotesPage() {
         ) : (
           <div className="space-y-3">
             {filtered.map(note => (
-              <NoteCard key={note.id} note={note} onDelete={() => handleDelete(note.id)} />
+              <NoteCard
+                key={note.id}
+                note={note}
+                onDelete={() => handleDelete(note.id)}
+                onTranscribed={handleTranscribed}
+                onAudioDeleted={handleAudioDeleted}
+              />
             ))}
           </div>
         )}

@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       consultationTitle,
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, id, audioPath });
   } catch (err) {
     console.error("[voice-notes POST]", err);
     return NextResponse.json({ error: "Ошибка сохранения" }, { status: 500 });

@@ -248,9 +248,11 @@ export function VoiceNoteModal({
       form.append("consultationId",    selCons);
       form.append("consultationTitle", selConsTitle);
     }
-    const res = await fetch("/api/voice-notes", { method: "POST", body: form });
+    const res  = await fetch("/api/voice-notes", { method: "POST", body: form });
     if (!res.ok) { setError("Ошибка сохранения"); setPhase("stopped"); return; }
-    if (withTranscription) await transcribeNote(id, `/uploads/voice-${id}.webm`);
+    const data = await res.json();
+    // Use the audioPath returned by the server (handles both Supabase storage:// and local /uploads/)
+    if (withTranscription) await transcribeNote(id, data.audioPath ?? `/uploads/voice-${id}.webm`);
     setPhase("done");
   }
 

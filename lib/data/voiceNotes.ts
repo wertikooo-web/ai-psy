@@ -12,6 +12,7 @@ function rowToNote(row: Record<string, unknown>): VoiceNote {
     createdAt:          row.created_at as string,
     durationSec:        (row.duration_sec as number) ?? 0,
     audioPath:          row.audio_path as string | undefined,
+    audioDeleted:       (row.audio_deleted as boolean) ?? false,
     text:               row.text as string | undefined,
     clientId:           row.client_id as string | undefined,
     clientName:         row.client_name as string | undefined,
@@ -71,8 +72,9 @@ export async function saveVoiceNote(note: VoiceNote): Promise<void> {
 export async function updateVoiceNote(id: string, patch: Partial<VoiceNote>): Promise<void> {
   if (isSupabaseConfigured()) {
     const row: Record<string, unknown> = {};
-    if (patch.text      !== undefined) row.text       = patch.text;
-    if (patch.audioPath !== undefined) row.audio_path = patch.audioPath;
+    if (patch.text         !== undefined) row.text          = patch.text;
+    if (patch.audioPath    !== undefined) row.audio_path    = patch.audioPath ?? null;
+    if (patch.audioDeleted !== undefined) row.audio_deleted = patch.audioDeleted;
     const { error } = await supabaseServer!
       .from("voice_notes")
       .update(row)
