@@ -3,9 +3,9 @@ import { randomUUID } from "crypto";
 import { getConsultation, updateConsultation } from "@/lib/data/consultations";
 import { generateAnalysis } from "@/lib/analysisService";
 import type { AnalysisMode } from "@/lib/knowledgeBase";
-import { readAll as readAllClients } from "@/lib/clientStore";
-import { getForClient as getHistory } from "@/lib/clientHistoryStore";
-import { getForClient as getMaterials } from "@/lib/clientMaterialsStore";
+import { getClients as readAllClients } from "@/lib/data/clients";
+import { getHistoryForClient as getHistory } from "@/lib/data/clientHistory";
+import { getMaterialsForClient as getMaterials } from "@/lib/data/clientMaterials";
 import { getConsultations as readAllConsultations } from "@/lib/data/consultations";
 import { readProfile } from "@/lib/data/userProfile";
 
