@@ -1,13 +1,17 @@
 /**
  * SERVER-ONLY: Supabase Storage helpers.
- * Buckets: 'voice-notes', 'materials'
+ * Buckets: 'audio', 'voice-notes', 'materials'
+ *
+ * Storage URL scheme used internally: storage://<bucket>/<path>
+ * Example: storage://audio/1234567890-session.mp3
  */
 
 import { supabaseServer, isSupabaseConfigured } from "./server";
 
+/** Upload buffer to a bucket. Returns internal storage:// URL or null on failure. */
 export async function uploadToStorage(
   bucket: string,
-  path: string,
+  storagePath: string,
   buffer: Buffer,
   contentType: string,
 ): Promise<string | null> {
@@ -15,18 +19,52 @@ export async function uploadToStorage(
 
   const { error } = await supabaseServer!.storage
     .from(bucket)
-    .upload(path, buffer, { contentType, upsert: true });
+    .upload(storagePath, buffer, { contentType, upsert: true });
 
   if (error) {
-    console.error(`[storage] upload error (${bucket}/${path}):`, error.message);
+    console.error(`[storage] upload error (${bucket}/${storagePath}):`, error.message);
     return null;
   }
 
-  const { data } = supabaseServer!.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
+  return `storage://${bucket}/${storagePath}`;
 }
 
-export async function deleteFromStorage(bucket: string, path: string): Promise<void> {
+/**
+ * Download a file from storage and return as Buffer.
+ * Accepts internal storage:// URL or a bucket+path pair.
+ */
+export async function downloadFromStorage(storageUrl: string): Promise<Buffer | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  // Parse storage://bucket/path
+  const match = storageUrl.match(/^storage:\/\/([^/]+)\/(.+)$/);
+  if (!match) return null;
+  const [, bucket, storagePath] = match;
+
+  const { data, error } = await supabaseServer!.storage
+    .from(bucket)
+    .download(storagePath);
+
+  if (error || !data) {
+    console.error(`[storage] download error (${bucket}/${storagePath}):`, error?.message);
+    return null;
+  }
+
+  return Buffer.from(await data.arrayBuffer());
+}
+
+/** Remove a file from storage. Accepts storage:// URL. */
+export async function deleteFromStorage(storageUrl: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
-  await supabaseServer!.storage.from(bucket).remove([path]);
+
+  const match = storageUrl.match(/^storage:\/\/([^/]+)\/(.+)$/);
+  if (!match) return;
+  const [, bucket, storagePath] = match;
+
+  await supabaseServer!.storage.from(bucket).remove([storagePath]);
+}
+
+/** Check if a URL is a Supabase Storage URL */
+export function isStorageUrl(url: string): boolean {
+  return url.startsWith("storage://");
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { getVoiceNotes, saveVoiceNote } from "@/lib/data/voiceNotes";
+import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
@@ -28,12 +29,23 @@ export async function POST(req: NextRequest) {
     let audioPath: string | undefined;
 
     if (audio && audio.size > 0) {
-      const uploadsDir = path.join(process.cwd(), "public", "uploads");
-      await mkdir(uploadsDir, { recursive: true });
-      const filename = `voice-${id}.webm`;
       const buffer   = Buffer.from(await audio.arrayBuffer());
-      await writeFile(path.join(uploadsDir, filename), buffer);
-      audioPath = `/uploads/${filename}`;
+      const filename = `voice-${id}.webm`;
+
+      if (isSupabaseConfigured()) {
+        const storagePath = `voice-notes/${filename}`;
+        const { error } = await supabaseServer!.storage
+          .from("voice-notes")
+          .upload(storagePath, buffer, { contentType: "audio/webm", upsert: false });
+
+        if (error) throw new Error(`Storage upload: ${error.message}`);
+        audioPath = `storage://voice-notes/${filename}`;
+      } else {
+        const uploadsDir = path.join(process.cwd(), "public", "uploads");
+        await mkdir(uploadsDir, { recursive: true });
+        await writeFile(path.join(uploadsDir, filename), buffer);
+        audioPath = `/uploads/${filename}`;
+      }
     }
 
     await saveVoiceNote({

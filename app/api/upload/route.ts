@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,16 +19,30 @@ export async function POST(req: NextRequest) {
 
     const bytes  = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const safeName   = file.name.replace(/[^a-zA-Z0-9._\-а-яА-Я]/g, "_");
+    const storedName = `${Date.now()}-${safeName}`;
 
+    if (isSupabaseConfigured()) {
+      const storagePath = `audio/${storedName}`;
+      const { error } = await supabaseServer!.storage
+        .from("audio")
+        .upload(storagePath, buffer, { contentType: file.type || "audio/mpeg", upsert: false });
+
+      if (error) throw new Error(`Storage upload: ${error.message}`);
+
+      // Return storage path — transcribe route will download it back via service role
+      return NextResponse.json({
+        fileName:   file.name,
+        fileUrl:    `storage://audio/${storedName}`,
+        fileSize:   file.size,
+        uploadedAt: new Date().toISOString(),
+      });
+    }
+
+    // Fallback: local filesystem
     const uploadDir = path.join(process.cwd(), "public", "uploads");
     await mkdir(uploadDir, { recursive: true });
-
-    // Safe filename: timestamp + sanitised original name
-    const safeName = file.name.replace(/[^a-zA-Z0-9._\-а-яА-Я]/g, "_");
-    const storedName = `${Date.now()}-${safeName}`;
-    const filePath   = path.join(uploadDir, storedName);
-
-    await writeFile(filePath, buffer);
+    await writeFile(path.join(uploadDir, storedName), buffer);
 
     return NextResponse.json({
       fileName:   file.name,
@@ -41,5 +56,4 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Allow up to 500 MB
 export const config = { api: { bodyParser: false } };

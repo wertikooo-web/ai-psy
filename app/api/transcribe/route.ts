@@ -3,6 +3,8 @@ import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
 import { getConsultation, updateConsultation } from "@/lib/data/consultations";
+import { downloadFromStorage, isStorageUrl } from "@/lib/supabase/storage";
+import { toFile } from "openai";
 
 function getOpenAI(): OpenAI {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -13,8 +15,10 @@ function getOpenAI(): OpenAI {
 }
 
 export async function POST(req: NextRequest) {
+  let consultationId: string | undefined;
   try {
-    const { consultationId } = await req.json();
+    const body = await req.json();
+    consultationId = body.consultationId;
 
     if (!consultationId) {
       return NextResponse.json({ error: "consultationId обязателен" }, { status: 400 });
@@ -25,7 +29,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Консультация не найдена" }, { status: 404 });
     }
 
-    // Resolve audio file
     const audioFile =
       consultation.audio ??
       (consultation.fileUrl
@@ -36,50 +39,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Аудиофайл не найден в записи консультации" }, { status: 400 });
     }
 
-    // Resolve absolute path: fileUrl is "/uploads/filename.mp3"
-    const filePath = path.join(process.cwd(), "public", audioFile.fileUrl);
-
-    if (!fs.existsSync(filePath)) {
-      return NextResponse.json(
-        { error: `Файл не найден на диске: ${audioFile.fileUrl}` },
-        { status: 404 },
-      );
-    }
-
-    // Mark as transcribing
     await updateConsultation(consultationId, { status: "transcribing" });
 
-    // Call Whisper
-    const openai = getOpenAI();
+    const openai  = getOpenAI();
+    let audioInput: Parameters<typeof openai.audio.transcriptions.create>[0]["file"];
+
+    if (isStorageUrl(audioFile.fileUrl)) {
+      // Download from Supabase Storage
+      const buffer = await downloadFromStorage(audioFile.fileUrl);
+      if (!buffer) {
+        await updateConsultation(consultationId, { status: "created" });
+        return NextResponse.json({ error: "Не удалось скачать файл из Storage" }, { status: 500 });
+      }
+      const ext = audioFile.fileName?.split(".").pop() ?? "mp3";
+      audioInput = await toFile(buffer, `audio.${ext}`, { type: `audio/${ext}` });
+    } else {
+      // Local filesystem fallback
+      const filePath = path.join(process.cwd(), "public", audioFile.fileUrl);
+      if (!fs.existsSync(filePath)) {
+        await updateConsultation(consultationId, { status: "created" });
+        return NextResponse.json({ error: `Файл не найден: ${audioFile.fileUrl}` }, { status: 404 });
+      }
+      audioInput = fs.createReadStream(filePath);
+    }
+
     const transcription = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(filePath),
-      model: "whisper-1",
+      file:     audioInput,
+      model:    "whisper-1",
       language: "ru",
     });
 
-    const text = transcription.text;
-
-    // Save transcript and update status
     await updateConsultation(consultationId, {
       status: "ready",
       transcript: {
-        text,
-        origin: "whisper",
+        text:      transcription.text,
+        origin:    "whisper",
         createdAt: new Date().toISOString(),
       },
     });
 
-    return NextResponse.json({ text });
+    return NextResponse.json({ text: transcription.text });
 
   } catch (err) {
     console.error("[transcribe]", err);
-
-    // If we errored mid-way, reset status to "created"
-    try {
-      const { consultationId } = await new Response(req.body).json().catch(() => ({}));
-      if (consultationId) await updateConsultation(consultationId, { status: "created" });
-    } catch { /* ignore */ }
-
+    if (consultationId) {
+      await updateConsultation(consultationId, { status: "created" }).catch(() => {});
+    }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Ошибка транскрипции" },
       { status: 500 },

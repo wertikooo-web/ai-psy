@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteVoiceNote, updateVoiceNote, getVoiceNotes } from "@/lib/data/voiceNotes";
+import { deleteFromStorage, isStorageUrl } from "@/lib/supabase/storage";
 import { unlink } from "fs/promises";
 import path from "path";
 
@@ -8,10 +9,15 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   try {
     const notes = await getVoiceNotes();
     const note  = notes.find((n) => n.id === id);
-    // Try to remove local file if it exists (legacy /uploads/ path)
-    if (note?.audioPath?.startsWith("/uploads/")) {
-      await unlink(path.join(process.cwd(), "public", note.audioPath)).catch(() => {});
+
+    if (note?.audioPath) {
+      if (isStorageUrl(note.audioPath)) {
+        await deleteFromStorage(note.audioPath);
+      } else if (note.audioPath.startsWith("/uploads/")) {
+        await unlink(path.join(process.cwd(), "public", note.audioPath)).catch(() => {});
+      }
     }
+
     await deleteVoiceNote(id);
     return NextResponse.json({ ok: true });
   } catch (err) {
