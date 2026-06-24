@@ -33,19 +33,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
 
-        {/* Voice note FAB — raised above chat input on consultation pages */}
+        {/* Voice note FAB */}
         <button
           onClick={() => setVoiceNoteOpen(true)}
-          title="Голосовая заметка"
-          className="fixed right-6 z-40 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95"
+          title="Добавить голосовую или текстовую заметку"
+          className="fixed right-6 z-40 flex items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95"
           style={{
-            background: "#6B5D4F",
+            background: "#4A3C2E",
             width: 52, height: 52,
+            borderRadius: "14px",
             bottom: onConsultation ? "90px" : "24px",
+            border: "2px solid #6B5D4F",
           }}
-          aria-label="Записать голосовую заметку"
+          aria-label="Добавить голосовую или текстовую заметку"
         >
-          <Mic size={20} color="white" />
+          <Mic size={22} color="white" />
         </button>
       </main>
 
