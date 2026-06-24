@@ -8,7 +8,7 @@ import {
   Zap, Search, UserCheck, Layers, Lightbulb, CalendarClock,
   Play, NotebookPen, FileText, Loader2, AlertCircle,
   Download, ChevronDown, ChevronUp, BrainCircuit,
-  CheckCircle2, CircleDashed,
+  CheckCircle2, CircleDashed, Trash2,
 } from "lucide-react";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
 import Link from "next/link";
@@ -96,6 +96,9 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const [transcribing, setTranscribing]   = useState(false);
   const [transcribeErr, setTranscribeErr] = useState<string | null>(null);
 
+  const [audioDeleted, setAudioDeleted]   = useState(false);
+  const [deletingAudio, setDeletingAudio] = useState(false);
+
   const [selectedMode, setSelectedMode]   = useState<ModeId>(defaultMode);
   const [analyzing, setAnalyzing]         = useState(false);
   const [analysisResult, setResult]       = useState<string | null>(lastAnalysis?.result ?? null);
@@ -125,6 +128,20 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
       setStatus("created");
     } finally {
       setTranscribing(false);
+    }
+  }
+
+  async function deleteAudio() {
+    if (!confirm("Удалить аудиофайл? Транскрипт сохранится, восстановить аудио будет невозможно.")) return;
+    setDeletingAudio(true);
+    try {
+      const res = await fetch(`/api/consultations/${c.id}/audio`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Ошибка");
+      setAudioDeleted(true);
+    } catch {
+      alert("Не удалось удалить аудио");
+    } finally {
+      setDeletingAudio(false);
     }
   }
 
@@ -261,7 +278,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             </div>
 
             {/* Row 1: Audio */}
-            {hasAudio && (
+            {hasAudio && !audioDeleted && (
               <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-50">
                 <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
                   <FileAudio size={15} className="text-brand-500" />
@@ -271,14 +288,17 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                   <p className="text-xs text-slate-400 truncate">{audioFile!.fileName}</p>
                 </div>
                 <StatusPill ok={true} label="Загружено" />
-                <a
-                  href={audioFile!.fileUrl}
-                  download={audioFile!.fileName}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors"
-                >
-                  <Download size={12} />
-                  Скачать
-                </a>
+                {hasText && (
+                  <button
+                    onClick={deleteAudio}
+                    disabled={deletingAudio}
+                    title="Удалить аудио — транскрипт останется"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-red-400 hover:bg-red-50 border border-red-100 hover:border-red-200 transition-colors disabled:opacity-40"
+                  >
+                    <Trash2 size={12} />
+                    {deletingAudio ? "..." : "Удалить аудио"}
+                  </button>
+                )}
               </div>
             )}
 
