@@ -52,6 +52,26 @@ const STATUS_BADGE = {
   },
 } as const;
 
+// ── Action button (26px, dark icon, hover bg) ─────────────────────────────────
+function ActionBtn({ onClick, hoverColor, hoverBg, children }: {
+  onClick: (e: React.MouseEvent) => void;
+  hoverColor: string;
+  hoverBg: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-6 h-6 rounded flex items-center justify-center transition-colors flex-shrink-0"
+      style={{ color: "#6B5D4F", background: "transparent" }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = hoverColor; e.currentTarget.style.background = hoverBg; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = "#6B5D4F"; e.currentTarget.style.background = "transparent"; }}
+    >
+      {children}
+    </button>
+  );
+}
+
 // ── Tooltip ───────────────────────────────────────────────────────────────────
 function Tip({ text, children }: { text: string; children: React.ReactNode }) {
   return (
@@ -136,72 +156,41 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
       className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col relative"
       style={{ background: CARD_BG, borderColor: "#DDD4C6", minHeight: 292 }}
     >
-      {/* ── Action buttons — absolute top-right, always visible ── */}
+      {/* ── Action buttons: absolute top-right, visible on craft bg ── */}
       {!client.isMock && (
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-0.5">
+        <div
+          className="absolute top-2.5 right-2.5 z-20 flex items-center gap-0.5 rounded-lg px-1 py-0.5"
+          style={{ background: "rgba(240,235,225,0.92)", border: "1px solid #D8CFBE" }}
+        >
+          {/* Пауза (только для активных) */}
           {status === "active" && (
-            <>
-              <Tip text="Временно приостановить работу с клиентом">
-                <button onClick={(e) => { e.stopPropagation(); onPause(); }}
-                  className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
-                  style={{ color: "#A8997F" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#D97706"; e.currentTarget.style.background = "#FEF3C7"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
-                  <Pause size={13} />
-                </button>
-              </Tip>
-              <Tip text="Переместить клиента в архив">
-                <button onClick={(e) => { e.stopPropagation(); onArchive(); }}
-                  className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
-                  style={{ color: "#A8997F" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#57534E"; e.currentTarget.style.background = "#E7E5E4"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
-                  <Archive size={13} />
-                </button>
-              </Tip>
-            </>
-          )}
-          {status === "paused" && (
-            <>
-              <Tip text="Вернуть клиента в активные">
-                <button onClick={(e) => { e.stopPropagation(); onRestore(); }}
-                  className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
-                  style={{ color: "#A8997F" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#059669"; e.currentTarget.style.background = "#D1FAE5"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
-                  <RotateCcw size={13} />
-                </button>
-              </Tip>
-              <Tip text="Переместить клиента в архив">
-                <button onClick={(e) => { e.stopPropagation(); onArchive(); }}
-                  className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
-                  style={{ color: "#A8997F" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#57534E"; e.currentTarget.style.background = "#E7E5E4"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
-                  <Archive size={13} />
-                </button>
-              </Tip>
-            </>
-          )}
-          {(status === "archived" || status === "completed") && (
-            <Tip text="Вернуть клиента в активные">
-              <button onClick={(e) => { e.stopPropagation(); onRestore(); }}
-                className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
-                style={{ color: "#A8997F" }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "#059669"; e.currentTarget.style.background = "#D1FAE5"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
-                <RotateCcw size={13} />
-              </button>
+            <Tip text="Перевести клиента в паузу">
+              <ActionBtn onClick={(e) => { e.stopPropagation(); onPause(); }} hoverColor="#D97706" hoverBg="#FEF3C7">
+                <Pause size={15} />
+              </ActionBtn>
             </Tip>
           )}
-          <Tip text="Удалить клиента и все связанные данные">
-            <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
-              style={{ color: "#A8997F" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "#FEE2E2"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
-              <Trash2 size={13} />
-            </button>
+          {/* Восстановить (для паузы / архива) */}
+          {(status === "paused" || status === "archived" || status === "completed") && (
+            <Tip text="Вернуть клиента в активные">
+              <ActionBtn onClick={(e) => { e.stopPropagation(); onRestore(); }} hoverColor="#059669" hoverBg="#D1FAE5">
+                <RotateCcw size={15} />
+              </ActionBtn>
+            </Tip>
+          )}
+          {/* Архив (активные и на паузе) */}
+          {(status === "active" || status === "paused") && (
+            <Tip text="Переместить клиента в архив">
+              <ActionBtn onClick={(e) => { e.stopPropagation(); onArchive(); }} hoverColor="#57534E" hoverBg="#E7E5E4">
+                <Archive size={15} />
+              </ActionBtn>
+            </Tip>
+          )}
+          {/* Удалить — всегда */}
+          <Tip text="Удалить клиента">
+            <ActionBtn onClick={(e) => { e.stopPropagation(); onDelete(); }} hoverColor="#EF4444" hoverBg="#FEE2E2">
+              <Trash2 size={15} />
+            </ActionBtn>
           </Tip>
         </div>
       )}
