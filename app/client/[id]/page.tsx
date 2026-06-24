@@ -150,14 +150,24 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
               <Pause size={15} />
               Клиент на паузе
             </div>
-            <button
-              onClick={() => handleStatusChange("active")}
-              disabled={statusChanging}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-medium transition-colors disabled:opacity-60"
-            >
-              <RotateCcw size={12} />
-              Вернуть в активные
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleStatusChange("archived")}
+                disabled={statusChanging}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-medium transition-colors disabled:opacity-60"
+              >
+                <Archive size={12} />
+                В архив
+              </button>
+              <button
+                onClick={() => handleStatusChange("active")}
+                disabled={statusChanging}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-medium transition-colors disabled:opacity-60"
+              >
+                <RotateCcw size={12} />
+                Вернуть в активные
+              </button>
+            </div>
           </div>
         )}
         {!isMock && (client.status === "archived" || client.status === "completed") && (

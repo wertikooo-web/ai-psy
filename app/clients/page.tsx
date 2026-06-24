@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, ArrowRight, Users, Pause, Archive, RotateCcw } from "lucide-react";
+import {
+  Plus, Trash2, ArrowRight, Users,
+  Pause, Archive, RotateCcw, CheckCircle2,
+} from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { AddClientModal } from "@/components/client/AddClientModal";
 import { clients as mockClients } from "@/lib/mockData";
@@ -10,27 +13,44 @@ import type { StoredClient, ClientStatus } from "@/lib/clientStore";
 
 type AnyClient = StoredClient & { isMock?: boolean };
 type FilterTab  = "active" | "paused" | "archived" | "all";
-type ModalKind  = "delete" | "pause" | "archive" | null;
+type ModalKind  = "delete" | "pause" | "archive" | "restore" | null;
 
 // ── Palette ───────────────────────────────────────────────────────────────────
-const CARD_BG    = "#F0EBE1";
-const CARD_MUTED = "#EAE2D6";        // paused / archived card tint
-const TAB_BG     = "#C9BBAA";        // folder-tab: noticeably darker than card
-const TAB_HOVER  = "#BEB09E";        // folder-tab hover
+const CARD_BG  = "#F0EBE1";
+const TAB_BG   = "#C9BBAA";
+const TAB_HOV  = "#BEB09E";
 
-// ── Status ────────────────────────────────────────────────────────────────────
-const STATUS_LABEL: Record<string, string> = {
-  active:    "активный",
-  paused:    "пауза",
-  archived:  "архив",
-  completed: "завершён",
-};
-const STATUS_COLOR: Record<string, string> = {
-  active:    "bg-emerald-50 text-emerald-700 border border-emerald-100",
-  paused:    "bg-amber-50 text-amber-700 border border-amber-100",
-  archived:  "bg-stone-100 text-stone-500 border border-stone-200",
-  completed: "bg-stone-100 text-stone-500 border border-stone-200",
-};
+// ── Status badge config ───────────────────────────────────────────────────────
+const STATUS_BADGE = {
+  active: {
+    bg:      "#D1FAE5",
+    ring:    "#6EE7B7",
+    icon:    CheckCircle2,
+    color:   "#059669",
+    tip:     "Клиент активен",
+  },
+  paused: {
+    bg:      "#FEF3C7",
+    ring:    "#FCD34D",
+    icon:    Pause,
+    color:   "#D97706",
+    tip:     "Клиент на паузе: работа временно приостановлена, но может быть продолжена",
+  },
+  archived: {
+    bg:      "#E7E5E4",
+    ring:    "#D6D3D1",
+    icon:    Archive,
+    color:   "#78716C",
+    tip:     "Клиент в архиве: случай закрыт или завершён, данные сохранены",
+  },
+  completed: {
+    bg:      "#E7E5E4",
+    ring:    "#D6D3D1",
+    icon:    Archive,
+    color:   "#78716C",
+    tip:     "Клиент завершён",
+  },
+} as const;
 
 // ── Tooltip ───────────────────────────────────────────────────────────────────
 function Tip({ text, children }: { text: string; children: React.ReactNode }) {
@@ -71,10 +91,26 @@ function Confirm({ title, body, action, color, onConfirm, onCancel, loading }: C
 // ── Filter tabs ───────────────────────────────────────────────────────────────
 const FILTERS: { id: FilterTab; label: string }[] = [
   { id: "active",   label: "Активные" },
-  { id: "paused",   label: "Пауза" },
-  { id: "archived", label: "Архив" },
-  { id: "all",      label: "Все" },
+  { id: "paused",   label: "Пауза"    },
+  { id: "archived", label: "Архив"    },
+  { id: "all",      label: "Все"      },
 ];
+
+// ── Large status badge ────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_BADGE[status as keyof typeof STATUS_BADGE] ?? STATUS_BADGE.active;
+  const Icon = cfg.icon;
+  return (
+    <Tip text={cfg.tip}>
+      <div
+        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 cursor-default"
+        style={{ background: cfg.bg, border: `2px solid ${cfg.ring}` }}
+      >
+        <Icon size={22} style={{ color: cfg.color }} />
+      </div>
+    </Tip>
+  );
+}
 
 // ── Client card ───────────────────────────────────────────────────────────────
 interface CardProps {
@@ -87,77 +123,82 @@ interface CardProps {
 }
 
 function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }: CardProps) {
-  const isInactive = client.status === "paused" || client.status === "archived" || client.status === "completed";
-  const [hovered, setHovered] = useState(false);
+  const [tabHov, setTabHov] = useState(false);
+  const status = client.status as keyof typeof STATUS_BADGE;
 
-  return (
-    // NO overflow:hidden — tooltips must not be clipped
-    // folder-tab gets rounded-b-2xl explicitly instead
-    <div
-      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col"
-      style={{
-        background:  isInactive ? CARD_MUTED : CARD_BG,
-        borderColor: "#DDD4C6",
-        opacity:     isInactive ? 0.87 : 1,
-      }}
-    >
-      {/* ── Top: avatar + name + 3 action buttons ── */}
-      <div className="p-5 pb-3 flex items-start gap-3">
-        <Avatar initials={client.initials} color={client.color} size="lg" />
-
-        <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-slate-800 truncate leading-tight">{client.name}</h2>
-          <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[client.status]}`}>
-            {STATUS_LABEL[client.status]}
-          </span>
-        </div>
-
-        {/* All 3 actions — top right, always visible */}
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          {!isInactive ? (
-            <>
-              <Tip text="Временно приостановить работу с клиентом">
-                <button
-                  onClick={(e) => { e.stopPropagation(); onPause(); }}
-                  className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
-                >
-                  <Pause size={13} />
-                </button>
-              </Tip>
-              <Tip text="Переместить клиента в архив">
-                <button
-                  onClick={(e) => { e.stopPropagation(); onArchive(); }}
-                  className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-slate-600 hover:bg-stone-200 transition-colors"
-                >
-                  <Archive size={13} />
-                </button>
-              </Tip>
-            </>
-          ) : (
-            <Tip text="Вернуть клиента в активные">
-              <button
-                onClick={(e) => { e.stopPropagation(); onRestore(); }}
-                className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 transition-colors"
-              >
-                <RotateCcw size={13} />
-              </button>
-            </Tip>
-          )}
-          <Tip text="Удалить клиента и все связанные данные">
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-            >
-              <Trash2 size={13} />
+  // Action buttons depend on current status
+  const actions = (
+    <div className="flex items-center gap-0.5">
+      {status === "active" && (
+        <>
+          <Tip text="Временно приостановить работу с клиентом">
+            <button onClick={(e) => { e.stopPropagation(); onPause(); }}
+              className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-amber-500 hover:bg-amber-50 transition-colors">
+              <Pause size={13} />
             </button>
           </Tip>
+          <Tip text="Переместить клиента в архив">
+            <button onClick={(e) => { e.stopPropagation(); onArchive(); }}
+              className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-600 hover:bg-stone-200 transition-colors">
+              <Archive size={13} />
+            </button>
+          </Tip>
+        </>
+      )}
+      {status === "paused" && (
+        <>
+          <Tip text="Вернуть клиента в активные">
+            <button onClick={(e) => { e.stopPropagation(); onRestore(); }}
+              className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 transition-colors">
+              <RotateCcw size={13} />
+            </button>
+          </Tip>
+          <Tip text="Переместить клиента в архив">
+            <button onClick={(e) => { e.stopPropagation(); onArchive(); }}
+              className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-600 hover:bg-stone-200 transition-colors">
+              <Archive size={13} />
+            </button>
+          </Tip>
+        </>
+      )}
+      {(status === "archived" || status === "completed") && (
+        <Tip text="Вернуть клиента в активные">
+          <button onClick={(e) => { e.stopPropagation(); onRestore(); }}
+            className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 transition-colors">
+            <RotateCcw size={13} />
+          </button>
+        </Tip>
+      )}
+      <Tip text="Удалить клиента и все связанные данные">
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-rose-500 hover:bg-rose-50 transition-colors">
+          <Trash2 size={13} />
+        </button>
+      </Tip>
+    </div>
+  );
+
+  return (
+    <div
+      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col"
+      style={{ background: CARD_BG, borderColor: "#DDD4C6" }}
+    >
+      {/* ── Top: avatar + name + action buttons ── */}
+      <div className="p-5 pb-3 flex items-start gap-3">
+        <Avatar initials={client.initials} color={client.color} size="lg" />
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold text-slate-800 truncate leading-tight">{client.name}</h2>
+          {client.age && (
+            <p className="text-xs text-stone-400 mt-0.5">{client.age} лет</p>
+          )}
         </div>
+        {/* Context-sensitive action buttons — top right */}
+        {!client.isMock && actions}
       </div>
 
-      {/* ── Body: stats + concern + tags ── */}
+      {/* ── Body: stats + concern + tags + status badge ── */}
       <div className="px-5 pb-4 flex-1">
         <div className="flex items-center gap-3 mb-2.5 text-xs text-stone-400">
-          {client.age && <span>{client.age} лет</span>}
           <div className="flex items-center gap-1">
             <Users size={11} />
             <span>{client.totalConsultations} встреч</span>
@@ -173,53 +214,44 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
           <p className="text-sm text-stone-600 line-clamp-2 leading-relaxed">{client.concern}</p>
         )}
 
-        {client.mainTopics?.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-3">
-            {client.mainTopics.slice(0, 3).map((t) => (
-              <span
-                key={t}
-                className="px-2 py-0.5 rounded-full text-xs text-stone-500"
-                style={{ background: "#E8E0D0", border: "1px solid #D8CFBE" }}
-              >
+        {/* Tags + large status badge in bottom row */}
+        <div className="flex items-end justify-between mt-3 gap-3">
+          <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+            {client.mainTopics?.slice(0, 3).map((t) => (
+              <span key={t} className="px-2 py-0.5 rounded-full text-xs text-stone-500"
+                style={{ background: "#E8E0D0", border: "1px solid #D8CFBE" }}>
                 {t}
               </span>
             ))}
-            {client.mainTopics.length > 3 && (
+            {(client.mainTopics?.length ?? 0) > 3 && (
               <span className="px-2 py-0.5 rounded-full text-xs text-stone-400">
                 +{client.mainTopics.length - 3}
               </span>
             )}
           </div>
-        )}
+
+          {/* Large status badge — bottom right */}
+          <StatusBadge status={client.status} />
+        </div>
       </div>
 
-      {/* ── Folder tab: full-width CTA ── */}
-      {/*
-        Looks like a paper folder tab:
-        - flat top edge (border-radius: 0) — card's overflow:hidden gives us rounded bottom
-        - visible border-top separates tab from body
-        - inset top highlight simulates paper catching light
-        - box-shadow gives slight lift/depth
-      */}
+      {/* ── Folder-tab CTA ── */}
       <button
         onClick={onOpen}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium transition-all group rounded-b-2xl"
+        onMouseEnter={() => setTabHov(true)}
+        onMouseLeave={() => setTabHov(false)}
+        className="w-full flex items-center justify-between px-5 py-2.5 text-sm font-medium rounded-b-2xl"
         style={{
-          background:  hovered ? TAB_HOVER : TAB_BG,
-          color:       "#4A3F32",
-          borderTop:   "1px solid #B8AC9A",
-          boxShadow:   "inset 0 1px 0 rgba(255,255,255,0.22)",
-          transition:  "background 0.15s ease",
+          background:   tabHov ? TAB_HOV : TAB_BG,
+          color:        "#4A3F32",
+          borderTop:    "1px solid #B8AC9A",
+          boxShadow:    "inset 0 1px 0 rgba(255,255,255,0.22)",
+          transition:   "background 0.15s ease",
         }}
       >
-        <span className="tracking-wide">Открыть карточку</span>
-        <ArrowRight
-          size={14}
-          className="text-stone-500 transition-transform duration-150"
-          style={{ transform: hovered ? "translateX(3px)" : "translateX(0)" }}
-        />
+        <span>Открыть карточку</span>
+        <ArrowRight size={14} className="text-stone-500 transition-transform duration-150"
+          style={{ transform: tabHov ? "translateX(3px)" : "translateX(0)" }} />
       </button>
     </div>
   );
@@ -228,12 +260,12 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ClientsPage() {
   const router = useRouter();
-  const [clients, setClients]           = useState<AnyClient[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [filter, setFilter]             = useState<FilterTab>("active");
-  const [addOpen, setAddOpen]           = useState(false);
-  const [modal, setModal]               = useState<ModalKind>(null);
-  const [target, setTarget]             = useState<AnyClient | null>(null);
+  const [clients, setClients]             = useState<AnyClient[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [filter, setFilter]               = useState<FilterTab>("active");
+  const [addOpen, setAddOpen]             = useState(false);
+  const [modal, setModal]                 = useState<ModalKind>(null);
+  const [target, setTarget]               = useState<AnyClient | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   async function loadClients() {
@@ -256,7 +288,7 @@ export default function ClientsPage() {
 
   useEffect(() => { loadClients(); }, []);
 
-  function open(kind: ModalKind, client: AnyClient) {
+  function openModal(kind: ModalKind, client: AnyClient) {
     setTarget(client);
     setModal(kind);
   }
@@ -270,7 +302,7 @@ export default function ClientsPage() {
     await loadClients();
   }
 
-  async function handleStatusChange(status: ClientStatus) {
+  async function handleConfirmedStatus(status: ClientStatus) {
     if (!target || target.isMock) { setModal(null); return; }
     setActionLoading(true);
     try { await patchStatus(target.id, status); }
@@ -285,6 +317,14 @@ export default function ClientsPage() {
       await loadClients();
     } finally { setActionLoading(false); setModal(null); setTarget(null); }
   }
+
+  // Counts for tab badges
+  const count = {
+    active:   clients.filter((c) => c.status === "active").length,
+    paused:   clients.filter((c) => c.status === "paused").length,
+    archived: clients.filter((c) => c.status === "archived" || c.status === "completed").length,
+    all:      clients.length,
+  };
 
   const filtered = clients.filter((c) => {
     if (filter === "all")      return true;
@@ -310,37 +350,32 @@ export default function ClientsPage() {
           </button>
         </div>
 
-        {/* Filter tabs */}
+        {/* Filter tabs with live counts */}
         <div className="flex gap-1.5 mb-6">
-          {FILTERS.map((f) => {
-            const count =
-              f.id === "all"      ? clients.length :
-              f.id === "archived" ? clients.filter((c) => c.status === "archived" || c.status === "completed").length :
-                                    clients.filter((c) => c.status === f.id).length;
-            return (
-              <button
-                key={f.id}
-                onClick={() => setFilter(f.id)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                  filter === f.id
-                    ? "bg-white text-slate-800 shadow-sm border border-stone-200"
-                    : "text-stone-500 hover:text-slate-700 hover:bg-white/60"
-                }`}
-              >
-                {f.label}
-                <span className={`ml-1.5 text-xs ${filter === f.id ? "text-slate-400" : "text-stone-400"}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                filter === f.id
+                  ? "bg-white text-slate-800 shadow-sm border border-stone-200"
+                  : "text-stone-500 hover:text-slate-700 hover:bg-white/60"
+              }`}
+            >
+              {f.label}
+              <span className={`ml-1.5 text-xs ${filter === f.id ? "text-slate-400" : "text-stone-400"}`}>
+                {count[f.id]}
+              </span>
+            </button>
+          ))}
         </div>
 
         {/* Grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-2xl border h-56 animate-pulse" style={{ background: CARD_BG, borderColor: "#E2D9CC" }} />
+              <div key={i} className="rounded-2xl border h-56 animate-pulse"
+                style={{ background: CARD_BG, borderColor: "#DDD4C6" }} />
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -357,15 +392,10 @@ export default function ClientsPage() {
                 key={client.id}
                 client={client}
                 onOpen={()    => router.push(`/client/${client.id}`)}
-                onDelete={()  => open("delete", client)}
-                onPause={()   => open("pause", client)}
-                onArchive={()  => open("archive", client)}
-                onRestore={async () => {
-                  if (client.isMock) return;
-                  setActionLoading(true);
-                  try { await patchStatus(client.id, "active"); }
-                  finally { setActionLoading(false); }
-                }}
+                onDelete={()  => openModal("delete", client)}
+                onPause={()   => openModal("pause", client)}
+                onArchive={()  => openModal("archive", client)}
+                onRestore={()  => openModal("restore", client)}
               />
             ))}
 
@@ -391,36 +421,48 @@ export default function ClientsPage() {
         onCreated={() => { setAddOpen(false); loadClients(); }}
       />
 
-      {modal === "delete" && target && (
-        <Confirm
-          title={`Удалить клиента ${target.name}?`}
-          body="Будут удалены клиент, его консультации, история и материалы. Это действие нельзя отменить."
-          action="Удалить"
-          color="bg-rose-500 hover:bg-rose-600"
-          onCancel={() => { setModal(null); setTarget(null); }}
-          onConfirm={handleDelete}
-          loading={actionLoading}
-        />
-      )}
+      {/* ── Confirm modals ── */}
       {modal === "pause" && target && (
         <Confirm
           title={`Перевести ${target.name} в паузу?`}
-          body="Клиент останется в системе, но будет отображаться в разделе «Пауза». Консультации, материалы и история сохранятся."
+          body="Клиент останется в системе. Все консультации, материалы и история сохранятся."
           action="Перевести в паузу"
           color="bg-amber-500 hover:bg-amber-600"
           onCancel={() => { setModal(null); setTarget(null); }}
-          onConfirm={() => handleStatusChange("paused")}
+          onConfirm={() => handleConfirmedStatus("paused")}
           loading={actionLoading}
         />
       )}
       {modal === "archive" && target && (
         <Confirm
           title={`Переместить ${target.name} в архив?`}
-          body="Клиент исчезнет из активного списка. Консультации, материалы, история и анализы сохранятся."
+          body="Клиент исчезнет из активных клиентов, но все консультации, материалы и история сохранятся."
           action="Переместить в архив"
-          color="bg-slate-600 hover:bg-slate-700"
+          color="bg-stone-600 hover:bg-stone-700"
           onCancel={() => { setModal(null); setTarget(null); }}
-          onConfirm={() => handleStatusChange("archived")}
+          onConfirm={() => handleConfirmedStatus("archived")}
+          loading={actionLoading}
+        />
+      )}
+      {modal === "restore" && target && (
+        <Confirm
+          title={`Вернуть ${target.name} в активные?`}
+          body="Клиент снова появится в списке активных клиентов."
+          action="Вернуть в активные"
+          color="bg-emerald-500 hover:bg-emerald-600"
+          onCancel={() => { setModal(null); setTarget(null); }}
+          onConfirm={() => handleConfirmedStatus("active")}
+          loading={actionLoading}
+        />
+      )}
+      {modal === "delete" && target && (
+        <Confirm
+          title={`Удалить клиента ${target.name}?`}
+          body="Будут удалены клиент, консультации, материалы и история. Это действие нельзя отменить."
+          action="Удалить"
+          color="bg-rose-500 hover:bg-rose-600"
+          onCancel={() => { setModal(null); setTarget(null); }}
+          onConfirm={handleDelete}
           loading={actionLoading}
         />
       )}
