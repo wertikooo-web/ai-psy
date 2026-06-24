@@ -68,27 +68,6 @@ export default function HelpPage() {
           <p className="text-sm mt-0.5" style={{ color: "#A8997F" }}>Руководство по работе с TRANSCRIPT AI · PSY</p>
         </div>
 
-        {/* System check */}
-        <Section icon={<Zap size={15} className="text-amber-500" />} title="Проверка системы">
-          <div className="space-y-3">
-            {statuses.map((s) => (
-              <div key={s.label} className="flex items-center gap-3">
-                {s.state === "loading" ? (
-                  <Loader2 size={16} className="text-slate-300 animate-spin flex-shrink-0" />
-                ) : s.state === "ok" ? (
-                  <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
-                ) : (
-                  <AlertCircle size={16} className="text-rose-400 flex-shrink-0" />
-                )}
-                <div>
-                  <span className="text-sm font-medium" style={{ color: "#4A3C2E" }}>{s.label}</span>
-                  {s.detail && <span className="text-sm ml-2" style={{ color: "#A8997F" }}>{s.detail}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Section>
-
         {/* Quick start */}
         <Section icon={<HelpCircle size={15} className="text-brand-500" />} title="Быстрый старт">
           <ol className="space-y-3">
@@ -156,6 +135,27 @@ export default function HelpPage() {
             <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-amber-700">
               ⚠️ На Railway файловая система временная — данные и аудио могут быть потеряны при перезапуске сервера. В следующей версии планируется переход на Supabase.
             </div>
+          </div>
+        </Section>
+
+        {/* System check */}
+        <Section icon={<Zap size={15} className="text-amber-500" />} title="Проверка системы">
+          <div className="space-y-3">
+            {statuses.map((s) => (
+              <div key={s.label} className="flex items-center gap-3">
+                {s.state === "loading" ? (
+                  <Loader2 size={16} className="text-slate-300 animate-spin flex-shrink-0" />
+                ) : s.state === "ok" ? (
+                  <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
+                ) : (
+                  <AlertCircle size={16} className="text-rose-400 flex-shrink-0" />
+                )}
+                <div>
+                  <span className="text-sm font-medium" style={{ color: "#4A3C2E" }}>{s.label}</span>
+                  {s.detail && <span className="text-sm ml-2" style={{ color: "#A8997F" }}>{s.detail}</span>}
+                </div>
+              </div>
+            ))}
           </div>
         </Section>
 
