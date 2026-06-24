@@ -2,26 +2,25 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "@/lib/mockData";
-import { Send, BrainCircuit, User, ChevronsLeft, ChevronsRight, MessagesSquare } from "lucide-react";
+import { Send, BrainCircuit, User, ChevronsLeft, ChevronsRight, MessagesSquare, AlertCircle } from "lucide-react";
 import clsx from "clsx";
 
 interface ChatPanelProps {
-  messages: ChatMessage[];
-  pendingMessage?: string | null;
-  onMessageConsumed?: () => void;
-  collapsed: boolean;
-  onToggle: () => void;
+  messages:             ChatMessage[];
+  pendingMessage?:      string | null;
+  onMessageConsumed?:   () => void;
+  collapsed:            boolean;
+  onToggle:             () => void;
+  consultationId?:      string;
+  transcriptText?:      string;
 }
 
-const MOCK_RESPONSES = [
-  "Отличный вопрос! На основе транскрипта этой сессии могу предложить несколько наблюдений...",
-  "Обратите внимание на момент 03:05 — клиент впервые назвал страх отвержения напрямую. Это важный сдвиг.",
-  "Паттерн, который вы описываете, хорошо соотносится с концепцией тревожной привязанности (Ainsworth). Рекомендую исследовать раннее окружение клиента.",
-  "Для следующей сессии рекомендую технику somatic tracking — она поможет клиенту замедлить автоматическую реакцию.",
-  "Динамика терапии позитивная. Клиент демонстрирует нарастающую способность к рефлексии.",
+const QUICK_PROMPTS = [
+  "Что важно на следующей сессии?",
+  "Ключевой инсайт?",
+  "Риски?",
+  "Какие техники использовать?",
 ];
-
-const QUICK_PROMPTS = ["Что важно на следующей сессии?", "Ключевой инсайт?", "Риски?"];
 
 export function ChatPanel({
   messages: initial,
@@ -29,14 +28,16 @@ export function ChatPanel({
   onMessageConsumed,
   collapsed,
   onToggle,
+  consultationId,
+  transcriptText,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState<string | null>(null);
   const bottomRef               = useRef<HTMLDivElement>(null);
   const textareaRef             = useRef<HTMLTextAreaElement>(null);
 
-  // Inject message from "dig deeper" cards
   useEffect(() => {
     if (!pendingMessage) return;
     setInput(pendingMessage);
@@ -44,12 +45,10 @@ export function ChatPanel({
     textareaRef.current?.focus();
   }, [pendingMessage, onMessageConsumed]);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Auto-resize textarea
   function handleInputChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     setInput(e.target.value);
     const el = e.target;
@@ -57,35 +56,52 @@ export function ChatPanel({
     el.style.height = Math.min(el.scrollHeight, 120) + "px";
   }
 
-  function send() {
+  async function send() {
     if (!input.trim() || loading) return;
 
     const userMsg: ChatMessage = {
       id:        `u${Date.now()}`,
       role:      "user",
-      content:   input,
+      content:   input.trim(),
       timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
     };
-    setMessages((m) => [...m, userMsg]);
+
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setInput("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    setError(null);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/chat", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          consultationId,
+          transcriptText,
+          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Ошибка ответа");
+
       const aiMsg: ChatMessage = {
         id:        `a${Date.now()}`,
         role:      "assistant",
-        content:   MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)],
+        content:   data.reply,
         timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
       };
-      setMessages((m) => [...m, aiMsg]);
+      setMessages(m => [...m, aiMsg]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось получить ответ");
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   }
 
-  // ── Collapsed: narrow vertical tab ──────────────────────────────────────────
+  // ── Collapsed ────────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
       <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-white border-l border-slate-100">
@@ -112,7 +128,7 @@ export function ChatPanel({
   return (
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
 
-      {/* Panel header — fixed */}
+      {/* Header */}
       <div className="px-5 pt-4 pb-3 border-b border-emerald-600 flex-shrink-0 bg-emerald-600">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -121,7 +137,9 @@ export function ChatPanel({
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Чат по консультации</h2>
-              <p className="text-xs text-emerald-100">Задавайте вопросы по этой сессии</p>
+              <p className="text-xs text-emerald-100">
+                {transcriptText || consultationId ? "AI анализирует транскрипт сессии" : "Задавайте вопросы по этой сессии"}
+              </p>
             </div>
           </div>
           <button
@@ -134,7 +152,7 @@ export function ChatPanel({
         </div>
       </div>
 
-      {/* Messages — scrolls independently */}
+      {/* Messages */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
         {messages.map((msg) => {
           const isAI = msg.role === "assistant";
@@ -179,16 +197,23 @@ export function ChatPanel({
           </div>
         )}
 
+        {error && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-100">
+            <AlertCircle size={13} className="text-red-400 flex-shrink-0" />
+            <p className="text-xs text-red-500">{error}</p>
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
-      {/* Quick prompts — fixed */}
+      {/* Quick prompts */}
       <div className="px-4 pt-2 pb-1 flex-shrink-0">
         <div className="flex flex-wrap gap-1.5">
           {QUICK_PROMPTS.map((s) => (
             <button
               key={s}
-              onClick={() => setInput(s)}
+              onClick={() => { setInput(s); textareaRef.current?.focus(); }}
               className="text-xs px-2.5 py-1 rounded-full bg-brand-50 text-brand-600 border border-brand-100 hover:bg-brand-100 transition-colors"
             >
               {s}
@@ -197,7 +222,7 @@ export function ChatPanel({
         </div>
       </div>
 
-      {/* Input — fixed at bottom */}
+      {/* Input */}
       <div className="px-4 pt-3 pb-3 border-t border-slate-100 flex-shrink-0">
         <div className="flex gap-2 items-end">
           <textarea
@@ -205,10 +230,7 @@ export function ChatPanel({
             value={input}
             onChange={handleInputChange}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
             }}
             placeholder="Спросите об этой консультации..."
             rows={1}

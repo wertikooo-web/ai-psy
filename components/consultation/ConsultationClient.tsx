@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Consultation } from "@/lib/mockData";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { AnalysisPanel } from "./AnalysisPanel";
@@ -14,9 +14,9 @@ interface Props {
 }
 
 export function ConsultationClient({ consultation }: Props) {
-  const [pendingMessage, setPendingMessage]       = useState<string | null>(null);
-  const [compareOpen, setCompareOpen]             = useState(false);
-  const [collapsed, setCollapsed]                 = useState<Record<PanelKey, boolean>>({
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [compareOpen, setCompareOpen]       = useState(false);
+  const [collapsed, setCollapsed]           = useState<Record<PanelKey, boolean>>({
     transcript: false,
     analysis:   false,
     chat:       false,
@@ -28,16 +28,23 @@ export function ConsultationClient({ consultation }: Props) {
 
   const handleSendToChat = useCallback((text: string) => {
     setPendingMessage(text);
-    setCollapsed(prev => ({ ...prev, chat: false })); // auto-expand chat
+    setCollapsed(prev => ({ ...prev, chat: false }));
   }, []);
 
   const handleMessageConsumed = useCallback(() => {
     setPendingMessage(null);
   }, []);
 
+  // Build plain-text transcript from segments for the AI
+  const transcriptText = useMemo(() => {
+    if (!consultation.transcript?.length) return undefined;
+    return consultation.transcript
+      .map(s => `${s.speakerName} [${s.timestamp}]: ${s.text}`)
+      .join("\n");
+  }, [consultation.transcript]);
+
   return (
     <>
-      {/* ── Three-column work area ─────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 flex overflow-hidden divide-x divide-slate-100">
         <TranscriptPanel
           segments={consultation.transcript}
@@ -64,6 +71,7 @@ export function ConsultationClient({ consultation }: Props) {
           onMessageConsumed={handleMessageConsumed}
           collapsed={collapsed.chat}
           onToggle={() => toggle("chat")}
+          transcriptText={transcriptText}
         />
       </div>
 
