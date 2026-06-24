@@ -32,8 +32,8 @@ interface Props {
 function SectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border" style={{ background: S.bg, borderColor: S.border }}>
-      <div className="px-5 py-3 border-b" style={{ borderColor: S.border }}>
-        <h3 className="text-sm font-semibold" style={{ color: S.title }}>{title}</h3>
+      <div className="px-5 py-3 border-b" style={{ borderColor: S.border, background: "#E4DDD0" }}>
+        <h3 className="text-sm font-bold" style={{ color: "#3A2E22" }}>{title}</h3>
       </div>
       <div className="px-5 py-4">{children}</div>
     </div>
