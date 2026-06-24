@@ -195,9 +195,25 @@ export default function ConsultationsPage() {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
-      <div className="px-4 py-6 sm:p-8 max-w-3xl mx-auto">
+      <div
+        className="px-4 sm:p-8 max-w-3xl mx-auto"
+        style={{ paddingTop: "max(1.5rem, env(safe-area-inset-top, 0px) + 1rem)" }}
+      >
 
-        {/* Header */}
+        {/* Header — mobile: two rows; desktop: one row */}
+
+        {/* Mobile upload button — own row, sits above the title */}
+        <div className="flex justify-end mb-3 sm:hidden">
+          <button
+            onClick={() => setUploadOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
+          >
+            <Mic size={15} />
+            Загрузить
+          </button>
+        </div>
+
+        {/* Title row */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button
@@ -221,15 +237,6 @@ export default function ConsultationsPage() {
           >
             <Mic size={15} />
             Загрузить запись
-          </button>
-
-          {/* Mobile button — icon + short label */}
-          <button
-            onClick={() => setUploadOpen(true)}
-            className="sm:hidden flex items-center gap-1.5 px-3 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
-          >
-            <Mic size={15} />
-            Загрузить
           </button>
         </div>
 
