@@ -1,21 +1,23 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Mic, Square, Loader2, CheckCircle2, ChevronDown } from "lucide-react";
+import { X, Mic, Square, Loader2, CheckCircle2, ChevronDown, User, FileText } from "lucide-react";
 import { ModalPortal } from "@/components/ui/ModalPortal";
+import { clients as mockClients, consultations as mockConsultations } from "@/lib/mockData";
 
 interface Client       { id: string; name: string; }
 interface Consultation { id: string; clientName: string; title?: string; topic?: string; createdAt: string; }
 
 interface Props {
   onClose: () => void;
-  defaultClientId?:      string;
-  defaultClientName?:    string;
-  defaultConsultationId?:string;
+  defaultClientId?:        string;
+  defaultClientName?:      string;
+  defaultConsultationId?:  string;
   defaultConsultationTitle?: string;
 }
 
-type Phase = "idle" | "recording" | "stopped" | "saving" | "transcribing" | "done";
+type Phase    = "idle" | "recording" | "stopped" | "saving" | "transcribing" | "done";
+type DestType = "none" | "client" | "consultation";
 
 function fmt(sec: number) {
   const m = Math.floor(sec / 60);
@@ -23,46 +25,78 @@ function fmt(sec: number) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-const FIELD = {
+const SEL_STYLE: React.CSSProperties = {
   background: "#FFFFFF", borderColor: "#D8CFBE", color: "#3A2E22",
   borderRadius: "0.75rem", border: "1px solid #D8CFBE",
-  padding: "0.5rem 0.75rem", fontSize: "0.875rem", width: "100%",
-  outline: "none",
-} as const;
+  padding: "0.6rem 2rem 0.6rem 0.75rem", fontSize: "0.875rem",
+  width: "100%", outline: "none", appearance: "none" as const,
+};
 
 export function VoiceNoteModal({
   onClose,
   defaultClientId, defaultClientName,
   defaultConsultationId, defaultConsultationTitle,
 }: Props) {
-  const [phase,     setPhase]     = useState<Phase>("idle");
-  const [elapsed,   setElapsed]   = useState(0);
-  const [blob,      setBlob]      = useState<Blob | null>(null);
-  const [text,      setText]      = useState("");
-  const [error,     setError]     = useState("");
+  const [phase,    setPhase]    = useState<Phase>("idle");
+  const [elapsed,  setElapsed]  = useState(0);
+  const [blob,     setBlob]     = useState<Blob | null>(null);
+  const [text,     setText]     = useState("");
+  const [error,    setError]    = useState("");
 
   // Destination
-  const [destType,  setDestType]  = useState<"none" | "client" | "consultation">(
+  const [destType,      setDestType]      = useState<DestType>(
     defaultConsultationId ? "consultation" : defaultClientId ? "client" : "none"
   );
-  const [clients,      setClients]       = useState<Client[]>([]);
-  const [consultations,setConsultations] = useState<Consultation[]>([]);
-  const [selClient,    setSelClient]     = useState(defaultClientId ?? "");
-  const [selClientName,setSelClientName] = useState(defaultClientName ?? "");
-  const [selCons,      setSelCons]       = useState(defaultConsultationId ?? "");
-  const [selConsTitle, setSelConsTitle]  = useState(defaultConsultationTitle ?? "");
+  const [clients,       setClients]       = useState<Client[]>([]);
+  const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [selClient,     setSelClient]     = useState(defaultClientId ?? "");
+  const [selClientName, setSelClientName] = useState(defaultClientName ?? "");
+  const [selCons,       setSelCons]       = useState(defaultConsultationId ?? "");
+  const [selConsTitle,  setSelConsTitle]  = useState(defaultConsultationTitle ?? "");
 
-  const mediaRef   = useRef<MediaRecorder | null>(null);
-  const chunksRef  = useRef<Blob[]>([]);
-  const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mediaRef  = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Load clients + consultations (real + mock merged)
   useEffect(() => {
-    fetch("/api/clients").then(r => r.ok ? r.json() : []).then((arr: {id:string;name:string}[]) => setClients(arr)).catch(()=>{});
-    fetch("/api/consultations").then(r => r.ok ? r.json() : []).then((arr: Consultation[]) => setConsultations(arr)).catch(()=>{});
+    async function load() {
+      // Clients
+      try {
+        const res  = await fetch("/api/clients");
+        const real: Client[] = res.ok ? await res.json() : [];
+        const realIds = new Set(real.map(c => c.id));
+        const mocks = mockClients
+          .filter(m => !realIds.has(m.id))
+          .map(m => ({ id: m.id, name: m.name }));
+        setClients([...real, ...mocks]);
+      } catch {
+        setClients(mockClients.map(m => ({ id: m.id, name: m.name })));
+      }
+
+      // Consultations
+      try {
+        const res  = await fetch("/api/consultations");
+        const real: Consultation[] = res.ok ? await res.json() : [];
+        const realIds = new Set(real.map(c => c.id));
+        const mocks = mockConsultations
+          .filter(m => !realIds.has(m.id))
+          .map(m => ({
+            id: m.id, clientName: m.clientName,
+            title: m.topic, topic: m.topic, createdAt: m.date,
+          }));
+        setConsultations([...real, ...mocks]);
+      } catch {
+        setConsultations(mockConsultations.map(m => ({
+          id: m.id, clientName: m.clientName,
+          title: m.topic, topic: m.topic, createdAt: m.date,
+        })));
+      }
+    }
+    load();
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
-  // Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
     window.addEventListener("keydown", onKey);
@@ -96,16 +130,16 @@ export function VoiceNoteModal({
     mediaRef.current?.stop();
   }
 
-  async function transcribe(id: string, audioPath: string) {
+  async function transcribeNote(id: string, audioPath: string) {
     setPhase("transcribing");
-    const res = await fetch("/api/voice-notes/transcribe", {
+    const res  = await fetch("/api/voice-notes/transcribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, audioPath }),
     });
     const data = await res.json();
     if (data.text) setText(data.text);
-    else setError("Не удалось транскрибировать. Запись сохранена.");
+    else setError("Не удалось транскрибировать. Запись сохранена без текста.");
   }
 
   async function save(withTranscription: boolean) {
@@ -115,9 +149,10 @@ export function VoiceNoteModal({
 
     const id   = `vn-${Date.now()}`;
     const form = new FormData();
-    form.append("audio",        blob, `voice-${id}.webm`);
-    form.append("id",           id);
-    form.append("durationSec",  String(elapsed));
+    form.append("audio",       blob, `voice-${id}.webm`);
+    form.append("id",          id);
+    form.append("durationSec", String(elapsed));
+
     if (destType === "client" && selClient) {
       form.append("clientId",   selClient);
       form.append("clientName", selClientName);
@@ -131,7 +166,7 @@ export function VoiceNoteModal({
     if (!res.ok) { setError("Ошибка сохранения"); setPhase("stopped"); return; }
 
     if (withTranscription) {
-      await transcribe(id, `/uploads/voice-${id}.webm`);
+      await transcribeNote(id, `/uploads/voice-${id}.webm`);
     }
 
     setPhase("done");
@@ -139,8 +174,7 @@ export function VoiceNoteModal({
 
   function handleClientChange(id: string) {
     setSelClient(id);
-    const c = clients.find(c => c.id === id);
-    setSelClientName(c?.name ?? "");
+    setSelClientName(clients.find(c => c.id === id)?.name ?? "");
   }
 
   function handleConsChange(id: string) {
@@ -148,6 +182,18 @@ export function VoiceNoteModal({
     const c = consultations.find(c => c.id === id);
     setSelConsTitle(c?.title || c?.topic || `Консультация · ${c?.clientName}`);
   }
+
+  // Derived: is destination valid?
+  const destValid =
+    destType === "none" ||
+    (destType === "client" && !!selClient) ||
+    (destType === "consultation" && !!selCons);
+
+  // Destination summary label for "done" screen
+  const destLabel =
+    destType === "consultation" && selConsTitle ? `→ ${selConsTitle}` :
+    destType === "client"       && selClientName ? `→ ${selClientName}` :
+    "сохранена без привязки";
 
   return (
     <ModalPortal>
@@ -173,16 +219,21 @@ export function VoiceNoteModal({
 
           <div className="px-6 py-5 space-y-5">
 
-            {/* Recorder */}
-            <div className="flex flex-col items-center gap-4 py-2">
+            {/* ── Recorder ── */}
+            <div className="flex flex-col items-center gap-3 py-1">
+
               {phase === "idle" && (
-                <button
-                  onClick={startRecording}
-                  className="w-16 h-16 rounded-full flex items-center justify-center shadow-md transition-all hover:scale-105"
-                  style={{ background: "#6B5D4F" }}
-                >
-                  <Mic size={26} color="white" />
-                </button>
+                <>
+                  <button
+                    onClick={startRecording}
+                    className="w-16 h-16 rounded-full flex items-center justify-center shadow-md transition-all hover:scale-105"
+                    style={{ background: "#6B5D4F" }}
+                    aria-label="Начать запись"
+                  >
+                    <Mic size={26} color="white" />
+                  </button>
+                  <span className="text-xs" style={{ color: "#A8997F" }}>Нажмите, чтобы начать запись</span>
+                </>
               )}
 
               {phase === "recording" && (
@@ -195,115 +246,148 @@ export function VoiceNoteModal({
                     onClick={stopRecording}
                     className="w-14 h-14 rounded-full flex items-center justify-center shadow-md transition-all hover:scale-105"
                     style={{ background: "#C9BBAA" }}
+                    aria-label="Остановить запись"
                   >
                     <Square size={20} color="#3D3228" fill="#3D3228" />
                   </button>
-                  <span className="text-xs" style={{ color: "#A8997F" }}>Нажмите, чтобы остановить</span>
+                  <span className="text-xs" style={{ color: "#A8997F" }}>Нажмите ■ чтобы остановить</span>
                 </>
               )}
 
               {(phase === "saving" || phase === "transcribing") && (
-                <div className="flex flex-col items-center gap-2">
+                <div className="flex flex-col items-center gap-2 py-2">
                   <Loader2 size={32} className="animate-spin" style={{ color: "#A8997F" }} />
                   <span className="text-sm" style={{ color: "#A8997F" }}>
-                    {phase === "transcribing" ? "Транскрибирую..." : "Сохраняю..."}
+                    {phase === "transcribing" ? "Транскрибирую через Whisper..." : "Сохраняю..."}
                   </span>
-                </div>
-              )}
-
-              {phase === "done" && (
-                <div className="flex flex-col items-center gap-2">
-                  <CheckCircle2 size={32} className="text-emerald-500" />
-                  <span className="text-sm font-medium" style={{ color: "#3D3228" }}>Заметка сохранена</span>
-                  {text && (
-                    <p className="text-xs text-center leading-relaxed max-w-xs" style={{ color: "#6B5D4F" }}>{text}</p>
-                  )}
                 </div>
               )}
 
               {phase === "stopped" && (
                 <div className="text-center">
-                  <div className="text-lg font-mono font-semibold mb-1" style={{ color: "#3D3228" }}>{fmt(elapsed)}</div>
-                  <span className="text-xs" style={{ color: "#A8997F" }}>Запись готова</span>
+                  <div className="text-2xl font-mono font-semibold" style={{ color: "#3D3228" }}>{fmt(elapsed)}</div>
+                  <span className="text-xs mt-0.5 block" style={{ color: "#A8997F" }}>Запись готова</span>
+                </div>
+              )}
+
+              {phase === "done" && (
+                <div className="flex flex-col items-center gap-2 py-1">
+                  <CheckCircle2 size={34} className="text-emerald-500" />
+                  <span className="text-sm font-medium" style={{ color: "#3D3228" }}>Заметка сохранена</span>
+                  <span className="text-xs" style={{ color: "#A8997F" }}>{destLabel}</span>
+                  {text && (
+                    <div className="mt-2 w-full rounded-xl p-3 text-xs leading-relaxed" style={{ background: "#F0EBE1", color: "#6B5D4F" }}>
+                      {text}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Destination — shown when stopped */}
+            {/* ── Destination — only when stopped ── */}
             {phase === "stopped" && (
               <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium" style={{ color: "#A8997F" }}>Куда сохранить</label>
-                  <div className="relative">
-                    <select
-                      value={destType}
-                      onChange={e => setDestType(e.target.value as typeof destType)}
-                      style={FIELD}
-                      className="appearance-none pr-8 cursor-pointer"
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#A8997F" }}>Куда сохранить</p>
+
+                {/* Destination type — 3 toggle buttons */}
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { id: "none",         label: "Без привязки", icon: <FileText size={13} /> },
+                    { id: "client",       label: "Клиенту",      icon: <User size={13} /> },
+                    { id: "consultation", label: "Консультации", icon: <Mic size={13} /> },
+                  ] as { id: DestType; label: string; icon: React.ReactNode }[]).map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setDestType(opt.id)}
+                      className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border text-xs font-medium transition-all"
+                      style={{
+                        background:   destType === opt.id ? "#6B5D4F" : "#F0EBE1",
+                        borderColor:  destType === opt.id ? "#6B5D4F" : "#D8CFBE",
+                        color:        destType === opt.id ? "#FFFFFF"  : "#6B5D4F",
+                      }}
                     >
-                      <option value="none">Без привязки (отдельно)</option>
-                      <option value="client">Клиенту</option>
-                      <option value="consultation">К консультации</option>
-                    </select>
-                    <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#A8997F" }} />
-                  </div>
+                      {opt.icon}
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
 
+                {/* Client picker */}
                 {destType === "client" && (
                   <div className="relative">
                     <select
                       value={selClient}
                       onChange={e => handleClientChange(e.target.value)}
-                      style={FIELD}
-                      className="appearance-none pr-8 cursor-pointer"
+                      style={SEL_STYLE}
                     >
-                      <option value="">Выберите клиента...</option>
-                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      <option value="">— Выберите клиента —</option>
+                      {clients.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
                     </select>
                     <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#A8997F" }} />
+                    {selClient && (
+                      <p className="text-xs mt-1 pl-1" style={{ color: "#A8997F" }}>
+                        ✓ Выбран: <strong>{selClientName}</strong>
+                      </p>
+                    )}
                   </div>
                 )}
 
+                {/* Consultation picker */}
                 {destType === "consultation" && (
                   <div className="relative">
                     <select
                       value={selCons}
                       onChange={e => handleConsChange(e.target.value)}
-                      style={FIELD}
-                      className="appearance-none pr-8 cursor-pointer"
+                      style={SEL_STYLE}
                     >
-                      <option value="">Выберите консультацию...</option>
+                      <option value="">— Выберите консультацию —</option>
                       {consultations.map(c => (
                         <option key={c.id} value={c.id}>
-                          {c.clientName} · {c.title || c.topic || new Date(c.createdAt).toLocaleDateString("ru-RU")}
+                          {c.clientName} · {c.title || c.topic || new Date(c.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                         </option>
                       ))}
                     </select>
                     <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#A8997F" }} />
+                    {selCons && (
+                      <p className="text-xs mt-1 pl-1" style={{ color: "#A8997F" }}>
+                        ✓ Выбрана: <strong>{selConsTitle}</strong>
+                      </p>
+                    )}
                   </div>
+                )}
+
+                {/* Validation hint */}
+                {!destValid && (
+                  <p className="text-xs" style={{ color: "#C9BBAA" }}>
+                    {destType === "client" ? "Выберите клиента из списка" : "Выберите консультацию из списка"}
+                  </p>
                 )}
               </div>
             )}
 
             {error && <p className="text-xs text-rose-500">{error}</p>}
 
-            {/* Actions */}
+            {/* ── Actions ── */}
             {phase === "stopped" && (
               <div className="flex gap-2.5">
                 <button
                   onClick={() => save(false)}
-                  className="flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors"
+                  disabled={!destValid}
+                  className="flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors disabled:opacity-40"
                   style={{ borderColor: "#D8CFBE", color: "#6B5D4F", background: "#F0EBE1" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#E8E0D0"; }}
+                  onMouseEnter={e => { if (destValid) e.currentTarget.style.background = "#E8E0D0"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "#F0EBE1"; }}
                 >
                   Сохранить
                 </button>
                 <button
                   onClick={() => save(true)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
+                  disabled={!destValid}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40"
                   style={{ background: "#6B5D4F", color: "#FFFFFF" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#4A3C2E"; }}
+                  onMouseEnter={e => { if (destValid) e.currentTarget.style.background = "#4A3C2E"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "#6B5D4F"; }}
                 >
                   <Mic size={13} />
@@ -323,6 +407,7 @@ export function VoiceNoteModal({
                 Готово
               </button>
             )}
+
           </div>
         </div>
       </div>
