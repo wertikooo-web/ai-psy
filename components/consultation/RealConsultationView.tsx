@@ -8,8 +8,9 @@ import {
   Zap, Search, UserCheck, Layers, Lightbulb, CalendarClock,
   Play, NotebookPen, FileText, Loader2, AlertCircle,
   Download, ChevronDown, ChevronUp, BrainCircuit,
-  CheckCircle2, CircleDashed, CalendarPlus,
+  CheckCircle2, CircleDashed,
 } from "lucide-react";
+import { CalendarButtons } from "@/components/ui/CalendarButtons";
 import Link from "next/link";
 
 interface Props {
@@ -211,18 +212,12 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               {new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
             </span>
           )}
-          <a
-            href={`/api/calendar?clientName=${encodeURIComponent(c.clientName ?? "")}&date=${encodeURIComponent(dateStr)}&topic=${encodeURIComponent(c.title ?? "")}`}
-            download
-            title="Добавить в календарь"
-            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-colors"
-            style={{ borderColor: "#E2D8C7", color: "#A8997F", background: "#F7F4EE" }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#6B5D4F"; e.currentTarget.style.background = "#EDE6D9"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "#F7F4EE"; }}
-          >
-            <CalendarPlus size={13} />
-            <span className="hidden sm:inline">В календарь</span>
-          </a>
+          <CalendarButtons
+            clientName={c.clientName ?? ""}
+            date={dateStr}
+            topic={c.title ?? ""}
+            compact
+          />
         </div>
       </header>
 

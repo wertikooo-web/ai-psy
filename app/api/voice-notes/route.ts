@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     const consultationId    = (form.get("consultationId")    as string) || undefined;
     const consultationTitle = (form.get("consultationTitle") as string) || undefined;
 
+    const textContent = (form.get("text") as string) || undefined;
     let audioPath: string | undefined;
 
     if (audio && audio.size > 0) {
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
       durationSec,
       audioPath,
+      text: textContent,
       clientId,
       clientName,
       consultationId,

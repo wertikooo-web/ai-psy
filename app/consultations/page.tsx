@@ -7,8 +7,9 @@ import type { StoredConsultation } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
 import {
-  Mic, ArrowRight, ArrowLeft, CheckCircle2, Clock, AlertCircle, ChevronDown, CalendarPlus,
+  Mic, ArrowRight, ArrowLeft, CheckCircle2, Clock, AlertCircle, ChevronDown,
 } from "lucide-react";
+import { CalendarButtons } from "@/components/ui/CalendarButtons";
 
 type SortOption  = "date_desc" | "date_asc" | "client";
 type GroupOption = "none" | "month" | "client" | "status";
@@ -128,18 +129,14 @@ function ConsultationCard({
             state={hasAnalysis ? "ok" : "none"}
           />
         </div>
-        <a
-          href={`/api/calendar?clientName=${encodeURIComponent(c.clientName ?? "")}&date=${encodeURIComponent(c.createdAt)}&duration=${encodeURIComponent(c.duration ?? "")}&topic=${encodeURIComponent(c.topic ?? c.title ?? "")}&session=${encodeURIComponent(String(num))}`}
-          download
-          title="Добавить в календарь"
-          className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border transition-colors flex-shrink-0"
-          style={{ borderColor: "#D8CFBE", color: "#A8997F", background: "#F4F0E8" }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#6B5D4F"; e.currentTarget.style.background = "#EAE3D5"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "#F4F0E8"; }}
-        >
-          <CalendarPlus size={12} />
-          В календарь
-        </a>
+        <CalendarButtons
+          clientName={c.clientName ?? ""}
+          date={c.createdAt}
+          duration={c.duration}
+          topic={c.topic ?? c.title ?? ""}
+          session={num}
+          compact
+        />
       </div>
 
       {/* ── CTA ── */}
