@@ -54,7 +54,7 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
             className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
           >
             <Upload size={14} />
-            Импортировать материалы
+            Добавить материалы
           </button>
         </div>
 

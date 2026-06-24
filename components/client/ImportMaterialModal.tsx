@@ -68,7 +68,7 @@ export function ImportMaterialModal({ open, clientId, onClose, onImported }: Pro
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Upload size={17} className="text-brand-500" />
-            <h2 className="text-base font-semibold text-slate-800">Импортировать материалы</h2>
+            <h2 className="text-base font-semibold text-slate-800">Добавить материалы</h2>
           </div>
           <button onClick={() => { reset(); onClose(); }} className="text-slate-400 hover:text-slate-600 transition-colors">
             <X size={18} />
