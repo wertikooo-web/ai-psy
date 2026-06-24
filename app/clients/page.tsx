@@ -153,47 +153,48 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
 
   return (
     <div
-      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col relative"
-      style={{ background: CARD_BG, borderColor: "#DDD4C6", minHeight: 292 }}
+      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col"
+      style={{ background: CARD_BG, borderColor: "#DDD4C6", minHeight: 292, position: "relative" }}
     >
-      {/* ── Action buttons: absolute top-right, visible on craft bg ── */}
-      {!client.isMock && (
-        <div
-          className="absolute top-2.5 right-2.5 z-20 flex items-center gap-0.5 rounded-lg px-1 py-0.5"
-          style={{ background: "rgba(240,235,225,0.92)", border: "1px solid #D8CFBE" }}
-        >
-          {/* Пауза (только для активных) */}
-          {status === "active" && (
-            <Tip text="Перевести клиента в паузу">
-              <ActionBtn onClick={(e) => { e.stopPropagation(); onPause(); }} hoverColor="#D97706" hoverBg="#FEF3C7">
-                <Pause size={15} />
-              </ActionBtn>
-            </Tip>
-          )}
-          {/* Восстановить (для паузы / архива) */}
-          {(status === "paused" || status === "archived" || status === "completed") && (
-            <Tip text="Вернуть клиента в активные">
-              <ActionBtn onClick={(e) => { e.stopPropagation(); onRestore(); }} hoverColor="#059669" hoverBg="#D1FAE5">
-                <RotateCcw size={15} />
-              </ActionBtn>
-            </Tip>
-          )}
-          {/* Архив (активные и на паузе) */}
-          {(status === "active" || status === "paused") && (
-            <Tip text="Переместить клиента в архив">
-              <ActionBtn onClick={(e) => { e.stopPropagation(); onArchive(); }} hoverColor="#57534E" hoverBg="#E7E5E4">
-                <Archive size={15} />
-              </ActionBtn>
-            </Tip>
-          )}
-          {/* Удалить — всегда */}
-          <Tip text="Удалить клиента">
-            <ActionBtn onClick={(e) => { e.stopPropagation(); onDelete(); }} hoverColor="#EF4444" hoverBg="#FEE2E2">
-              <Trash2 size={15} />
+      {/* ── Action buttons: белая пилюля, всегда в правом верхнем углу ── */}
+      <div
+        className="absolute flex items-center gap-0.5 rounded-lg px-1 py-0.5"
+        style={{
+          top: 10, right: 10, zIndex: 20,
+          background: "#FFFFFF",
+          border: "1px solid #D8CFBE",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+          opacity: client.isMock ? 0.35 : 1,
+          pointerEvents: client.isMock ? "none" : "auto",
+        }}
+      >
+        {status === "active" && (
+          <Tip text="Перевести клиента в паузу">
+            <ActionBtn onClick={(e) => { e.stopPropagation(); onPause(); }} hoverColor="#D97706" hoverBg="#FEF3C7">
+              <Pause size={15} />
             </ActionBtn>
           </Tip>
-        </div>
-      )}
+        )}
+        {(status === "paused" || status === "archived" || status === "completed") && (
+          <Tip text="Вернуть клиента в активные">
+            <ActionBtn onClick={(e) => { e.stopPropagation(); onRestore(); }} hoverColor="#059669" hoverBg="#D1FAE5">
+              <RotateCcw size={15} />
+            </ActionBtn>
+          </Tip>
+        )}
+        {(status === "active" || status === "paused") && (
+          <Tip text="Переместить клиента в архив">
+            <ActionBtn onClick={(e) => { e.stopPropagation(); onArchive(); }} hoverColor="#57534E" hoverBg="#E7E5E4">
+              <Archive size={15} />
+            </ActionBtn>
+          </Tip>
+        )}
+        <Tip text="Удалить клиента">
+          <ActionBtn onClick={(e) => { e.stopPropagation(); onDelete(); }} hoverColor="#EF4444" hoverBg="#FEE2E2">
+            <Trash2 size={15} />
+          </ActionBtn>
+        </Tip>
+      </div>
 
       {/* ── Top: avatar + name (фиксируем pr чтобы кнопки не перекрывали) ── */}
       <div className="p-5 pb-3 flex items-start gap-3">
