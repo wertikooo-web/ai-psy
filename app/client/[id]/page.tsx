@@ -12,17 +12,19 @@ import { OverviewTab } from "@/components/client/tabs/OverviewTab";
 import { ConsultationsTab } from "@/components/client/tabs/ConsultationsTab";
 import { HistoryTab } from "@/components/client/tabs/HistoryTab";
 import { MaterialsTab } from "@/components/client/tabs/MaterialsTab";
+import { NotesTab } from "@/components/client/tabs/NotesTab";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mic, ArrowLeft, Trash2, Pause, Archive, RotateCcw } from "lucide-react";
 
-type Tab = "overview" | "consultations" | "history" | "materials";
+type Tab = "overview" | "consultations" | "history" | "materials" | "notes";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "overview",      label: "Обзор"            },
-  { id: "consultations", label: "Консультации"      },
-  { id: "history",       label: "История клиента"   },
-  { id: "materials",     label: "Материалы"         },
+  { id: "overview",      label: "Обзор"                },
+  { id: "consultations", label: "Консультации"          },
+  { id: "history",       label: "История клиента"       },
+  { id: "materials",     label: "Материалы"             },
+  { id: "notes",         label: "Заметки психолога"     },
 ];
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
@@ -305,7 +307,17 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
         {tab === "materials" && (
           <MaterialsTab
             clientId={id}
-            materials={materials}
+            materials={materials.filter((m) => m.type !== "therapist_notes")}
+            isMock={isMock}
+            onAdd={(m) => setMaterials((prev) => [m, ...prev])}
+            onDelete={(mid) => setMaterials((prev) => prev.filter((m) => m.id !== mid))}
+          />
+        )}
+
+        {tab === "notes" && (
+          <NotesTab
+            clientId={id}
+            notes={materials.filter((m) => m.type === "therapist_notes")}
             isMock={isMock}
             onAdd={(m) => setMaterials((prev) => [m, ...prev])}
             onDelete={(mid) => setMaterials((prev) => prev.filter((m) => m.id !== mid))}

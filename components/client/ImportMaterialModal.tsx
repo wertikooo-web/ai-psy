@@ -6,7 +6,6 @@ import { MATERIAL_TYPE_LABELS, type MaterialType, type ClientMaterial } from "@/
 
 const TYPES: MaterialType[] = [
   "general_history",
-  "therapist_notes",
   "gpt_analysis",
   "past_transcript",
   "other",

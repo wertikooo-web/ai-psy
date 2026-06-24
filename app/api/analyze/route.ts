@@ -144,12 +144,13 @@ async function assembleClientContext(
     }
   } catch { /* no history yet */ }
 
-  // 3. Materials (up to 10, up to 2000 chars each)
+  // 3. Materials (up to 10, up to 2000 chars each — therapist_notes excluded, private)
   try {
     const materials = await getMaterials(clientId);
-    if (materials.length > 0) {
+    const forGPT = materials.filter((m) => m.type !== "therapist_notes");
+    if (forGPT.length > 0) {
       parts.push("\nМатериалы клиента:");
-      for (const m of materials.slice(0, 10)) {
+      for (const m of forGPT.slice(0, 10)) {
         const label   = m.title ? `${m.title} [${m.type}]` : `[${m.type}]`;
         const preview = m.content.length > 2000
           ? m.content.slice(0, 2000) + "…"
