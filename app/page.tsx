@@ -118,7 +118,7 @@ export default function HomePage() {
       {/* ── Single hero section — unified background + city as absolute bg ── */}
       <section
         className="relative overflow-hidden"
-        style={{ background: "#F0EBE0", minHeight: "100vh" }}
+        style={{ background: "#FAFAF9", minHeight: "100vh" }}
       >
         {/* City illustration — belongs to this section, not the scroll root */}
         <BackgroundIllustration />
