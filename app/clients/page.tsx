@@ -126,74 +126,91 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
   const [tabHov, setTabHov] = useState(false);
   const status = (client.status ?? "active") as keyof typeof STATUS_BADGE;
 
-  // Action buttons depend on current status
-  const actions = (
-    <div className="flex items-center gap-0.5">
-      {status === "active" && (
-        <>
-          <Tip text="Временно приостановить работу с клиентом">
-            <button onClick={(e) => { e.stopPropagation(); onPause(); }}
-              className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-amber-500 hover:bg-amber-50 transition-colors">
-              <Pause size={13} />
-            </button>
-          </Tip>
-          <Tip text="Переместить клиента в архив">
-            <button onClick={(e) => { e.stopPropagation(); onArchive(); }}
-              className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-600 hover:bg-stone-200 transition-colors">
-              <Archive size={13} />
-            </button>
-          </Tip>
-        </>
-      )}
-      {status === "paused" && (
-        <>
-          <Tip text="Вернуть клиента в активные">
-            <button onClick={(e) => { e.stopPropagation(); onRestore(); }}
-              className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 transition-colors">
-              <RotateCcw size={13} />
-            </button>
-          </Tip>
-          <Tip text="Переместить клиента в архив">
-            <button onClick={(e) => { e.stopPropagation(); onArchive(); }}
-              className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-stone-600 hover:bg-stone-200 transition-colors">
-              <Archive size={13} />
-            </button>
-          </Tip>
-        </>
-      )}
-      {(status === "archived" || status === "completed") && (
-        <Tip text="Вернуть клиента в активные">
-          <button onClick={(e) => { e.stopPropagation(); onRestore(); }}
-            className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-emerald-500 hover:bg-emerald-50 transition-colors">
-            <RotateCcw size={13} />
-          </button>
-        </Tip>
-      )}
-      <Tip text="Удалить клиента и все связанные данные">
-        <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="w-7 h-7 rounded-md flex items-center justify-center text-stone-400 hover:text-rose-500 hover:bg-rose-50 transition-colors">
-          <Trash2 size={13} />
-        </button>
-      </Tip>
-    </div>
-  );
 
   return (
     <div
-      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col"
+      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col relative"
       style={{ background: CARD_BG, borderColor: "#DDD4C6" }}
     >
-      {/* ── Top: avatar + name + action buttons ── */}
+      {/* ── Action buttons — absolute top-right, always visible ── */}
+      {!client.isMock && (
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-0.5">
+          {status === "active" && (
+            <>
+              <Tip text="Временно приостановить работу с клиентом">
+                <button onClick={(e) => { e.stopPropagation(); onPause(); }}
+                  className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
+                  style={{ color: "#A8997F" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#D97706"; e.currentTarget.style.background = "#FEF3C7"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
+                  <Pause size={13} />
+                </button>
+              </Tip>
+              <Tip text="Переместить клиента в архив">
+                <button onClick={(e) => { e.stopPropagation(); onArchive(); }}
+                  className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
+                  style={{ color: "#A8997F" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#57534E"; e.currentTarget.style.background = "#E7E5E4"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
+                  <Archive size={13} />
+                </button>
+              </Tip>
+            </>
+          )}
+          {status === "paused" && (
+            <>
+              <Tip text="Вернуть клиента в активные">
+                <button onClick={(e) => { e.stopPropagation(); onRestore(); }}
+                  className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
+                  style={{ color: "#A8997F" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#059669"; e.currentTarget.style.background = "#D1FAE5"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
+                  <RotateCcw size={13} />
+                </button>
+              </Tip>
+              <Tip text="Переместить клиента в архив">
+                <button onClick={(e) => { e.stopPropagation(); onArchive(); }}
+                  className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
+                  style={{ color: "#A8997F" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#57534E"; e.currentTarget.style.background = "#E7E5E4"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
+                  <Archive size={13} />
+                </button>
+              </Tip>
+            </>
+          )}
+          {(status === "archived" || status === "completed") && (
+            <Tip text="Вернуть клиента в активные">
+              <button onClick={(e) => { e.stopPropagation(); onRestore(); }}
+                className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
+                style={{ color: "#A8997F" }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "#059669"; e.currentTarget.style.background = "#D1FAE5"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
+                <RotateCcw size={13} />
+              </button>
+            </Tip>
+          )}
+          <Tip text="Удалить клиента и все связанные данные">
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
+              style={{ color: "#A8997F" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "#FEE2E2"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}>
+              <Trash2 size={13} />
+            </button>
+          </Tip>
+        </div>
+      )}
+
+      {/* ── Top: avatar + name ── */}
       <div className="p-5 pb-3 flex items-start gap-3">
         <Avatar initials={client.initials} color={client.color} size="lg" />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 pr-20">
           <h2 className="font-semibold text-slate-800 truncate leading-tight">{client.name}</h2>
           {client.age && (
             <p className="text-xs text-stone-400 mt-0.5">{client.age} лет</p>
           )}
         </div>
-        {/* Context-sensitive action buttons — top right */}
-        {!client.isMock && actions}
       </div>
 
       {/* ── Body: stats + concern + tags + status badge ── */}
