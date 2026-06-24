@@ -14,7 +14,8 @@ out/
 .env.production
 
 # Runtime data (flat-file DB and uploaded audio)
-data/
+# Only ignore the top-level /data/ dir (JSON flat files), not lib/data/
+/data/
 public/uploads/
 
 # Logs
