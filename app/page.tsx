@@ -20,6 +20,8 @@ export default function HomePage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [addOpen, setAddOpen]       = useState(false);
   const [greeting, setGreeting]     = useState("Психолог");
+  const [photoUrl, setPhotoUrl]     = useState("");
+  const [initials, setInitials]     = useState("П");
   const [clients, setClients]       = useState<AnyClient[]>([]);
 
   async function loadClients() {
@@ -43,6 +45,11 @@ export default function HomePage() {
       .then((p) => {
         const name = p.displayName?.trim() || [p.firstName, p.lastName].filter(Boolean).join(" ");
         if (name) setGreeting(name);
+        if (p.photoUrl) setPhotoUrl(p.photoUrl);
+        const f = p.firstName?.[0]?.toUpperCase() ?? "";
+        const l = p.lastName?.[0]?.toUpperCase()  ?? "";
+        const abbr = f && l ? f + l : f || (p.displayName?.[0]?.toUpperCase() ?? "П");
+        setInitials(abbr);
       })
       .catch(() => {});
   }, []);
@@ -79,9 +86,26 @@ export default function HomePage() {
           </div>
 
           {/* Greeting */}
-          <h1 className="text-3xl font-bold text-slate-800 mb-3">
-            Добро пожаловать, {greeting}
-          </h1>
+          <div className="flex items-center justify-center gap-4 mb-3">
+            {photoUrl ? (
+              <img
+                src={photoUrl}
+                alt={greeting}
+                className="w-14 h-14 rounded-full object-cover flex-shrink-0"
+                style={{ border: "3px solid rgba(255,255,255,0.9)", boxShadow: "0 2px 12px rgba(0,0,0,0.10)" }}
+              />
+            ) : (
+              <div
+                className="w-14 h-14 rounded-full bg-brand-500 flex items-center justify-center text-white text-lg font-bold flex-shrink-0"
+                style={{ border: "3px solid rgba(255,255,255,0.9)", boxShadow: "0 2px 12px rgba(0,0,0,0.10)" }}
+              >
+                {initials}
+              </div>
+            )}
+            <h1 className="text-3xl font-bold text-slate-800">
+              Добро пожаловать, {greeting}
+            </h1>
+          </div>
           <p className="text-slate-500 text-base leading-relaxed mb-10 max-w-lg mx-auto">
             AI-помощник для работы с консультациями,<br />транскриптами и историей клиентов.
           </p>
