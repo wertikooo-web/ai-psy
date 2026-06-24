@@ -12,7 +12,7 @@ import { UserChip } from "@/components/UserChip";
 
 // ── Craft palette ─────────────────────────────────────────────────────────────
 const C = {
-  bg:         "#F7F7F8",
+  bg:         "#F0EBE0",
   border:     "#E5E7EB",
   active:     "#E7DDCC",
   hover:      "#E2D8C7",
