@@ -44,6 +44,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   const [materials, setMaterials]         = useState<ClientMaterial[]>([]);
   const [deletingClient, setDeletingClient]   = useState(false);
   const [statusChanging, setStatusChanging]   = useState(false);
+  const [dataLoading, setDataLoading]         = useState(true);
 
   // Reload real sessions after a new upload
   function reloadRealSessions() {
@@ -61,10 +62,11 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   // Load data for real clients
   useEffect(() => {
     if (isMock) {
-      // Mock clients use static data for history; materials start empty
       setHistoryItems(mockHistoryItems.filter((i) => i.clientId === id));
+      setDataLoading(false);
       return;
     }
+    setDataLoading(true);
     Promise.all([
       fetch("/api/clients").then((r) => r.json()),
       fetch("/api/consultations").then((r) => r.json()),
@@ -75,8 +77,16 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
       setRealSessions((consultations as StoredConsultation[]).filter((c) => c.clientId === id));
       setHistoryItems(history as ClientHistoryItem[]);
       setMaterials(mats as ClientMaterial[]);
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setDataLoading(false));
   }, [id, isMock]);
+
+  if (dataLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-slate-200 border-t-brand-500 animate-spin" />
+      </div>
+    );
+  }
 
   if (!client) {
     return (
