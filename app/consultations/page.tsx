@@ -104,7 +104,7 @@ function ConsultationCard({
               {showTopic && <span className="text-stone-400"> · {title}</span>}
             </div>
             {c.summary && (
-              <p className="text-sm text-stone-400 line-clamp-1 mt-1 leading-relaxed">{c.summary}</p>
+              <p className="text-sm text-stone-400 line-clamp-2 mt-1 leading-relaxed">{c.summary}</p>
             )}
           </div>
           <div className="flex-shrink-0 text-xs text-stone-400 pt-0.5">
