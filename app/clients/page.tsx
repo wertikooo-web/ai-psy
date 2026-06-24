@@ -13,10 +13,10 @@ type FilterTab  = "active" | "paused" | "archived" | "all";
 type ModalKind  = "delete" | "pause" | "archive" | null;
 
 // ── Palette ───────────────────────────────────────────────────────────────────
-const CARD_BG   = "#F0EBE1";
-const CARD_MUTED = "#EBE4D8";        // paused / archived card tint
-const BTN_BG    = "#D4C9B5";        // "Открыть карточку" — ~25% darker than card
-const BTN_HOVER = "#C8BBAA";        // hover
+const CARD_BG    = "#F0EBE1";
+const CARD_MUTED = "#EAE2D6";        // paused / archived card tint
+const TAB_BG     = "#C9BBAA";        // folder-tab: noticeably darker than card
+const TAB_HOVER  = "#BEB09E";        // folder-tab hover
 
 // ── Status ────────────────────────────────────────────────────────────────────
 const STATUS_LABEL: Record<string, string> = {
@@ -88,14 +88,17 @@ interface CardProps {
 
 function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }: CardProps) {
   const isInactive = client.status === "paused" || client.status === "archived" || client.status === "completed";
+  const [hovered, setHovered] = useState(false);
 
   return (
+    // overflow-hidden lets the folder-tab corners be clipped by the card's radius
     <div
-      className="rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col"
+      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col"
       style={{
         background:  isInactive ? CARD_MUTED : CARD_BG,
-        borderColor: "#E2D9CC",
-        opacity:     isInactive ? 0.88 : 1,
+        borderColor: "#DDD4C6",
+        opacity:     isInactive ? 0.87 : 1,
+        overflow:    "hidden",
       }}
     >
       {/* ── Top: avatar + name + delete ── */}
@@ -109,7 +112,6 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
           </span>
         </div>
 
-        {/* Delete — top right, always visible but quiet */}
         <Tip text="Удалить клиента и все связанные данные">
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -120,7 +122,7 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
         </Tip>
       </div>
 
-      {/* ── Body: stats + concern + tags ── */}
+      {/* ── Body: stats + concern + tags + secondary actions ── */}
       <div className="px-5 pb-4 flex-1">
         <div className="flex items-center gap-3 mb-2.5 text-xs text-stone-400">
           <div className="flex items-center gap-1">
@@ -138,9 +140,10 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
           <p className="text-sm text-stone-600 line-clamp-2 leading-relaxed">{client.concern}</p>
         )}
 
-        {client.mainTopics?.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-3">
-            {client.mainTopics.slice(0, 3).map((t) => (
+        {/* Tags row + secondary actions in same bottom row */}
+        <div className="flex items-end justify-between mt-3 gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {client.mainTopics?.slice(0, 3).map((t) => (
               <span
                 key={t}
                 className="px-2 py-0.5 rounded-full text-xs text-stone-500"
@@ -149,67 +152,79 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
                 {t}
               </span>
             ))}
-            {client.mainTopics.length > 3 && (
+            {(client.mainTopics?.length ?? 0) > 3 && (
               <span className="px-2 py-0.5 rounded-full text-xs text-stone-400">
                 +{client.mainTopics.length - 3}
               </span>
             )}
           </div>
-        )}
-      </div>
 
-      {/* ── Footer: open CTA + secondary actions ── */}
-      <div className="px-4 pb-4 flex items-center gap-2">
-        {/* Main CTA — visually dominant */}
-        <button
-          onClick={onOpen}
-          className="flex-1 flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-all group"
-          style={{ background: BTN_BG, color: "#5C4F3E" }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = BTN_HOVER; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = BTN_BG; }}
-        >
-          Открыть карточку
-          <ArrowRight
-            size={14}
-            className="text-stone-500 transition-transform duration-150 group-hover:translate-x-0.5"
-          />
-        </button>
-
-        {/* Secondary actions — compact, quiet, real clients only */}
-        {!client.isMock && (
-          <div className="flex items-center gap-1">
-            {!isInactive ? (
-              <>
-                <Tip text="Временно приостановить работу с клиентом">
+          {/* Secondary actions — right-aligned, quiet */}
+          {!client.isMock && (
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              {!isInactive ? (
+                <>
+                  <Tip text="Временно приостановить работу с клиентом">
+                    <button
+                      onClick={() => onPause()}
+                      className="w-7 h-7 rounded-md flex items-center justify-center text-stone-300 hover:text-amber-500 hover:bg-amber-50 transition-colors"
+                    >
+                      <Pause size={12} />
+                    </button>
+                  </Tip>
+                  <Tip text="Переместить клиента в архив">
+                    <button
+                      onClick={() => onArchive()}
+                      className="w-7 h-7 rounded-md flex items-center justify-center text-stone-300 hover:text-slate-500 hover:bg-stone-200 transition-colors"
+                    >
+                      <Archive size={12} />
+                    </button>
+                  </Tip>
+                </>
+              ) : (
+                <Tip text="Вернуть клиента в активные">
                   <button
-                    onClick={() => onPause()}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                    onClick={() => onRestore()}
+                    className="w-7 h-7 rounded-md flex items-center justify-center text-stone-300 hover:text-emerald-500 hover:bg-emerald-50 transition-colors"
                   >
-                    <Pause size={13} />
+                    <RotateCcw size={12} />
                   </button>
                 </Tip>
-                <Tip text="Переместить клиента в архив">
-                  <button
-                    onClick={() => onArchive()}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-400 hover:text-slate-600 hover:bg-stone-200 transition-colors"
-                  >
-                    <Archive size={13} />
-                  </button>
-                </Tip>
-              </>
-            ) : (
-              <Tip text="Вернуть клиента в активные">
-                <button
-                  onClick={() => onRestore()}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-stone-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                >
-                  <RotateCcw size={13} />
-                </button>
-              </Tip>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* ── Folder tab: full-width CTA ── */}
+      {/*
+        Looks like a paper folder tab:
+        - flat top edge (border-radius: 0) — card's overflow:hidden gives us rounded bottom
+        - visible border-top separates tab from body
+        - inset top highlight simulates paper catching light
+        - box-shadow gives slight lift/depth
+      */}
+      <button
+        onClick={onOpen}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium transition-all group"
+        style={{
+          background:  hovered ? TAB_HOVER : TAB_BG,
+          color:       "#4A3F32",
+          borderTop:   "1px solid #B8AC9A",
+          boxShadow:   "inset 0 1px 0 rgba(255,255,255,0.22)",
+          borderRadius: 0,
+          transition:  "background 0.15s ease",
+        }}
+      >
+        <span className="tracking-wide">Открыть карточку</span>
+        <ArrowRight
+          size={14}
+          className="text-stone-500 transition-transform duration-150"
+          style={{ transform: hovered ? "translateX(3px)" : "translateX(0)" }}
+        />
+      </button>
     </div>
   );
 }
