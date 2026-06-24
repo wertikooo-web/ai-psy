@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getConsultation } from "@/lib/data/consultations";
+import { readProfile } from "@/lib/data/userProfile";
 
 const SYSTEM_PROMPT = `Ты — AI-ассистент для психолога. Ты помогаешь специалисту анализировать сессию, замечать паттерны, готовиться к следующей встрече.
 
@@ -39,10 +40,15 @@ export async function POST(req: NextRequest) {
       ? `\n\n---\nТРАНСКРИПТ СЕССИИ:\n${transcript.slice(0, 12000)}\n---`
       : "\n\n(Транскрипт недоступен — отвечай на основе вопроса психолога)";
 
+    const profile = await readProfile();
+    const model = profile.aiModel ?? "gpt-4o";
+
     const openai = new OpenAI({ apiKey });
 
+    const isOModel = /^o\d/.test(model);
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model,
+      ...(isOModel ? {} : { temperature: 0.7 }),
       messages: [
         { role: "system", content: SYSTEM_PROMPT + contextBlock },
         ...messages.map((m: { role: string; content: string }) => ({
@@ -51,7 +57,6 @@ export async function POST(req: NextRequest) {
         })),
       ],
       max_tokens: 600,
-      temperature: 0.7,
     });
 
     const reply = completion.choices[0]?.message?.content ?? "Не удалось получить ответ.";

@@ -12,7 +12,15 @@ export interface UserProfile {
   email?:               string;
   defaultAnalysisMode?: string;
   photoUrl?:            string;   // base64 data URL, max ~200×200
+  aiModel?:             string;
 }
+
+export const AI_MODELS = [
+  { value: "gpt-4o",          label: "GPT-4o",          desc: "Баланс скорость / качество" },
+  { value: "gpt-4o-mini",     label: "GPT-4o mini",     desc: "Быстрый и дешёвый" },
+  { value: "gpt-4.5-preview", label: "GPT-4.5 Preview", desc: "Самый мощный" },
+  { value: "o4-mini",         label: "o4-mini",          desc: "Аналитическое мышление" },
+];
 
 export const DEFAULT_PROFILE: UserProfile = {
   firstName:      "",

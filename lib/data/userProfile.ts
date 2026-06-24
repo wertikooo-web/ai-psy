@@ -18,6 +18,7 @@ function rowToProfile(row: Record<string, unknown>): UserProfile {
     email:                (row.email as string)                 ?? undefined,
     defaultAnalysisMode:  (row.default_analysis_mode as string) ?? "working",
     photoUrl:             (row.photo_url as string)             ?? undefined,
+    aiModel:              (row.ai_model as string)              ?? "gpt-4o",
   };
 }
 
@@ -45,6 +46,7 @@ export async function writeProfile(profile: Partial<UserProfile>): Promise<void>
     if (profile.email               !== undefined) patch.email                 = profile.email;
     if (profile.defaultAnalysisMode !== undefined) patch.default_analysis_mode = profile.defaultAnalysisMode;
     if (profile.photoUrl            !== undefined) patch.photo_url             = profile.photoUrl;
+    if (profile.aiModel             !== undefined) patch.ai_model              = profile.aiModel;
 
     const { error } = await supabaseServer!
       .from("user_profile")

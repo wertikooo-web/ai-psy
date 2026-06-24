@@ -7,6 +7,7 @@ import {
   Key, BrainCircuit, Database, Loader2, Camera, X, ArrowLeft,
 } from "lucide-react";
 import type { UserProfile } from "@/lib/userProfile";
+import { AI_MODELS } from "@/lib/userProfile";
 
 const EMPTY: UserProfile = {
   firstName:           "",
@@ -17,6 +18,7 @@ const EMPTY: UserProfile = {
   email:               "",
   defaultAnalysisMode: "working",
   photoUrl:            "",
+  aiModel:             "gpt-4o",
 };
 
 const APPROACHES = ["Гештальт", "КПТ", "ACT", "Схема-терапия", "Интегративный", "Другой"];
@@ -316,7 +318,45 @@ export default function SettingsPage() {
           </div>
         </Block>
 
-        {/* ── Block 4: Data ────────────────────────────────────────────────── */}
+        {/* ── Block 4: AI Model ────────────────────────────────────────────── */}
+        <Block icon={<BrainCircuit size={15} className="text-purple-400" />} title="Модель AI" sub="Используется для анализа консультаций и чата">
+          <div className="px-6 py-5">
+            <div className="grid grid-cols-2 gap-2">
+              {AI_MODELS.map((m) => {
+                const active = (profile.aiModel ?? "gpt-4o") === m.value;
+                return (
+                  <button
+                    key={m.value}
+                    onClick={() => set("aiModel", m.value)}
+                    className="text-left rounded-xl border px-4 py-3 transition-all"
+                    style={{
+                      background:   active ? "#EDE7DA" : "#F8F6F2",
+                      borderColor:  active ? "#6B5D4F" : "#E2D9CC",
+                      outline:      active ? "2px solid #6B5D4F" : "none",
+                      outlineOffset: "1px",
+                    }}
+                  >
+                    <div className="text-sm font-semibold" style={{ color: active ? "#3A2E22" : "#6B5D4F" }}>{m.label}</div>
+                    <div className="text-xs mt-0.5 text-stone-400">{m.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+              {status === "saved" && <span className="flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 size={13} />Сохранено</span>}
+              <button
+                onClick={handleSave}
+                disabled={status === "saving"}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-brand-500 hover:bg-brand-600 text-white transition-colors disabled:opacity-60"
+              >
+                <Save size={13} />
+                {status === "saving" ? "Сохранение..." : "Сохранить"}
+              </button>
+            </div>
+          </div>
+        </Block>
+
+        {/* ── Block 5: Data ────────────────────────────────────────────────── */}
         <Block icon={<Database size={15} className="text-slate-400" />} title="Данные" sub="Экспорт и резервное копирование — скоро">
           <div className="px-6 py-5 grid grid-cols-2 gap-3">
             {["Экспорт клиентов", "Экспорт консультаций", "История клиентов", "Резервная копия"].map((label) => (

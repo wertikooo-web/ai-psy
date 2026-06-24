@@ -7,6 +7,7 @@ import { readAll as readAllClients } from "@/lib/clientStore";
 import { getForClient as getHistory } from "@/lib/clientHistoryStore";
 import { getForClient as getMaterials } from "@/lib/clientMaterialsStore";
 import { getConsultations as readAllConsultations } from "@/lib/data/consultations";
+import { readProfile } from "@/lib/data/userProfile";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,12 +43,16 @@ export async function POST(req: NextRequest) {
     // Mark as analyzing
     await updateConsultation(consultationId, { status: "analyzing" });
 
-    // Run analysis (always openai, explicit)
+    // Read model from user profile settings
+    const profile = await readProfile();
+    const model = profile.aiModel ?? "gpt-4o";
+
     const output = await generateAnalysis({
       mode: mode as AnalysisMode,
       transcript,
       clientContext: clientContext || undefined,
       provider: "openai",
+      model,
     });
 
     // Persist result
