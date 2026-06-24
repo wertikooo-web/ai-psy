@@ -128,18 +128,21 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#F8F4EC" }}>
       <div className="max-w-2xl mx-auto px-6 py-10 space-y-6">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-700 transition-colors"
+            className="flex items-center gap-1.5 text-sm transition-colors"
+            style={{ color: "#A8997F" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#4A3C2E"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; }}
           >
             <ArrowLeft size={16} />
             Назад
           </button>
-          <div className="w-px h-5 bg-slate-200" />
-          <h1 className="text-xl font-bold text-slate-800">Настройки</h1>
+          <div className="w-px h-5" style={{ background: "#DDD4C6" }} />
+          <h1 className="text-xl font-bold" style={{ color: "#3D3228" }}>Настройки</h1>
         </div>
 
         {/* ── Block 1: Profile ─────────────────────────────────────────────── */}
@@ -341,12 +344,12 @@ function Block({ icon, title, sub, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="px-6 py-5 border-b border-slate-50 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">{icon}</div>
+    <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
+      <div className="px-6 py-4 border-b flex items-center gap-3" style={{ background: "#E8E0D0", borderColor: "#DDD4C6" }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#DDD4C6" }}>{icon}</div>
         <div>
-          <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
-          <p className="text-xs text-slate-400">{sub}</p>
+          <h2 className="text-sm font-semibold" style={{ color: "#4A3C2E" }}>{title}</h2>
+          <p className="text-xs" style={{ color: "#A8997F" }}>{sub}</p>
         </div>
       </div>
       {children}
@@ -364,15 +367,16 @@ function Field({ label, value, onChange, placeholder, hint, type = "text" }: {
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-600 mb-1.5">{label}</label>
+      <label className="block text-xs font-medium mb-1.5" style={{ color: "#6B5D4F" }}>{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 placeholder:text-slate-300"
+        className="w-full px-3 py-2.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 placeholder:text-stone-300"
+        style={{ background: "#FAF7F1", borderColor: "#D4C9B5", color: "#3D3228" }}
       />
-      {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
+      {hint && <p className="text-xs mt-1" style={{ color: "#A8997F" }}>{hint}</p>}
     </div>
   );
 }

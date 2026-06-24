@@ -12,8 +12,8 @@ import { UserChip } from "@/components/UserChip";
 
 // ── Craft palette ─────────────────────────────────────────────────────────────
 const C = {
-  bg:          "#F6F1E7",   // sidebar background
-  border:      "#E2D9CC",   // dividers / borders
+  bg:          "#F7F7F8",   // sidebar background
+  border:      "#E5E7EB",   // dividers / borders
   active:      "#E7DDCC",   // active nav item bg
   hover:       "#E2D8C7",   // hover nav item bg
   activeTxt:   "#4A3C2E",   // active item text

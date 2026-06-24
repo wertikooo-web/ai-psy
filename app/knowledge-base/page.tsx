@@ -105,25 +105,28 @@ export default function KnowledgeBasePage() {
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#F8F4EC" }}>
       <div className="p-8 max-w-4xl mx-auto">
 
         <div className="mb-8">
-          <h1 className="text-xl font-bold text-slate-800">База знаний</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Файлы, которые используются в AI-анализе консультаций</p>
+          <h1 className="text-xl font-bold" style={{ color: "#3D3228" }}>База знаний</h1>
+          <p className="text-sm mt-0.5" style={{ color: "#A8997F" }}>Файлы, которые используются в AI-анализе консультаций</p>
         </div>
 
         {/* Block 1: Internal KB */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2">
-              <BookOpen size={15} className="text-brand-500" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2" style={{ color: "#6B5D4F" }}>
+              <BookOpen size={15} style={{ color: "#C9BBAA" }} />
               Внутренняя база знаний
             </h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={loadFiles}
-                className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: "#A8997F" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#E8E0D0"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                 title="Обновить"
               >
                 <RefreshCw size={14} />
@@ -148,39 +151,45 @@ export default function KnowledgeBasePage() {
 
           {loading ? (
             <div className="space-y-2">
-              {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-slate-100 rounded-xl animate-pulse" />)}
+              {[1, 2, 3].map((i) => <div key={i} className="h-14 rounded-xl animate-pulse" style={{ background: "#E8E0D0" }} />)}
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
               {files.length === 0 ? (
-                <div className="py-10 text-center text-slate-400 text-sm">Файлы не найдены</div>
+                <div className="py-10 text-center text-sm" style={{ color: "#A8997F" }}>Файлы не найдены</div>
               ) : (
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Файл</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:table-cell">Размер</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden md:table-cell">Изменён</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Статус</th>
+                    <tr className="border-b" style={{ background: "#E8E0D0", borderColor: "#DDD4C6" }}>
+                      <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>Файл</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: "#A8997F" }}>Размер</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: "#A8997F" }}>Изменён</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>Статус</th>
                       <th className="px-4 py-3 w-24"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {files.map((file, i) => (
-                      <tr key={file.name} className={`${i > 0 ? "border-t border-slate-50" : ""} hover:bg-slate-50 transition-colors`}>
+                      <tr
+                        key={file.name}
+                        className="transition-colors"
+                        style={{ borderTop: i > 0 ? "1px solid #E8E0D0" : undefined }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "#EDE7DA"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}
+                      >
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-2.5">
-                            <FileText size={14} className="text-slate-400 flex-shrink-0" />
-                            <span className="text-sm text-slate-700 font-mono truncate max-w-[180px]">{file.name}</span>
+                            <FileText size={14} className="flex-shrink-0" style={{ color: "#C9BBAA" }} />
+                            <span className="text-sm font-mono truncate max-w-[180px]" style={{ color: "#4A3C2E" }}>{file.name}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3.5 text-xs text-slate-400 hidden sm:table-cell">{formatSize(file.size)}</td>
-                        <td className="px-4 py-3.5 text-xs text-slate-400 hidden md:table-cell">{formatDate(file.modifiedAt)}</td>
+                        <td className="px-4 py-3.5 text-xs hidden sm:table-cell" style={{ color: "#A8997F" }}>{formatSize(file.size)}</td>
+                        <td className="px-4 py-3.5 text-xs hidden md:table-cell" style={{ color: "#A8997F" }}>{formatDate(file.modifiedAt)}</td>
                         <td className="px-4 py-3.5">
                           {CORE_FILES.has(file.name) ? (
                             <span className="text-xs bg-brand-50 text-brand-600 px-2 py-0.5 rounded-full font-medium">используется</span>
                           ) : (
-                            <span className="text-xs bg-slate-50 text-slate-400 px-2 py-0.5 rounded-full">не подключён</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#E4DDD0", color: "#A8997F" }}>не подключён</span>
                           )}
                         </td>
                         <td className="px-4 py-3.5">
@@ -188,7 +197,10 @@ export default function KnowledgeBasePage() {
                             <a
                               href={`/api/knowledge-base/${encodeURIComponent(file.name)}`}
                               download={file.name}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-brand-500 hover:bg-brand-50 transition-colors"
+                              className="p-1.5 rounded-lg transition-colors"
+                              style={{ color: "#C9BBAA" }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = "#4A3C2E"; e.currentTarget.style.background = "#E4DDD0"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = "#C9BBAA"; e.currentTarget.style.background = "transparent"; }}
                               title="Скачать"
                             >
                               <Download size={13} />
@@ -196,7 +208,7 @@ export default function KnowledgeBasePage() {
                             {!CORE_FILES.has(file.name) && (
                               <button
                                 onClick={() => setDeleteTarget(file.name)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                                className="p-1.5 rounded-lg text-stone-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
                                 title="Удалить"
                               >
                                 <Trash2 size={13} />
@@ -212,20 +224,20 @@ export default function KnowledgeBasePage() {
             </div>
           )}
 
-          <p className="text-xs text-slate-400 mt-3">
+          <p className="text-xs mt-3" style={{ color: "#C9BBAA" }}>
             Форматы: .md, .txt · Основные файлы (000_, 00_) защищены от удаления
           </p>
         </section>
 
         {/* Block 2: External KB */}
         <section>
-          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2 mb-4">
-            <ExternalLink size={15} className="text-slate-400" />
+          <h2 className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2 mb-4" style={{ color: "#6B5D4F" }}>
+            <ExternalLink size={15} style={{ color: "#C9BBAA" }} />
             Внешняя база знаний
           </h2>
 
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <p className="text-sm text-slate-500 mb-4 leading-relaxed">
+          <div className="rounded-2xl border shadow-sm p-6" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
+            <p className="text-sm mb-4 leading-relaxed" style={{ color: "#6B5D4F" }}>
               Отдельная локальная база знаний с файлами психолога — личные протоколы, теоретические материалы, конспекты.
               Интеграция планируется в следующих версиях.
             </p>
@@ -234,16 +246,20 @@ export default function KnowledgeBasePage() {
                 value={externalLink}
                 onChange={(e) => setExternalLink(e.target.value)}
                 placeholder="https://github.com/... или локальный путь"
-                className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-50"
+                className="flex-1 px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-50 placeholder:text-stone-300"
+                style={{ background: "#FAF7F1", borderColor: "#D4C9B5", color: "#3D3228" }}
               />
               <button
                 onClick={() => externalLink && window.open(externalLink, "_blank")}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors flex-shrink-0"
+                className="px-4 py-2.5 rounded-xl border text-sm transition-colors flex-shrink-0"
+                style={{ borderColor: "#D4C9B5", color: "#6B5D4F", background: "#EDE7DA" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#E4DDD0"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "#EDE7DA"; }}
               >
                 Открыть
               </button>
             </div>
-            <p className="text-xs text-slate-400 mt-3">
+            <p className="text-xs mt-3" style={{ color: "#C9BBAA" }}>
               Интеграция с локальной папкой и автоматическая синхронизация — скоро
             </p>
           </div>

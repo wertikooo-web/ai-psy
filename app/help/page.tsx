@@ -60,12 +60,12 @@ export default function HelpPage() {
   }, []);
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#F8F4EC" }}>
       <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
 
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Помощь</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Руководство по работе с TRANSCRIPT AI · PSY</p>
+          <h1 className="text-xl font-bold" style={{ color: "#3D3228" }}>Помощь</h1>
+          <p className="text-sm mt-0.5" style={{ color: "#A8997F" }}>Руководство по работе с TRANSCRIPT AI · PSY</p>
         </div>
 
         {/* System check */}
@@ -81,8 +81,8 @@ export default function HelpPage() {
                   <AlertCircle size={16} className="text-rose-400 flex-shrink-0" />
                 )}
                 <div>
-                  <span className="text-sm font-medium text-slate-700">{s.label}</span>
-                  {s.detail && <span className="text-sm text-slate-400 ml-2">{s.detail}</span>}
+                  <span className="text-sm font-medium" style={{ color: "#4A3C2E" }}>{s.label}</span>
+                  {s.detail && <span className="text-sm ml-2" style={{ color: "#A8997F" }}>{s.detail}</span>}
                 </div>
               </div>
             ))}
@@ -100,10 +100,10 @@ export default function HelpPage() {
               "Продолжите работу в чате — задавайте вопросы по сессии в правой панели.",
             ].map((step, i) => (
               <li key={i} className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-brand-50 text-brand-600 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#E4DDD0", color: "#6B5D4F" }}>
                   {i + 1}
                 </span>
-                <span className="text-sm text-slate-600 leading-relaxed">{step}</span>
+                <span className="text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>{step}</span>
               </li>
             ))}
           </ol>
@@ -131,8 +131,8 @@ export default function HelpPage() {
               },
             ].map((m) => (
               <div key={m.name}>
-                <div className="text-sm font-semibold text-slate-700 mb-1">{m.name}</div>
-                <p className="text-sm text-slate-500 leading-relaxed">{m.desc}</p>
+                <div className="text-sm font-semibold mb-1" style={{ color: "#4A3C2E" }}>{m.name}</div>
+                <p className="text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>{m.desc}</p>
               </div>
             ))}
           </div>
@@ -140,19 +140,19 @@ export default function HelpPage() {
 
         {/* Knowledge base */}
         <Section icon={<BookOpen size={15} className="text-slate-500" />} title="Как работает база знаний">
-          <div className="text-sm text-slate-500 space-y-2 leading-relaxed">
-            <p>База знаний лежит в папке <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 text-xs">knowledge_base/</code> проекта.</p>
-            <p>Главный файл <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 text-xs">000_CORE_INSTRUCTIONS.md</code> подключается к каждому запросу.</p>
-            <p>Разные режимы анализа подключают разные файлы: например, гештальт-режим читает <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 text-xs">07_ГЕШТАЛЬТ_РЕЖИМ.md</code>.</p>
+          <div className="text-sm space-y-2 leading-relaxed" style={{ color: "#6B5D4F" }}>
+            <p>База знаний лежит в папке <code className="font-mono px-1.5 py-0.5 rounded text-xs" style={{ background: "#E8E0D0", color: "#4A3C2E" }}>knowledge_base/</code> проекта.</p>
+            <p>Главный файл <code className="font-mono px-1.5 py-0.5 rounded text-xs" style={{ background: "#E8E0D0", color: "#4A3C2E" }}>000_CORE_INSTRUCTIONS.md</code> подключается к каждому запросу.</p>
+            <p>Разные режимы анализа подключают разные файлы: например, гештальт-режим читает <code className="font-mono px-1.5 py-0.5 rounded text-xs" style={{ background: "#E8E0D0", color: "#4A3C2E" }}>07_ГЕШТАЛЬТ_РЕЖИМ.md</code>.</p>
             <p>Добавить свои документы можно в разделе <strong>База знаний</strong> — форматы .md и .txt.</p>
           </div>
         </Section>
 
         {/* Data storage */}
         <Section icon={<Database size={15} className="text-slate-400" />} title="Где хранятся данные">
-          <div className="text-sm text-slate-500 space-y-2 leading-relaxed">
-            <p>Сейчас данные хранятся в JSON-файлах: <code className="font-mono bg-slate-100 px-1 rounded text-xs">data/clients.json</code>, <code className="font-mono bg-slate-100 px-1 rounded text-xs">data/consultations.json</code> и др.</p>
-            <p>Аудиофайлы загружаются в <code className="font-mono bg-slate-100 px-1 rounded text-xs">public/uploads/</code>.</p>
+          <div className="text-sm space-y-2 leading-relaxed" style={{ color: "#6B5D4F" }}>
+            <p>Сейчас данные хранятся в JSON-файлах: <code className="font-mono px-1 rounded text-xs" style={{ background: "#E8E0D0", color: "#4A3C2E" }}>data/clients.json</code>, <code className="font-mono px-1 rounded text-xs" style={{ background: "#E8E0D0", color: "#4A3C2E" }}>data/consultations.json</code> и др.</p>
+            <p>Аудиофайлы загружаются в <code className="font-mono px-1 rounded text-xs" style={{ background: "#E8E0D0", color: "#4A3C2E" }}>public/uploads/</code>.</p>
             <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-amber-700">
               ⚠️ На Railway файловая система временная — данные и аудио могут быть потеряны при перезапуске сервера. В следующей версии планируется переход на Supabase.
             </div>
@@ -170,10 +170,10 @@ function Section({ icon, title, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-50 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center">{icon}</div>
-        <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
+    <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
+      <div className="px-6 py-4 border-b flex items-center gap-3" style={{ background: "#E8E0D0", borderColor: "#DDD4C6" }}>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#DDD4C6" }}>{icon}</div>
+        <h2 className="text-sm font-semibold" style={{ color: "#4A3C2E" }}>{title}</h2>
       </div>
       <div className="px-6 py-5">{children}</div>
     </section>
