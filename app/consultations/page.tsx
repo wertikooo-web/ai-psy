@@ -6,31 +6,130 @@ import { consultations as mockConsultations } from "@/lib/mockData";
 import type { StoredConsultation } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
-import { Mic, ArrowRight, Headphones, FileText, BrainCircuit, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import {
+  Mic, ArrowRight, CheckCircle2, Clock, AlertCircle,
+} from "lucide-react";
 
+// ── Palette (same as /clients) ────────────────────────────────────────────────
+const CARD_BG  = "#F0EBE1";
+const TAB_BG   = "#C9BBAA";
+const TAB_HOV  = "#BEB09E";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ru-RU", {
-    day: "numeric", month: "long", year: "numeric",
-  });
+  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
 }
 
-type AnyConsultation = StoredConsultation & { isMock?: boolean; topic?: string; sessionNumber?: number; duration?: string; summary?: string; };
+type AnyConsultation = StoredConsultation & {
+  isMock?: boolean; topic?: string; sessionNumber?: number;
+  duration?: string; summary?: string;
+};
 
-function StatusPill({ label, state }: { label: string; state: "ok" | "warn" | "none" }) {
+// ── Status badge ──────────────────────────────────────────────────────────────
+function Badge({
+  label, state,
+}: { label: string; state: "ok" | "warn" | "none" }) {
+  const styles = {
+    ok:   "bg-emerald-50 text-emerald-600 border border-emerald-100",
+    warn: "bg-amber-50 text-amber-600 border border-amber-100",
+    none: "bg-stone-100 text-stone-400 border border-stone-200",
+  }[state];
+  const Icon =
+    state === "ok"   ? CheckCircle2 :
+    state === "warn" ? AlertCircle  : Clock;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-      state === "ok"   ? "bg-emerald-50 text-emerald-600" :
-      state === "warn" ? "bg-amber-50 text-amber-600" :
-                         "bg-slate-50 text-slate-400"
-    }`}>
-      {state === "ok"   ? <CheckCircle2 size={10} /> :
-       state === "warn" ? <AlertCircle size={10} /> :
-                          <Clock size={10} />}
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${styles}`}>
+      <Icon size={10} />
       {label}
     </span>
   );
 }
 
+// ── Card ──────────────────────────────────────────────────────────────────────
+function ConsultationCard({
+  c, num, total, onOpen,
+}: { c: AnyConsultation; num: number; total: number; onOpen: () => void }) {
+  const [hovered, setHovered] = useState(false);
+
+  const title        = c.title || c.topic || `Консультация #${num}`;
+  const showTopic    = title !== `Консультация #${num}`;
+  const hasTranscript = !!(c as StoredConsultation).transcript?.text || c.isMock;
+  const hasAnalysis   = !!((c as StoredConsultation).analyses?.length) || c.isMock;
+
+  return (
+    <div
+      className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col"
+      style={{ background: CARD_BG, borderColor: "#DDD4C6" }}
+    >
+      {/* ── Body ── */}
+      <div className="px-5 pt-4 pb-3 flex items-start gap-4">
+        {/* Avatar */}
+        <Avatar initials={c.clientInitials} color={c.clientColor} size="md" />
+
+        {/* Main info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="font-semibold text-slate-800">Консультация #{num}</span>
+            {c.duration && (
+              <span className="text-xs text-stone-400 flex items-center gap-0.5">
+                <Clock size={10} />
+                {c.duration}
+              </span>
+            )}
+          </div>
+          <div className="text-sm text-stone-500 mt-0.5">
+            {c.clientName}
+            {showTopic && <span className="text-stone-400"> · {title}</span>}
+          </div>
+          {c.summary && (
+            <p className="text-sm text-stone-400 line-clamp-1 mt-1 leading-relaxed">{c.summary}</p>
+          )}
+        </div>
+
+        {/* Date — top right */}
+        <div className="flex-shrink-0 text-xs text-stone-400 pt-0.5">
+          {formatDate(c.createdAt)}
+        </div>
+      </div>
+
+      {/* ── Status badges ── */}
+      <div className="px-5 pb-4 flex flex-wrap gap-1.5">
+        <Badge
+          label={hasTranscript ? "Транскрипт готов" : "Транскрипт не создан"}
+          state={hasTranscript ? "ok" : "none"}
+        />
+        <Badge
+          label={hasAnalysis ? "Анализ готов" : "Анализ не готов"}
+          state={hasAnalysis ? "ok" : "none"}
+        />
+      </div>
+
+      {/* ── Folder-tab CTA ── */}
+      <button
+        onClick={onOpen}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="w-full flex items-center justify-between px-5 py-2.5 text-sm font-medium rounded-b-2xl"
+        style={{
+          background:  hovered ? TAB_HOV : TAB_BG,
+          color:       "#4A3F32",
+          borderTop:   "1px solid #B8AC9A",
+          boxShadow:   "inset 0 1px 0 rgba(255,255,255,0.22)",
+          transition:  "background 0.15s ease",
+        }}
+      >
+        <span>Открыть консультацию</span>
+        <ArrowRight
+          size={14}
+          className="text-stone-500 transition-transform duration-150"
+          style={{ transform: hovered ? "translateX(3px)" : "translateX(0)" }}
+        />
+      </button>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function ConsultationsPage() {
   const router = useRouter();
   const [uploadOpen, setUploadOpen]       = useState(false);
@@ -46,20 +145,20 @@ export default function ConsultationsPage() {
         const mock = mockConsultations
           .filter((m) => !realIds.has(m.id))
           .map((m) => ({
-            id:              m.id,
-            clientId:        m.clientId,
-            clientName:      m.clientName,
-            clientInitials:  m.clientInitials,
-            clientColor:     m.clientColor,
-            title:           m.topic,
-            createdAt:       m.date,
-            source:          "audio" as const,
-            status:          "done" as const,
-            topic:           m.topic,
-            sessionNumber:   m.sessionNumber,
-            duration:        m.duration,
-            summary:         m.summary,
-            isMock:          true,
+            id:             m.id,
+            clientId:       m.clientId,
+            clientName:     m.clientName,
+            clientInitials: m.clientInitials,
+            clientColor:    m.clientColor,
+            title:          m.topic,
+            createdAt:      m.date,
+            source:         "audio" as const,
+            status:         "done"  as const,
+            topic:          m.topic,
+            sessionNumber:  m.sessionNumber,
+            duration:       m.duration,
+            summary:        m.summary,
+            isMock:         true,
           } as AnyConsultation));
         setConsultations([...real, ...mock]);
       } catch {
@@ -74,15 +173,12 @@ export default function ConsultationsPage() {
   const total = consultations.length;
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
-      <div className="p-6 max-w-4xl mx-auto">
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "#F7F3EE" }}>
+      <div className="p-8 max-w-3xl mx-auto">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">Консультации</h1>
-            <p className="text-sm text-slate-400 mt-0.5">{total} {total === 1 ? "запись" : "записей"}</p>
-          </div>
+          <h1 className="text-xl font-bold text-slate-800">Консультации</h1>
           <button
             onClick={() => setUploadOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
@@ -94,87 +190,30 @@ export default function ConsultationsPage() {
 
         {/* List */}
         {loading ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-100 p-5 h-28 animate-pulse" />
+              <div
+                key={i}
+                className="rounded-2xl border h-32 animate-pulse"
+                style={{ background: CARD_BG, borderColor: "#DDD4C6" }}
+              />
             ))}
           </div>
         ) : consultations.length === 0 ? (
-          <div className="text-center py-16 text-slate-400 text-sm">
+          <div className="text-center py-16 text-stone-400 text-sm">
             Консультаций пока нет. Загрузите первую запись.
           </div>
         ) : (
-          <div className="space-y-3">
-            {consultations.map((c, i) => {
-              const num   = c.sessionNumber ?? (total - i);
-              const title = c.title || c.topic || `Консультация #${num}`;
-              const date  = c.createdAt;
-
-              const hasAudio      = !!(c as StoredConsultation).audio || c.isMock;
-              const hasTranscript = !!(c as StoredConsultation).transcript?.text || c.isMock;
-              const hasAnalysis   = !!((c as StoredConsultation).analyses?.length) || c.isMock;
-
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => router.push(`/consultation/${c.id}`)}
-                  className="w-full text-left bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-brand-100 transition-all p-5 group"
-                >
-                  <div className="flex items-start gap-4">
-                    <Avatar initials={c.clientInitials} color={c.clientColor} size="md" />
-
-                    <div className="flex-1 min-w-0">
-                      {/* Title + client */}
-                      <div className="flex items-baseline gap-2 flex-wrap mb-1">
-                        <span className="font-semibold text-slate-800">
-                          Консультация #{num}
-                        </span>
-                        {c.duration && (
-                          <span className="text-xs text-slate-400 flex items-center gap-0.5">
-                            <Clock size={10} />
-                            {c.duration}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-slate-500 mb-2">
-                        {c.clientName}
-                        {title !== `Консультация #${num}` && (
-                          <span className="text-slate-400"> · {title}</span>
-                        )}
-                      </div>
-
-                      {/* Status pills */}
-                      <div className="flex flex-wrap gap-1.5">
-                        <StatusPill
-                          label={`Аудио: ${hasAudio ? "загружено" : "нет"}`}
-                          state={hasAudio ? "ok" : "none"}
-                        />
-                        <StatusPill
-                          label={`Транскрипт: ${hasTranscript ? "готов" : "не создан"}`}
-                          state={hasTranscript ? "ok" : "none"}
-                        />
-                        <StatusPill
-                          label={`Анализ: ${hasAnalysis ? "готов" : "не создан"}`}
-                          state={hasAnalysis ? "ok" : "none"}
-                        />
-                      </div>
-
-                      {/* Summary */}
-                      {c.summary && (
-                        <p className="text-sm text-slate-400 line-clamp-1 mt-2 leading-relaxed">
-                          {c.summary}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex-shrink-0 text-right space-y-2">
-                      <div className="text-xs text-slate-400">{formatDate(date)}</div>
-                      <ArrowRight size={15} className="text-slate-200 group-hover:text-brand-400 transition-colors ml-auto" />
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="space-y-4">
+            {consultations.map((c, i) => (
+              <ConsultationCard
+                key={c.id}
+                c={c}
+                num={c.sessionNumber ?? (total - i)}
+                total={total}
+                onOpen={() => router.push(`/consultation/${c.id}`)}
+              />
+            ))}
           </div>
         )}
       </div>
