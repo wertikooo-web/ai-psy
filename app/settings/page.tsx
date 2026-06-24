@@ -374,7 +374,7 @@ function Field({ label, value, onChange, placeholder, hint, type = "text" }: {
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className="w-full px-3 py-2.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 placeholder:text-stone-300"
-        style={{ background: "#FAF7F1", borderColor: "#D4C9B5", color: "#3D3228" }}
+        style={{ background: "#FFFFFF", borderColor: "#D4C9B5", color: "#3D3228" }}
       />
       {hint && <p className="text-xs mt-1" style={{ color: "#A8997F" }}>{hint}</p>}
     </div>
