@@ -34,8 +34,9 @@ function BackgroundIllustration() {
         bottom: 0,
         left: 0,
         width: "100%",
-        opacity: 0.25,
+        opacity: 0.55,
         zIndex: 0,
+        marginBottom: "-2%",
       }}
     />
   );
@@ -111,7 +112,7 @@ export default function HomePage() {
   const recentConsultations = consultations.slice(0, MAX_DASHBOARD_CONSULTATIONS);
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto relative" style={{ background: "#FDFCFA" }}>
+    <div className="flex-1 min-h-0 overflow-y-auto relative" style={{ background: "#F0EBE0" }}>
 
       <BackgroundIllustration />
 
@@ -159,7 +160,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Main content grid ─────────────────────────────────────────────── */}
-      <div className="relative z-10 max-w-4xl mx-auto px-6 pb-10">
+      <div className="relative z-10 max-w-4xl mx-auto px-6 pb-64">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* Recent clients */}
