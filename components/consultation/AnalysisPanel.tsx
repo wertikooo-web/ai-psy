@@ -97,18 +97,21 @@ export function AnalysisPanel({
   // ── Collapsed: narrow vertical tab ──────────────────────────────────────────
   if (collapsed) {
     return (
-      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-white border-r border-slate-100">
+      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden border-r border-[#D8CFBE]" style={{ background: "#FAF8F5" }}>
         <button
           onClick={onToggle}
           title="Развернуть AI-анализ"
-          className="flex-1 flex flex-col items-center justify-start pt-4 gap-3 hover:bg-brand-50 transition-colors w-full group"
+          className="flex-1 flex flex-col items-center justify-start pt-4 gap-3 transition-colors w-full group"
+          style={{ background: "transparent" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "#F0EAE0"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
         >
-          <div className="w-7 h-7 rounded-lg bg-brand-500 flex items-center justify-center shadow-sm group-hover:bg-brand-600 transition-colors">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow-sm" style={{ background: "#4A3C2E" }}>
             <ChevronsRight size={15} className="text-white" />
           </div>
           <span
-            className="text-xs font-semibold text-brand-500 select-none group-hover:text-brand-600 transition-colors"
-            style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+            className="text-xs font-semibold select-none"
+            style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", color: "#6B5D4F" }}
           >
             AI-анализ
           </span>
@@ -122,25 +125,30 @@ export function AnalysisPanel({
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
 
       {/* Panel header — fixed */}
-      <div className="px-5 py-4 border-b border-brand-600 flex-shrink-0 bg-brand-500">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
-              <BrainCircuit size={15} className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-white leading-tight">AI-анализ</h2>
-              <p className="text-xs text-brand-100 leading-tight">Ключевые наблюдения и направления</p>
-            </div>
-          </div>
-          <button
-            onClick={onToggle}
-            title="Свернуть"
-            className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors flex-shrink-0"
-          >
-            <ChevronsLeft size={14} className="text-white" />
-          </button>
+      <div
+        className="px-5 py-4 flex-shrink-0 flex items-center gap-3"
+        style={{ background: "#3D3228", borderBottom: "1px solid #2A221A" }}
+      >
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(255,255,255,0.10)" }}
+        >
+          <BrainCircuit size={15} style={{ color: "#D8CFBE" }} />
         </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
+          <p className="text-xs leading-tight mt-0.5" style={{ color: "#9C8E80" }}>Анализ актуален</p>
+        </div>
+        <button
+          onClick={onToggle}
+          title="Свернуть"
+          className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors flex-shrink-0"
+          style={{ background: "rgba(255,255,255,0.10)" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.20)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; }}
+        >
+          <ChevronsLeft size={14} style={{ color: "#D8CFBE" }} />
+        </button>
       </div>
 
       {/* Extra modes dropdown — white zone below header */}
