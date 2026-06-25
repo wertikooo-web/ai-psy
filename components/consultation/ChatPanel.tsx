@@ -145,7 +145,7 @@ export function ChatPanel({
   // ── Collapsed ────────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
-      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-white border-l border-slate-100">
+      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-[#FAF8F5] border-l border-[#D8CFBE]">
         <button
           onClick={onToggle}
           title="Развернуть чат"
@@ -167,7 +167,7 @@ export function ChatPanel({
 
   // ── Expanded ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
+    <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#FAF8F5]">
 
       {/* Header */}
       <div className="px-5 pt-4 pb-3 border-b border-emerald-600 flex-shrink-0 bg-emerald-600">
@@ -201,7 +201,7 @@ export function ChatPanel({
             <div key={msg.id} className={clsx("flex gap-2.5", isAI ? "flex-row" : "flex-row-reverse")}>
               <div className={clsx(
                 "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
-                isAI ? "bg-brand-100" : "bg-slate-100"
+                isAI ? "bg-brand-100" : "bg-[#EDE7DA]"
               )}>
                 {isAI
                   ? <BrainCircuit size={11} className="text-brand-500" />
@@ -212,7 +212,7 @@ export function ChatPanel({
                 <div className={clsx(
                   "text-sm leading-relaxed rounded-2xl px-3.5 py-2.5 whitespace-pre-wrap",
                   isAI
-                    ? "bg-slate-50 text-slate-700 rounded-tl-sm"
+                    ? "bg-[#F3EDE2] text-slate-700 rounded-tl-sm"
                     : "bg-brand-500 text-white rounded-tr-sm"
                 )}>
                   {msg.content}
@@ -228,11 +228,11 @@ export function ChatPanel({
             <div className="w-6 h-6 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
               <BrainCircuit size={11} className="text-brand-500" />
             </div>
-            <div className="bg-slate-50 rounded-2xl rounded-tl-sm px-4 py-3">
+            <div className="bg-[#F3EDE2] rounded-2xl rounded-tl-sm px-4 py-3">
               <div className="flex gap-1 items-center">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: "300ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#C9BBAA] animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#C9BBAA] animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#C9BBAA] animate-bounce" style={{ animationDelay: "300ms" }} />
               </div>
             </div>
           </div>
@@ -264,7 +264,7 @@ export function ChatPanel({
       </div>
 
       {/* Input */}
-      <div className="px-4 pt-3 pb-3 border-t border-slate-100 flex-shrink-0">
+      <div className="px-4 pt-3 pb-3 border-t flex-shrink-0" style={{ borderColor: "#E0D8CA" }}>
         <div className="flex gap-2 items-end">
           <div className="flex-1 relative">
             <textarea
@@ -276,8 +276,8 @@ export function ChatPanel({
               }}
               placeholder={listening ? "Слушаю..." : "Спросите об этой консультации..."}
               rows={1}
-              className="w-full resize-none text-sm px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 placeholder:text-slate-300 overflow-hidden"
-              style={{ minHeight: "40px", maxHeight: "120px", borderColor: listening ? "#6ee7b7" : undefined }}
+              className="w-full resize-none text-sm px-3.5 py-2.5 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300 placeholder:text-slate-300 overflow-hidden"
+              style={{ border: `1px solid ${listening ? "#6ee7b7" : "#D8CFBE"}`, background: "#FAF8F5", minHeight: "40px", maxHeight: "120px" }}
             />
             <button
               onClick={toggleListening}

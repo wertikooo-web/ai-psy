@@ -112,15 +112,34 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const [clientMaterials, setClientMaterials] = useState<import("@/lib/types").ClientMaterial[]>([]);
   const [historyCount,    setHistoryCount]    = useState(0);
 
+  // Staleness: true when materials were added/changed after the last analysis
+  const lastAnalysisAt = lastAnalysis?.createdAt ? new Date(lastAnalysis.createdAt).getTime() : 0;
+  const [analysisStale, setAnalysisStale] = useState(false);
+
   useEffect(() => {
     if (!c.clientId) return;
     Promise.all([
       fetch(`/api/client-materials/${c.clientId}`).then(r => r.ok ? r.json() : []),
       fetch(`/api/client-history/${c.clientId}`).then(r => r.ok ? r.json() : []),
     ]).then(([mats, hist]) => {
-      setClientMaterials(mats as import("@/lib/types").ClientMaterial[]);
+      const materials = mats as import("@/lib/types").ClientMaterial[];
+      setClientMaterials(materials);
       setHistoryCount((hist as unknown[]).length);
+      // Mark stale if any material is newer than the last analysis
+      if (lastAnalysisAt > 0 && materials.some(m => new Date(m.createdAt).getTime() > lastAnalysisAt)) {
+        setAnalysisStale(true);
+      }
     }).catch(() => {});
+  }, [c.clientId, lastAnalysisAt]);
+
+  // Listen for real-time observations/materials added via FAB while on this page
+  useEffect(() => {
+    if (!c.clientId) return;
+    function onMaterialsChanged(e: CustomEvent) {
+      if (e.detail?.clientId === c.clientId) setAnalysisStale(true);
+    }
+    window.addEventListener("client-materials-changed", onMaterialsChanged as EventListener);
+    return () => window.removeEventListener("client-materials-changed", onMaterialsChanged as EventListener);
   }, [c.clientId]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -180,6 +199,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
       const data = await res.json();
       setResult(data.result);
       setAnalyzedMode(selectedMode);
+      setAnalysisStale(false);
       setStatus("done");
     } catch (err) {
       setAnalysisError(err instanceof Error ? err.message : "Неизвестная ошибка");
@@ -223,12 +243,12 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
     const segments: import("@/lib/mockData").TranscriptSegment[] = [];
     const fakeChat: import("@/lib/mockData").ChatMessage[] = [];
     return (
-      <div className="flex flex-col h-screen bg-slate-50">
-        <header className="bg-white border-b border-slate-100 px-5 py-3 flex items-center gap-4 flex-shrink-0">
+      <div className="flex flex-col h-screen bg-[#FAF8F5]">
+        <header className="border-b px-5 py-3 flex items-center gap-4 flex-shrink-0" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
           <Link href={clientHref} className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
             <ArrowLeft size={15} />{c.clientName || "Назад"}
           </Link>
-          <div className="h-5 w-px bg-slate-200" />
+          <div className="h-5 w-px" style={{ background: "#D8CFBE" }} />
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <Avatar initials={c.clientInitials} color={c.clientColor} size="sm" />
             <div className="min-w-0">
@@ -241,22 +261,9 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               <p className="text-xs text-slate-400 truncate">{cleanTitle(c.title)}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {clientMaterials.filter(m => m.type !== "therapist_notes").length > 0 && (
-              <span className="hidden sm:flex items-center gap-1 text-xs px-2 py-1 rounded-lg border" style={{ background: "#F0FDF4", borderColor: "#BBF7D0", color: "#166534" }}>
-                📎 {clientMaterials.filter(m => m.type !== "therapist_notes").length} материала включены
-              </span>
-            )}
-            <button
-              onClick={() => { setResult(null); setAnalyzedMode(null); setStatus("ready"); }}
-              className="text-xs text-slate-400 hover:text-slate-600 transition-colors px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 whitespace-nowrap"
-            >
-              Обновить анализ
-            </button>
-          </div>
         </header>
 
-        <div className="flex-1 min-h-0 flex overflow-hidden divide-x divide-slate-100">
+        <div className="flex-1 min-h-0 flex overflow-hidden divide-x divide-[#D8CFBE]">
           <TranscriptPanel
             segments={segments}
             plainText={whisperText ?? undefined}
@@ -268,17 +275,54 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
           />
 
           {/* Analysis panel */}
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
-            <div className="px-5 py-4 border-b border-indigo-600 flex-shrink-0 bg-indigo-600">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                  <BrainCircuit size={15} className="text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white">AI-анализ</h2>
-                  <p className="text-xs text-indigo-200">{analyzedMode ? MODES.find(m => m.id === analyzedMode)?.label : "Результат анализа"}</p>
-                </div>
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#FAF8F5]">
+            <div
+              className="px-5 py-4 flex-shrink-0 flex items-center gap-3"
+              style={{ background: "#3D3228", borderBottom: "1px solid #2A221A" }}
+            >
+              {/* Icon */}
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.10)" }}
+              >
+                <BrainCircuit size={15} style={{ color: "#D8CFBE" }} />
               </div>
+
+              {/* Title */}
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
+                <p className="text-xs leading-tight mt-0.5" style={{ color: analysisStale ? "#C9A96E" : "#9C8E80" }}>
+                  {analysisStale
+                    ? "Есть новые материалы"
+                    : analyzedMode
+                      ? "Анализ актуален"
+                      : "Результат анализа"}
+                </p>
+              </div>
+
+              {/* Обновить анализ button — right side of analysis header */}
+              <button
+                onClick={() => { setResult(null); setAnalyzedMode(null); setAnalysisStale(false); setStatus("ready"); }}
+                className="flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg transition-all whitespace-nowrap"
+                style={analysisStale ? {
+                  background: "#C9A96E",
+                  color:      "#1A0F05",
+                  boxShadow:  "0 0 0 1px rgba(201,169,110,0.5)",
+                } : {
+                  background: "rgba(255,255,255,0.10)",
+                  color:      "#C5AFA0",
+                  border:     "1px solid rgba(255,255,255,0.15)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = analysisStale ? "#B8924F" : "rgba(255,255,255,0.18)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = analysisStale ? "#C9A96E" : "rgba(255,255,255,0.10)";
+                }}
+                title={analysisStale ? "Добавлены новые материалы — нажмите для пересчёта" : "Запустить анализ заново"}
+              >
+                {analysisStale ? "⚡ Пересчитать" : "Обновить анализ"}
+              </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5">
               <MarkdownRenderer content={analysisResult ?? ""} />
@@ -298,10 +342,10 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen bg-[#FAF8F5]">
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-slate-100 px-5 py-3 flex items-center gap-4 flex-shrink-0">
+      <header className="border-b px-5 py-3 flex items-center gap-4 flex-shrink-0" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
         <Link
           href={clientHref}
           className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"
@@ -310,7 +354,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
           {c.clientName || "Назад"}
         </Link>
 
-        <div className="h-5 w-px bg-slate-200" />
+        <div className="h-5 w-px" style={{ background: "#D8CFBE" }} />
 
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <Avatar initials={c.clientInitials} color={c.clientColor} size="sm" />
@@ -345,7 +389,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
         <div className="max-w-lg mx-auto px-4 pt-8 pb-16 space-y-4">
 
           {/* Info card */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-5">
+          <div className="rounded-2xl border shadow-sm px-6 py-5" style={{ background: "#FBF8F2", borderColor: "#D8CFBE" }}>
             <h2 className="text-base font-semibold text-slate-800 mb-1">{displayTitle}</h2>
             <div className="flex items-center gap-3 text-xs text-slate-400">
               <span className="flex items-center gap-1">
@@ -372,16 +416,16 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
           </div>
 
           {/* ── Materials block ─────────────────────────────────────────────── */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-50">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#FBF8F2", borderColor: "#D8CFBE" }}>
+            <div className="px-5 py-3 border-b" style={{ borderColor: "#E0D8CA", background: "#F5F0E8" }}>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#9C8E80" }}>
                 Материалы консультации
               </p>
             </div>
 
             {/* Row 1: Audio */}
             {hasAudio && !audioDeleted && (
-              <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-50">
+              <div className="flex items-center gap-3 px-5 py-4 border-b" style={{ borderColor: "#E0D8CA" }}>
                 <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
                   <FileAudio size={15} className="text-brand-500" />
                 </div>
@@ -405,8 +449,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             )}
 
             {/* Row 2: Transcript */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-50">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasText ? "bg-emerald-50" : "bg-slate-50"}`}>
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-[#E0D8CA]">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasText ? "bg-emerald-50" : "bg-[#EDE7DA]"}`}>
                 <FileText size={15} className={hasText ? "text-emerald-500" : "text-slate-300"} />
               </div>
               <div className="flex-1 min-w-0">
@@ -455,7 +499,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
             {/* Row 3: AI Analysis */}
             <div className="flex items-center gap-3 px-5 py-4">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasResult ? "bg-brand-50" : "bg-slate-50"}`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasResult ? "bg-brand-50" : "bg-[#EDE7DA]"}`}>
                 <BrainCircuit size={15} className={hasResult ? "text-brand-500" : "text-slate-300"} />
               </div>
               <div className="flex-1 min-w-0">
@@ -487,7 +531,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
           {/* Audio player */}
           {audioFile?.fileUrl && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4">
+            <div className="rounded-2xl border shadow-sm px-5 py-4" style={{ background: "#FBF8F2", borderColor: "#D8CFBE" }}>
               <p className="text-xs font-medium text-slate-500 mb-3">Прослушать запись</p>
               <audio controls src={audioFile.fileUrl} className="w-full h-10" style={{ accentColor: "#3a5ff8" }}>
                 Ваш браузер не поддерживает аудиоплеер.
@@ -497,8 +541,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
           {/* Transcript text (collapsible) */}
           {hasText && transcriptOpen && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-50 flex items-center justify-between">
+            <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#FBF8F2", borderColor: "#D8CFBE" }}>
+              <div className="px-5 py-3 border-b border-[#E0D8CA] flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   {source === "notes" ? "Заметки" : "Транскрипт"}
                 </p>
@@ -533,7 +577,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
           {/* ── Mode selector (only when transcript available) ────────────── */}
           {hasText && (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+            <div className="rounded-2xl border shadow-sm p-6" style={{ background: "#FBF8F2", borderColor: "#D8CFBE" }}>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
                 Режим анализа
               </p>
@@ -546,7 +590,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                       key={mode.id}
                       onClick={() => setSelectedMode(mode.id)}
                       className={`flex flex-col items-start gap-1 p-2.5 rounded-xl border text-left transition-all ${
-                        active ? "border-brand-300 bg-brand-50" : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                        active ? "border-brand-300 bg-brand-50" : "border-[#D8CFBE] hover:border-[#C9BBAA] hover:bg-[#F0EAE0]"
                       }`}
                     >
                       <span className={active ? "text-brand-500" : "text-slate-400"}>{mode.icon}</span>
@@ -557,7 +601,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                 })}
               </div>
 
-              <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-100 mb-4">
+              <div className="px-3.5 py-2.5 rounded-xl mb-4" style={{ background: "#F5F0E8", border: "1px solid #E0D8CA" }}>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   <span className="font-medium text-slate-700">{MODES.find((m) => m.id === selectedMode)?.label}</span>
                   {" — "}
@@ -658,7 +702,7 @@ function AnalysisResultCard({
   const modeLabel = MODES.find((m) => m.id === mode)?.label ?? mode;
 
   return (
-    <div className="bg-white rounded-2xl border border-brand-100 shadow-sm overflow-hidden">
+    <div className="rounded-2xl border border-brand-100 shadow-sm overflow-hidden" style={{ background: "#FAF8F5" }}>
       <div className="px-6 py-3.5 border-b border-brand-50 bg-brand-50/60 flex items-center gap-2">
         <span className="text-xs font-semibold text-brand-600 uppercase tracking-wider">
           Результат анализа

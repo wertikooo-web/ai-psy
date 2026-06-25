@@ -74,7 +74,8 @@ export interface ClientHistoryItem {
 
 export type MaterialType =
   | "general_history"   // Общая история клиента
-  | "therapist_notes"   // Заметки психолога
+  | "therapist_notes"   // Заметки психолога (личные, не в AI)
+  | "observation"       // Наблюдение по клиенту (из FAB, участвует в AI)
   | "gpt_analysis"      // Старые анализы GPT
   | "past_transcript"   // Транскрипт прошлой встречи
   | "other";            // Другое
@@ -106,6 +107,7 @@ export const HISTORY_SECTION_LABELS: Record<HistorySection, string> = {
 export const MATERIAL_TYPE_LABELS: Record<MaterialType, string> = {
   general_history:  "Общая история клиента",
   therapist_notes:  "Заметки психолога",
+  observation:      "Наблюдение",
   gpt_analysis:     "Старый анализ GPT",
   past_transcript:  "Транскрипт прошлой встречи",
   other:            "Другое",

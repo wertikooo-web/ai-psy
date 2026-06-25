@@ -47,7 +47,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
   // ── Collapsed ─────────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
-      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-slate-50 border-r border-slate-100">
+      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-[#FAF8F5] border-r border-[#D8CFBE]">
         <button
           onClick={onToggle}
           title={`Развернуть ${title.toLowerCase()}`}
@@ -69,7 +69,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
 
   // ── Expanded ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white">
+    <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#FAF8F5]">
 
       {/* Header */}
       <div className="px-5 py-4 border-b border-slate-600 flex-shrink-0 bg-slate-700">
@@ -95,7 +95,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
 
       {/* Tabs */}
       {(hasBoth || hasMaterials) && (
-        <div className="flex border-b border-slate-100 flex-shrink-0 bg-white overflow-x-auto">
+        <div className="flex border-b flex-shrink-0 overflow-x-auto" style={{ background: "#F5F0E8", borderColor: "#E0D8CA" }}>
           {/* Transcript tab — show if there's any transcript content */}
           {(!!plainText || (!isNotes && segments.length > 0)) && (
             <button
@@ -140,14 +140,15 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
 
       {/* Search — only for transcript with segments */}
       {showTranscript && segments.length > 0 && (
-        <div className="px-4 py-2.5 border-b border-slate-100 flex-shrink-0 bg-white">
+        <div className="px-4 py-2.5 border-b flex-shrink-0" style={{ background: "#F5F0E8", borderColor: "#E0D8CA" }}>
           <div className="relative">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск по тексту..."
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300"
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-300"
+              style={{ border: "1px solid #D8CFBE", background: "#FAF8F5" }}
             />
           </div>
         </div>
@@ -240,7 +241,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
               <div key={seg.id} className="flex gap-2.5">
                 <div className={clsx(
                   "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
-                  isTherapist ? "bg-brand-100" : "bg-slate-100"
+                  isTherapist ? "bg-brand-100" : "bg-[#EDE7DA]"
                 )}>
                   {isTherapist
                     ? <Stethoscope size={11} className="text-brand-500" />
@@ -255,7 +256,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
                     <span className="text-xs text-slate-300">{seg.timestamp}</span>
                   </div>
                   <p className={clsx("text-sm leading-relaxed rounded-xl px-3 py-2",
-                    isTherapist ? "bg-brand-50 text-slate-700" : "bg-slate-50 text-slate-600"
+                    isTherapist ? "bg-brand-50 text-slate-700" : "bg-[#F3EDE2] text-slate-600"
                   )}>
                     {query ? highlightText(seg.text, query) : seg.text}
                   </p>
@@ -268,7 +269,7 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
 
       {/* Footer */}
       {showTranscript && segments.length > 0 && (
-        <div className="px-5 py-3 border-t border-slate-100 flex-shrink-0">
+        <div className="px-5 py-3 border-t flex-shrink-0" style={{ borderColor: "#E0D8CA" }}>
           <p className="text-xs text-slate-500 text-center font-medium">
             {segments.length} реплик
             {filtered.length !== segments.length && ` · найдено ${filtered.length}`}

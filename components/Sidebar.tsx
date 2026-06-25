@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Users, FileText, BookOpen, Bot,
-  Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, MicVocal,
+  Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, BookOpenText,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
@@ -23,10 +23,9 @@ const C = {
 };
 
 const mainNav = [
-  { href: "/",              label: "Главная",      icon: Home      },
-  { href: "/clients",       label: "Клиенты",      icon: Users     },
-  { href: "/consultations", label: "Консультации", icon: FileText  },
-  { href: "/voice-notes",   label: "Заметки",      icon: MicVocal  },
+  { href: "/",              label: "Главная",      icon: Home     },
+  { href: "/clients",       label: "Клиенты",      icon: Users    },
+  { href: "/consultations", label: "Консультации", icon: FileText },
 ];
 const toolsNav = [
   { href: "/ai-chat",        label: "AI Чат",      icon: MessageSquare },
@@ -34,9 +33,10 @@ const toolsNav = [
   { href: "/knowledge-base", label: "База знаний", icon: BookOpen      },
 ];
 const systemNav = [
-  { href: "/settings", label: "Настройки", icon: Settings   },
-  { href: "/help",     label: "Помощь",    icon: HelpCircle },
-  { href: "/about",    label: "About",     icon: Info       },
+  { href: "/notebook", label: "Блокнот психолога", icon: BookOpenText },
+  { href: "/settings", label: "Настройки",         icon: Settings    },
+  { href: "/help",     label: "Помощь",             icon: HelpCircle  },
+  { href: "/about",    label: "About",              icon: Info        },
 ];
 
 // ── Nav item ──────────────────────────────────────────────────────────────────

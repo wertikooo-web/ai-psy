@@ -13,18 +13,20 @@ import { ConsultationsTab } from "@/components/client/tabs/ConsultationsTab";
 import { HistoryTab } from "@/components/client/tabs/HistoryTab";
 import { MaterialsTab } from "@/components/client/tabs/MaterialsTab";
 import { NotesTab } from "@/components/client/tabs/NotesTab";
+import { ObservationsTab } from "@/components/client/tabs/ObservationsTab";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mic, ArrowLeft, Trash2, Pause, Archive, RotateCcw } from "lucide-react";
 
-type Tab = "overview" | "consultations" | "history" | "materials" | "notes";
+type Tab = "overview" | "consultations" | "history" | "observations" | "materials" | "notes";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "overview",      label: "Обзор"                },
-  { id: "consultations", label: "Консультации"          },
-  { id: "history",       label: "История клиента"       },
-  { id: "materials",     label: "Материалы"             },
-  { id: "notes",         label: "Заметки психолога"     },
+  { id: "overview",      label: "Обзор"            },
+  { id: "consultations", label: "Консультации"      },
+  { id: "history",       label: "История"           },
+  { id: "observations",  label: "Наблюдения"        },
+  { id: "materials",     label: "Материалы"         },
+  { id: "notes",         label: "Заметки"           },
 ];
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
@@ -258,13 +260,13 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        {/* Tab navigation */}
-        <div className="flex gap-1 bg-slate-100/60 rounded-xl p-1">
+        {/* Tab navigation — scrollable for 6 tabs */}
+        <div className="flex gap-1 bg-slate-100/60 rounded-xl p-1 overflow-x-auto">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                 tab === t.id
                   ? "bg-white text-slate-800 shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
@@ -304,10 +306,19 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
           />
         )}
 
+        {tab === "observations" && (
+          <ObservationsTab
+            clientId={id}
+            items={materials.filter((m) => m.type === "observation")}
+            isMock={isMock}
+            onDelete={(mid) => setMaterials((prev) => prev.filter((m) => m.id !== mid))}
+          />
+        )}
+
         {tab === "materials" && (
           <MaterialsTab
             clientId={id}
-            materials={materials.filter((m) => m.type !== "therapist_notes")}
+            materials={materials.filter((m) => m.type !== "therapist_notes" && m.type !== "observation")}
             isMock={isMock}
             onAdd={(m) => setMaterials((prev) => [m, ...prev])}
             onDelete={(mid) => setMaterials((prev) => prev.filter((m) => m.id !== mid))}
