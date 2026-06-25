@@ -1313,6 +1313,7 @@ export function AnimatedCityScene() {
   const [ibirdSpot,      setIbirdSpot]     = useState<BirdPerch | null>(null);
   const [icatSpot,       setIcatSpot]      = useState<CatSpot  | null>(null);
   const [reducedMotion,  setReducedMotion] = useState(false);
+  const [animEnabled,    setAnimEnabled]   = useState(true);
   // Mounted flag for createPortal (SSR guard)
   const [mounted,        setMounted]       = useState(false);
   const crowActive       = useRef(false);
@@ -1336,6 +1337,16 @@ export function AnimatedCityScene() {
     const h = () => setReducedMotion(mq.matches);
     mq.addEventListener("change", h);
     return () => mq.removeEventListener("change", h);
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("cityAnimation");
+    if (stored !== null) setAnimEnabled(stored !== "false");
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "cityAnimation") setAnimEnabled(e.newValue !== "false");
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   useEffect(() => {
@@ -1458,7 +1469,7 @@ export function AnimatedCityScene() {
   }, []);
 
   useEffect(() => {
-    if (reducedMotion) return;
+    if (reducedMotion || !animEnabled) return;
     scheduleGround(rnd(2_000, 5_000));
     scheduleBird(rnd(8_000, 18_000));
     scheduleCrow(rnd(10_000, 20_000));
@@ -1475,7 +1486,7 @@ export function AnimatedCityScene() {
       if (ibirdTimer.current)   clearTimeout(ibirdTimer.current);
       if (icatTimer.current)    clearTimeout(icatTimer.current);
     };
-  }, [reducedMotion, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane, scheduleIbird, scheduleIcat]);
+  }, [reducedMotion, animEnabled, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane, scheduleIbird, scheduleIcat]);
 
   const cityOpacity = 0.55; // fixed opacity — no dark modes since window lighting was removed
 
@@ -1494,7 +1505,7 @@ export function AnimatedCityScene() {
           overflow:hidden on AppShell/main (Blink clips fixed descendants of
           overflow:hidden scroll containers on Windows). z-index:1 puts actors
           above the city image (z=0) but below the sidebar wrapper (z=10). */}
-      {mounted && !reducedMotion && createPortal(
+      {mounted && !reducedMotion && animEnabled && createPortal(
         <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:1 }}>
           {actors.map(a => (
             <ActorEl key={a.id} actor={a} onFinish={removeActor}/>

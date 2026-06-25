@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Save, Trash2, User, CheckCircle2, AlertCircle,
-  Key, BrainCircuit, Database, Loader2, Camera, X, ArrowLeft,
+  Key, BrainCircuit, Database, Loader2, Camera, X, ArrowLeft, Sparkles,
 } from "lucide-react";
 import type { UserProfile } from "@/lib/userProfile";
 import { AI_MODELS } from "@/lib/userProfile";
@@ -35,12 +35,25 @@ export default function SettingsPage() {
   const [profile, setProfile]   = useState<UserProfile>(EMPTY);
   const [status, setStatus]     = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [deleting, setDeleting] = useState(false);
+  const [animEnabled, setAnimEnabled] = useState(true);
 
   // AI block
   const [apiConfigured, setApiConfigured] = useState<boolean | null>(null);
   const [apiMasked, setApiMasked]         = useState<string | null>(null);
   const [checking, setChecking]           = useState(false);
   const [checkResult, setCheckResult]     = useState<string>("");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("cityAnimation");
+    if (stored !== null) setAnimEnabled(stored !== "false");
+  }, []);
+
+  function toggleAnim(val: boolean) {
+    setAnimEnabled(val);
+    localStorage.setItem("cityAnimation", val ? "true" : "false");
+    // notify same-tab AnimatedCityScene (storage event only fires in other tabs)
+    window.dispatchEvent(new StorageEvent("storage", { key: "cityAnimation", newValue: val ? "true" : "false" }));
+  }
 
   useEffect(() => {
     fetch("/api/profile")
@@ -356,7 +369,47 @@ export default function SettingsPage() {
           </div>
         </Block>
 
-        {/* ── Block 5: Data ────────────────────────────────────────────────── */}
+        {/* ── Block 5: Interface ───────────────────────────────────────────── */}
+        <Block icon={<Sparkles size={15} className="text-indigo-400" />} title="Интерфейс" sub="Визуальные эффекты и анимация">
+          <div className="px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium" style={{ color: "#4A3C2E" }}>Анимация на главной</div>
+                <div className="text-xs mt-0.5" style={{ color: "#A8997F" }}>Персонажи, птицы и другие эффекты в городской сцене</div>
+              </div>
+              <button
+                onClick={() => toggleAnim(!animEnabled)}
+                style={{
+                  position: "relative",
+                  width: 44,
+                  height: 24,
+                  borderRadius: 12,
+                  border: "none",
+                  cursor: "pointer",
+                  background: animEnabled ? "#6B5D4F" : "#D4C9B5",
+                  transition: "background 0.2s ease",
+                  flexShrink: 0,
+                }}
+                aria-label={animEnabled ? "Выключить анимацию" : "Включить анимацию"}
+              >
+                <span style={{
+                  position: "absolute",
+                  top: 3,
+                  left: animEnabled ? 23 : 3,
+                  width: 18,
+                  height: 18,
+                  borderRadius: "50%",
+                  background: "#fff",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                  transition: "left 0.2s ease",
+                  display: "block",
+                }} />
+              </button>
+            </div>
+          </div>
+        </Block>
+
+        {/* ── Block 6: Data ────────────────────────────────────────────────── */}
         <Block icon={<Database size={15} className="text-slate-400" />} title="Данные" sub="Экспорт и резервное копирование — скоро">
           <div className="px-6 py-5 grid grid-cols-2 gap-3">
             {["Экспорт клиентов", "Экспорт консультаций", "История клиентов", "Резервная копия"].map((label) => (
