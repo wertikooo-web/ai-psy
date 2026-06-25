@@ -85,10 +85,12 @@ export interface ClientMaterial {
   clientId: string;
   type: MaterialType;
   title: string;        // short label, auto-derived from type if empty
-  content: string;      // pasted text
+  content: string;      // pasted text; "" means transcription in progress
   fileName?: string;    // if uploaded as file
   fileUrl?: string;
   createdAt: string;    // ISO
+  status?: "transcribing" | "error" | "done"; // client-side only, not persisted
+  voiceNoteId?: string; // reference to voice_notes row (for audio playback)
   // Supabase: user_id uuid references auth.users
 }
 

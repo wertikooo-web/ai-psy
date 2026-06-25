@@ -34,6 +34,15 @@ export async function addMaterial(m: ClientMaterial): Promise<void> {
   await writeAll(all);
 }
 
+export async function updateMaterial(id: string, updates: Partial<ClientMaterial>): Promise<ClientMaterial | null> {
+  const all = await readAll();
+  const idx = all.findIndex((m) => m.id === id);
+  if (idx === -1) return null;
+  all[idx] = { ...all[idx], ...updates };
+  await writeAll(all);
+  return all[idx];
+}
+
 export async function deleteMaterial(id: string): Promise<void> {
   const all = await readAll();
   await writeAll(all.filter((m) => m.id !== id));

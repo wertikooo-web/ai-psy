@@ -27,7 +27,6 @@ export async function POST(
     const body = await req.json();
     const type: MaterialType = body.type ?? "other";
     const content: string    = (body.content ?? "").trim();
-    if (!content) return NextResponse.json({ error: "content обязателен" }, { status: 400 });
 
     const material = {
       id:        randomUUID(),

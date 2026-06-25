@@ -51,6 +51,23 @@ export async function addMaterial(m: ClientMaterial): Promise<void> {
   await jsonStore.addMaterial(m);
 }
 
+export async function updateMaterial(id: string, updates: Partial<ClientMaterial>): Promise<ClientMaterial | null> {
+  if (isSupabaseConfigured()) {
+    const patch: Record<string, unknown> = {};
+    if (updates.content !== undefined) patch.content = updates.content;
+    if (updates.title   !== undefined) patch.title   = updates.title;
+    const { data, error } = await supabaseServer!
+      .from("client_materials")
+      .update(patch)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw new Error(`[DAL/updateMaterial] ${error.message}`);
+    return data ? rowToMaterial(data as Record<string, unknown>) : null;
+  }
+  return jsonStore.updateMaterial(id, updates);
+}
+
 export async function deleteMaterial(id: string): Promise<void> {
   if (isSupabaseConfigured()) {
     const { error } = await supabaseServer!

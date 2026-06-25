@@ -120,7 +120,7 @@ export function ObservationModal({ onClose, defaultClientId }: Props) {
     setPhase("saving");
     setError("");
 
-    // 1) Upload audio as voice_note (for storage + transcription)
+    // 1) Upload audio as voice_note
     const id   = crypto.randomUUID();
     const form = new FormData();
     form.append("audio",       blob, `voice-${id}.webm`);
@@ -133,7 +133,39 @@ export function ObservationModal({ onClose, defaultClientId }: Props) {
     if (!vRes.ok) { setError("Ошибка сохранения аудио"); setPhase("stopped"); return; }
     const vData = await vRes.json();
 
+    // 2) Create placeholder material immediately (empty content = transcribing)
+    const nowIso     = new Date().toISOString();
+    const placeholderRes = await fetch(`/api/client-materials/${selClientId}`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        type:    "observation",
+        title:   "Голосовое наблюдение",
+        content: "",
+        voiceNoteId: id,
+      }),
+    });
+    const placeholderData = placeholderRes.ok ? await placeholderRes.json() : null;
+    const materialId      = placeholderData?.id as string | undefined;
+
+    if (materialId) {
+      // Optimistic: show "transcribing" card in Observations tab immediately
+      window.dispatchEvent(new CustomEvent("observation-created", {
+        detail: {
+          clientId: selClientId,
+          observation: {
+            ...placeholderData,
+            status:      "transcribing",
+            voiceNoteId: id,
+            createdAt:   placeholderData.createdAt ?? nowIso,
+          },
+        },
+      }));
+    }
+
+    // 3) Transcribe if requested
     let text = "";
+    let transcribeError = false;
     if (withTranscription) {
       setPhase("transcribing");
       try {
@@ -144,25 +176,44 @@ export function ObservationModal({ onClose, defaultClientId }: Props) {
         });
         const tData = await tRes.json();
         text = tData.text ?? "";
-      } catch { /* fallback below */ }
+      } catch {
+        transcribeError = true;
+      }
     }
 
-    // 2) Save observation to client_materials
-    const obsText = text || (withTranscription ? "Голосовое наблюдение (транскрипция не удалась)" : "Голосовое наблюдение");
-    await fetch(`/api/client-materials/${selClientId}`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({
-        type:    "observation",
-        title:   "Наблюдение",
-        content: obsText,
-      }),
-    });
+    const finalContent = text || (withTranscription && !transcribeError
+      ? ""
+      : withTranscription
+        ? "Транскрипция не удалась. Аудио сохранено."
+        : "Голосовое наблюдение");
 
-    // Notify consultation page (if open) that materials have changed
+    // 4) PATCH material with final text (or error status)
+    if (materialId) {
+      const patchRes = await fetch(`/api/client-materials/${selClientId}/${materialId}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ content: finalContent || "Голосовое наблюдение" }),
+      });
+      const patchData = patchRes.ok ? await patchRes.json() : null;
+
+      window.dispatchEvent(new CustomEvent("observation-updated", {
+        detail: {
+          clientId: selClientId,
+          tempId:   materialId,
+          observation: {
+            ...(patchData ?? placeholderData),
+            content:     finalContent || "Голосовое наблюдение",
+            status:      transcribeError ? "error" : "done",
+            voiceNoteId: id,
+          },
+        },
+      }));
+    }
+
+    // Notify consultation page that materials changed → mark analysis stale
     window.dispatchEvent(new CustomEvent("client-materials-changed", { detail: { clientId: selClientId } }));
 
-    setSavedText(obsText);
+    setSavedText(text || "Голосовое наблюдение");
     setPhase("done");
   }
 
