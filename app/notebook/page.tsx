@@ -91,10 +91,15 @@ export default function NotebookPage() {
           </p>
           <div
             className="mt-3 ml-12 rounded-xl px-3 py-2 text-xs leading-relaxed"
-            style={{ background: "#FEF3C7", border: "1px solid #FDE68A", color: "#92400E" }}
+            style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", color: "#065F46" }}
           >
-            Записи хранятся только в этом сеансе и <strong>не участвуют в AI‑анализе</strong>.
-            Для наблюдений по клиентам — используйте кнопку 🎙 справа внизу.
+            Записи <strong>не участвуют в AI‑анализе</strong>. Для добавления наблюдений по клиентам — используйте кнопку&nbsp;
+            <span style={{ display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </span>
+            &nbsp;справа внизу.
           </div>
         </div>
 

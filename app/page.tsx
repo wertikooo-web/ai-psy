@@ -10,6 +10,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { AddClientModal } from "@/components/client/AddClientModal";
 import { UserPlus, Mic, ArrowRight, CheckCircle2, Clock } from "lucide-react";
+import { AnimatedCityScene } from "@/components/home/AnimatedCityScene";
 
 type AnyClient       = StoredClient       & { isMock?: boolean };
 type AnyConsultation = StoredConsultation & {
@@ -18,28 +19,6 @@ type AnyConsultation = StoredConsultation & {
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-}
-
-// ── City illustration background ──────────────────────────────────────────────
-function BackgroundIllustration() {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/city.png"
-      alt=""
-      aria-hidden
-      className="pointer-events-none select-none"
-      style={{
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        width: "100%",
-        opacity: 0.55,
-        zIndex: 0,
-        marginBottom: "-2%",
-      }}
-    />
-  );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -120,8 +99,8 @@ export default function HomePage() {
         className="relative overflow-hidden"
         style={{ background: "#FAFAF9", minHeight: "100vh" }}
       >
-        {/* City illustration — belongs to this section, not the scroll root */}
-        <BackgroundIllustration />
+        {/* Animated city — characters, windows, time-of-day */}
+        <AnimatedCityScene />
 
         {/* All content above z-0 background */}
         <div className="relative z-10">
