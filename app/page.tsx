@@ -151,7 +151,7 @@ export default function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
               {/* Recent clients */}
-              <section>
+              <section className="flex flex-col">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>
                     Последние клиенты
@@ -166,7 +166,7 @@ export default function HomePage() {
                     Все клиенты <ArrowRight size={12} />
                   </button>
                 </div>
-                <div className="rounded-2xl border overflow-hidden" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
+                <div className="rounded-2xl border overflow-hidden flex-1" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
                   {recentClients.length === 0 ? (
                     <div className="py-8 text-center text-sm" style={{ color: "#C9BBAA" }}>Клиентов пока нет</div>
                   ) : (
@@ -195,7 +195,7 @@ export default function HomePage() {
               </section>
 
               {/* Recent consultations */}
-              <section>
+              <section className="flex flex-col">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>
                     Последние консультации
@@ -210,7 +210,7 @@ export default function HomePage() {
                     Все консультации <ArrowRight size={12} />
                   </button>
                 </div>
-                <div className="rounded-2xl border overflow-hidden" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
+                <div className="rounded-2xl border overflow-hidden flex-1" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
                   {recentConsultations.length === 0 ? (
                     <div className="py-8 text-center text-sm" style={{ color: "#C9BBAA" }}>Консультаций пока нет</div>
                   ) : (
