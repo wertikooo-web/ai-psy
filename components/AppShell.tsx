@@ -24,9 +24,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* position:relative + zIndex:10 ensures sidebar paints above the city actor
+          overlay (position:fixed zIndex:1 at document.body level) */}
+      <div style={{ position:"relative", zIndex:10, flexShrink:0 }}>
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      </div>
 
-      <main className="flex-1 overflow-hidden flex flex-col min-h-0 relative">
+      <main className="flex-1 overflow-hidden flex flex-col min-h-0 relative" style={{ zIndex:10 }}>
         {/* Mobile hamburger */}
         <button
           onClick={() => setSidebarOpen(true)}

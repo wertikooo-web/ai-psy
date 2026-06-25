@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type ActorType    = "cat" | "human" | "car" | "dog" | "bike" | "bird";
+type ActorType    = "cat" | "human" | "car" | "dog" | "bike" | "bird" | "bus";
 type HumanVariant = "man" | "woman" | "child";
 type Direction    = "ltr" | "rtl";
 type TimeMode     = "day" | "evening" | "night";
@@ -43,9 +44,9 @@ function getLitCount(total: number, mode: TimeMode): number {
 
 // ─── Actor config ─────────────────────────────────────────────────────────────
 const WEIGHTS: Record<TimeMode, Partial<Record<ActorType, number>>> = {
-  day:     { cat: 30, human: 25, car: 25, dog: 12, bike: 8 },
-  evening: { cat: 40, human: 30, car: 15, dog: 10, bike: 5 },
-  night:   { cat: 75, human: 20, car: 5 },
+  day:     { cat: 28, human: 24, car: 22, dog: 11, bike: 8, bus: 7 },
+  evening: { cat: 38, human: 28, car: 14, dog: 9, bike: 5, bus: 6 },
+  night:   { cat: 73, human: 20, car: 5, bus: 2 },
 };
 function weightedPick(w: Partial<Record<ActorType, number>>): ActorType {
   const e = Object.entries(w) as [ActorType, number][];
@@ -58,16 +59,17 @@ const ACTOR_META: Record<ActorType, { viewW:number; viewH:number; dispH:number; 
   cat:   { viewW:52,  viewH:58, dispH:50, bob:true  },
   dog:   { viewW:65,  viewH:62, dispH:54, bob:true  },
   human: { viewW:44,  viewH:74, dispH:65, bob:true  },
+  bus:   { viewW:134, viewH:80, dispH:58, bob:false },
   car:   { viewW:112, viewH:72, dispH:52, bob:false },
   bike:  { viewW:88,  viewH:72, dispH:58, bob:true  },
   bird:  { viewW:24,  viewH:14, dispH:14, bob:false },
 };
 const ACTOR_COLORS: Record<ActorType, string> = {
   cat:"#bfb6aa", dog:"#bfb6aa", human:"#c0b8ac",
-  car:"#c3bbaf", bike:"#c0b8ac", bird:"#c8c0b4",
+  car:"#c3bbaf", bike:"#c0b8ac", bird:"#c8c0b4", bus:"#c8c2b8",
 };
 const BOTTOM_BASE: Record<ActorType, number> = {
-  cat:28, dog:28, human:26, car:18, bike:20, bird:0,
+  cat:28, dog:28, human:26, car:18, bike:20, bird:0, bus:16,
 };
 
 // Level depth config (0=near/large, 2=far/small)
@@ -237,12 +239,11 @@ function SvgHuman({ flip, c, variant = "man", speedMulti = 1, isStopped = false 
   const armDur = (0.50 / speedMulti).toFixed(2);
   const ps  = isStopped ? "paused" : "running";
   const LSW = 2.1;
-  // pv: pivot at top of limb; ps = animationPlayState (paused when standing still)
+  // pv: pivot at top of limb. Include ps in animation shorthand to avoid shorthand/longhand conflict.
   const pv = (anim: string): React.CSSProperties => ({
-    transformBox:       "fill-box" as React.CSSProperties["transformBox"],
-    transformOrigin:    "50% 0%",
-    animation:          anim,
-    animationPlayState: ps,
+    transformBox:    "fill-box" as React.CSSProperties["transformBox"],
+    transformOrigin: "50% 0%",
+    animation:       `${anim} ${ps}`,
   });
 
   let g: React.ReactNode;
@@ -480,16 +481,46 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     const progress = Math.min(elapsed / actor.durationS, 0.995);
     const newDur   = actor.durationS / speedMulti;
     const negDelay = -(progress * newDur);
-    const kName    = (isCat || isDog) && actor.stopFraction != null
-      ? `cm_${actor.id}`
-      : isHuman && actor.humanStopFraction != null
-      ? `hm_${actor.id}`
-      : isBird ? `bf_${actor.id}`
-      : actor.direction === "ltr" ? "cityMoveLtr" : "cityMoveRtl";
-    setSpeedAnim(`${kName} ${newDur.toFixed(2)}s linear ${negDelay.toFixed(2)}s forwards`);
-    const remaining = Math.max(0.2, newDur * (1 - progress));
+    const ltr      = actor.direction === "ltr";
+
+    // IMPORTANT: changing the animation NAME forces the browser to restart with the
+    // new negative delay. Reusing the same name doesn't restart → negative delay has no effect.
+    const kId = `cspd_${actor.id}_${speedMulti}`;
+    const fromPos = ltr ? "-160px" : "calc(100vw + 160px)";
+    const toPos   = ltr ? "calc(100vw + 160px)" : "-160px";
+
+    let kContent: string;
+    if ((isCat || isDog) && actor.stopFraction != null && actor.pauseMs != null) {
+      const sf  = actor.stopFraction;
+      const pf  = actor.pauseMs / (actor.durationS * 1000);
+      const k1  = sf;
+      const k2  = Math.min(sf + pf, 0.97);
+      const stopVw  = ltr ? sf : (1 - sf);
+      const stopPos = `calc(${stopVw * 100}vw - ${dispW / 2}px)`;
+      kContent = `@keyframes ${kId}{0%{transform:translateX(${fromPos})}${(k1*100).toFixed(2)}%{transform:translateX(${stopPos})}${(k2*100).toFixed(2)}%{transform:translateX(${stopPos})}100%{transform:translateX(${toPos})}}`;
+    } else if (isHuman && actor.humanStopFraction != null && actor.humanStopMs != null) {
+      const sf  = actor.humanStopFraction;
+      const pf  = actor.humanStopMs / (actor.durationS * 1000);
+      const k1  = sf;
+      const k2  = Math.min(sf + pf, 0.97);
+      const stopVw  = ltr ? sf : (1 - sf);
+      const stopPos = `calc(${stopVw * 100}vw - ${dispW / 2}px)`;
+      kContent = `@keyframes ${kId}{0%{transform:translateX(${fromPos})}${(k1*100).toFixed(2)}%{transform:translateX(${stopPos})}${(k2*100).toFixed(2)}%{transform:translateX(${stopPos})}100%{transform:translateX(${toPos})}}`;
+    } else {
+      kContent = `@keyframes ${kId}{from{transform:translateX(${fromPos})}to{transform:translateX(${toPos})}}`;
+    }
+
+    const prev = document.getElementById(kId);
+    if (prev) prev.remove();
+    const styleEl = document.createElement("style");
+    styleEl.id = kId;
+    styleEl.textContent = kContent;
+    document.head.appendChild(styleEl);
+
+    setSpeedAnim(`${kId} ${newDur.toFixed(2)}s linear ${negDelay.toFixed(2)}s forwards`);
+    const remaining = Math.max(0.5, newDur * (1 - progress));
     if (finishRef.current) clearTimeout(finishRef.current);
-    finishRef.current = setTimeout(() => onFinish(actor.id), remaining * 1000 + 300);
+    finishRef.current = setTimeout(() => onFinish(actor.id), remaining * 1000 + 400);
   }, [speedMulti]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cat (look) and dog (pee): inject pause keyframe + visual state
@@ -693,10 +724,71 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
           {actor.type === "car"   && <SvgCar   flip={flip} c={color}/>}
           {actor.type === "bike"  && <SvgBike  flip={flip} c={color}/>}
           {actor.type === "bird"  && <SvgBird  flip={flip} c={color}/>}
+          {actor.type === "bus"   && <SvgBus   flip={flip} c={color}/>}
         </svg>
       </div>
     </div>
   );
+}
+
+// ─── Bus ──────────────────────────────────────────────────────────────────────
+function SvgBus({ flip, c }: { flip:boolean; c:string }) {
+  const wh = c;
+  const wStyle: React.CSSProperties = {
+    transformBox:    "fill-box" as React.CSSProperties["transformBox"],
+    transformOrigin: "50% 50%",
+    animation:       "wheelSpin 0.9s linear infinite",
+  };
+  const g = (
+    <g>
+      {/* Body */}
+      <rect x="4"  y="16" width="126" height="50" rx="6"
+        stroke={c} strokeWidth={1.7} fill={c} fillOpacity={0.09}/>
+      {/* Roof stripe */}
+      <rect x="4"  y="16" width="126" height="10" rx="6"
+        stroke="none" fill={c} fillOpacity={0.16}/>
+      {/* Cab front — right side */}
+      <path d="M106,16 Q126,20 128,35 L128,60 L106,60 Z"
+        stroke={c} strokeWidth={1.4} fill={c} fillOpacity={0.13} strokeLinejoin="round"/>
+      {/* Windshield */}
+      <path d="M108,20 Q122,23 124,36 L108,36 Z"
+        stroke={c} strokeWidth={1.2} fill={c} fillOpacity={0.22} strokeLinejoin="round"/>
+      {/* Headlight */}
+      <rect x="122" y="44" width="7" height="5" rx="2"
+        stroke={c} strokeWidth={1.0} fill={c} fillOpacity={0.35}/>
+      {/* Passenger windows */}
+      <rect x="14"  y="24" width="20" height="16" rx="3"
+        stroke={c} strokeWidth={1.2} fill={c} fillOpacity={0.2}/>
+      <rect x="42"  y="24" width="20" height="16" rx="3"
+        stroke={c} strokeWidth={1.2} fill={c} fillOpacity={0.2}/>
+      <rect x="70"  y="24" width="20" height="16" rx="3"
+        stroke={c} strokeWidth={1.2} fill={c} fillOpacity={0.2}/>
+      {/* Door lines */}
+      <line x1="36"  y1="46" x2="36"  y2="66" stroke={c} strokeWidth={1.0} opacity={0.4}/>
+      <line x1="62"  y1="46" x2="62"  y2="66" stroke={c} strokeWidth={1.0} opacity={0.4}/>
+      {/* Undercarriage */}
+      <rect x="4"  y="62" width="126" height="4" rx="2"
+        stroke="none" fill={c} fillOpacity={0.2}/>
+      {/* Rear wheel */}
+      <g style={wStyle}>
+        <circle cx="28"  cy="70" r="12" stroke={c} strokeWidth={1.6} fill={c} fillOpacity={0.08}/>
+        <line x1="28" y1="58" x2="28" y2="82" stroke={c} strokeWidth={0.9} opacity={0.4}/>
+        <line x1="16" y1="70" x2="40" y2="70" stroke={c} strokeWidth={0.9} opacity={0.4}/>
+      </g>
+      {/* Front wheel */}
+      <g style={wStyle}>
+        <circle cx="104" cy="70" r="12" stroke={c} strokeWidth={1.6} fill={c} fillOpacity={0.08}/>
+        <line x1="104" y1="58" x2="104" y2="82" stroke={c} strokeWidth={0.9} opacity={0.4}/>
+        <line x1="92"  y1="70" x2="116" y2="70" stroke={c} strokeWidth={0.9} opacity={0.4}/>
+      </g>
+      {/* Taillight */}
+      <rect x="4"  y="44" width="5" height="7" rx="2"
+        stroke={c} strokeWidth={1.0} fill={wh} fillOpacity={0.30}/>
+    </g>
+  );
+  return flip
+    ? <g transform="scale(-1,1) translate(-134,0)">{g}</g>
+    : <>{g}</>;
 }
 
 // ─── Interactive bird perch ───────────────────────────────────────────────────
@@ -1221,6 +1313,8 @@ export function AnimatedCityScene() {
   const [ibirdSpot,      setIbirdSpot]     = useState<BirdPerch | null>(null);
   const [icatSpot,       setIcatSpot]      = useState<CatSpot  | null>(null);
   const [reducedMotion,  setReducedMotion] = useState(false);
+  // Mounted flag for createPortal (SSR guard)
+  const [mounted,        setMounted]       = useState(false);
   const crowActive       = useRef(false);
   const escaperRunning   = useRef(false);
   const planeRunning     = useRef(false);
@@ -1233,6 +1327,8 @@ export function AnimatedCityScene() {
   const planeTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ibirdTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const icatTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1410,28 +1506,29 @@ export function AnimatedCityScene() {
       />
       <CityTint mode={timeMode}/>
       <CityWindows litSet={litSet} mode={timeMode}/>
-      {/* Fixed overlay for actors — position:fixed escapes all overflow:hidden ancestors
-          so characters travel the full viewport width without clipping */}
-      <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0 }}>
-        {!reducedMotion && actors.map(a => (
-          <ActorEl key={a.id} actor={a} onFinish={removeActor}/>
-        ))}
-        {!reducedMotion && crowInfo && (
-          <CrowScene crow={crowInfo} onDone={handleCrowDone}/>
-        )}
-        {!reducedMotion && (
+      {/* Actor overlay is rendered via portal at document.body to fully escape
+          overflow:hidden on AppShell/main (Blink clips fixed descendants of
+          overflow:hidden scroll containers on Windows). z-index:1 puts actors
+          above the city image (z=0) but below the sidebar wrapper (z=10). */}
+      {mounted && !reducedMotion && createPortal(
+        <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:1 }}>
+          {actors.map(a => (
+            <ActorEl key={a.id} actor={a} onFinish={removeActor}/>
+          ))}
+          {crowInfo && (
+            <CrowScene crow={crowInfo} onDone={handleCrowDone}/>
+          )}
           <WindowEscaper active={escaperActive} onDone={handleEscaperDone}/>
-        )}
-        {!reducedMotion && (
           <PaperPlane active={planeActive} onDone={handlePlaneDone}/>
-        )}
-        {!reducedMotion && ibirdSpot && (
-          <InteractiveBird key={ibirdSpot.id + Date.now()} spot={ibirdSpot} onDone={handleIbirdDone}/>
-        )}
-        {!reducedMotion && icatSpot && (
-          <InteractiveCat key={icatSpot.id + Date.now()} spot={icatSpot} onDone={handleIcatDone}/>
-        )}
-      </div>
+          {ibirdSpot && (
+            <InteractiveBird key={ibirdSpot.id + Date.now()} spot={ibirdSpot} onDone={handleIbirdDone}/>
+          )}
+          {icatSpot && (
+            <InteractiveCat key={icatSpot.id + Date.now()} spot={icatSpot} onDone={handleIcatDone}/>
+          )}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
