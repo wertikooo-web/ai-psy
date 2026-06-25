@@ -248,11 +248,17 @@ export function ObservationModal({ onClose, defaultClientId }: Props) {
     setPhase("saving");
     setError("");
     try {
-      await fetch(`/api/client-materials/${selClientId}`, {
+      const res = await fetch(`/api/client-materials/${selClientId}`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ type: "observation", title: "Наблюдение", content }),
       });
+      if (res.ok) {
+        const matData = await res.json();
+        window.dispatchEvent(new CustomEvent("observation-created", {
+          detail: { clientId: selClientId, observation: { ...matData, status: "done" } },
+        }));
+      }
       setSavedText(content);
       setPhase("done");
       window.dispatchEvent(new CustomEvent("client-materials-changed", { detail: { clientId: selClientId } }));
