@@ -133,86 +133,111 @@ export function ObservationModal({ onClose, defaultClientId }: Props) {
     if (!vRes.ok) { setError("Ошибка сохранения аудио"); setPhase("stopped"); return; }
     const vData = await vRes.json();
 
-    // 2) Create placeholder material immediately (empty content = transcribing)
-    const nowIso     = new Date().toISOString();
-    const placeholderRes = await fetch(`/api/client-materials/${selClientId}`, {
+    // ── Путь A: без транскрипции — сохраняем сразу с финальным текстом ──────
+    if (!withTranscription) {
+      const matRes = await fetch(`/api/client-materials/${selClientId}`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          type:    "observation",
+          title:   "Голосовое наблюдение",
+          content: "Голосовое наблюдение",
+        }),
+      });
+      if (matRes.ok) {
+        const matData = await matRes.json();
+        window.dispatchEvent(new CustomEvent("observation-created", {
+          detail: { clientId: selClientId, observation: { ...matData, status: "done" } },
+        }));
+      } else {
+        setError("Ошибка сохранения наблюдения");
+        setPhase("stopped");
+        return;
+      }
+      window.dispatchEvent(new CustomEvent("client-materials-changed", { detail: { clientId: selClientId } }));
+      setSavedText("Голосовое наблюдение");
+      setPhase("done");
+      return;
+    }
+
+    // ── Путь B: с транскрипцией — placeholder "Расшифровывается..." ─────────
+    const nowIso      = new Date().toISOString();
+    const phRes = await fetch(`/api/client-materials/${selClientId}`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({
         type:    "observation",
         title:   "Голосовое наблюдение",
-        content: "",
-        voiceNoteId: id,
+        content: "Расшифровывается...",   // non-empty → Supabase NOT NULL ок
       }),
     });
-    const placeholderData = placeholderRes.ok ? await placeholderRes.json() : null;
-    const materialId      = placeholderData?.id as string | undefined;
+    const phData   = phRes.ok ? await phRes.json() : null;
+    const materialId = phData?.id as string | undefined;
 
     if (materialId) {
-      // Optimistic: show "transcribing" card in Observations tab immediately
       window.dispatchEvent(new CustomEvent("observation-created", {
         detail: {
           clientId: selClientId,
-          observation: {
-            ...placeholderData,
-            status:      "transcribing",
-            voiceNoteId: id,
-            createdAt:   placeholderData.createdAt ?? nowIso,
-          },
+          observation: { ...phData, status: "transcribing", createdAt: phData.createdAt ?? nowIso },
         },
       }));
     }
 
-    // 3) Transcribe if requested
+    // Транскрибируем
+    setPhase("transcribing");
     let text = "";
     let transcribeError = false;
-    if (withTranscription) {
-      setPhase("transcribing");
-      try {
-        const tRes  = await fetch("/api/voice-notes/transcribe", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ id, audioPath: vData.audioPath ?? `/uploads/voice-${id}.webm` }),
-        });
-        const tData = await tRes.json();
-        text = tData.text ?? "";
-      } catch {
-        transcribeError = true;
-      }
+    try {
+      const tRes  = await fetch("/api/voice-notes/transcribe", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ id, audioPath: vData.audioPath ?? `/uploads/voice-${id}.webm` }),
+      });
+      const tData = await tRes.json();
+      text = tData.text ?? "";
+    } catch {
+      transcribeError = true;
     }
 
-    const finalContent = text || (withTranscription && !transcribeError
-      ? ""
-      : withTranscription
-        ? "Транскрипция не удалась. Аудио сохранено."
-        : "Голосовое наблюдение");
+    const finalContent = text || (transcribeError
+      ? "Транскрипция не удалась. Аудио сохранено."
+      : "Голосовое наблюдение");
 
-    // 4) PATCH material with final text (or error status)
+    // PATCH placeholder → финальный текст
     if (materialId) {
       const patchRes = await fetch(`/api/client-materials/${selClientId}/${materialId}`, {
         method:  "PATCH",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ content: finalContent || "Голосовое наблюдение" }),
+        body:    JSON.stringify({ content: finalContent }),
       });
       const patchData = patchRes.ok ? await patchRes.json() : null;
-
       window.dispatchEvent(new CustomEvent("observation-updated", {
         detail: {
           clientId: selClientId,
           tempId:   materialId,
           observation: {
-            ...(patchData ?? placeholderData),
-            content:     finalContent || "Голосовое наблюдение",
-            status:      transcribeError ? "error" : "done",
-            voiceNoteId: id,
+            ...(patchData ?? phData),
+            content: finalContent,
+            status:  transcribeError ? "error" : "done",
           },
         },
       }));
+    } else {
+      // placeholder не создался — создаём напрямую с готовым текстом
+      const fallbackRes = await fetch(`/api/client-materials/${selClientId}`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ type: "observation", title: "Голосовое наблюдение", content: finalContent }),
+      });
+      if (fallbackRes.ok) {
+        const fb = await fallbackRes.json();
+        window.dispatchEvent(new CustomEvent("observation-created", {
+          detail: { clientId: selClientId, observation: { ...fb, status: transcribeError ? "error" : "done" } },
+        }));
+      }
     }
 
-    // Notify consultation page that materials changed → mark analysis stale
     window.dispatchEvent(new CustomEvent("client-materials-changed", { detail: { clientId: selClientId } }));
-
     setSavedText(text || "Голосовое наблюдение");
     setPhase("done");
   }

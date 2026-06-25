@@ -133,7 +133,7 @@ export function ObservationsTab({ clientId, isMock }: Props) {
 
         {/* List */}
         {sorted.map((obs, i) => {
-          const isTranscribing = obs.status === "transcribing" || (obs.content === "" && obs.status !== "error");
+          const isTranscribing = obs.status === "transcribing";
           const isError        = obs.status === "error";
           const isOpen         = expanded === obs.id;
           const preview        = obs.content.slice(0, 280);
