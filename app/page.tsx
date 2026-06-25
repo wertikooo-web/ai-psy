@@ -91,7 +91,7 @@ export default function HomePage() {
   const recentConsultations = consultations.slice(0, MAX_DASHBOARD_CONSULTATIONS);
 
   return (
-    <div className="flex-1 min-h-0 overflow-hidden flex flex-col" style={{ background: "#F9F7F2" }}>
+    <div className="flex-1 min-h-0 overflow-hidden flex flex-col" style={{ background: "#FAFAF8" }}>
 
       {/* ── Single hero section — fills all available space ── */}
       <section
