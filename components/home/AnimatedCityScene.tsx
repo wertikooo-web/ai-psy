@@ -59,8 +59,8 @@ const ACTOR_META: Record<ActorType, { viewW:number; viewH:number; dispH:number; 
   bird:  { viewW:24,  viewH:14, dispH:14, bob:false },
 };
 const ACTOR_COLORS: Record<ActorType, string> = {
-  cat:"#bfb6aa", dog:"#bfb6aa", human:"#c0b8ac",
-  car:"#c3bbaf", bike:"#c0b8ac", bird:"#c8c0b4", bus:"#c8c2b8",
+  cat:"#8C7E72", dog:"#8C7E72", human:"#7A6C60",
+  car:"#8A7D71", bike:"#7A6C60", bird:"#9A8C80", bus:"#8A8076",
 };
 const BOTTOM_BASE: Record<ActorType, number> = {
   cat:28, dog:28, human:26, car:18, bike:20, bird:0, bus:16,
@@ -91,7 +91,7 @@ const wingG = (side: "L"|"R", pivotX: string): React.CSSProperties => ({
   animation:       `birdWing${side} 0.32s ease-in-out infinite`,
 });
 
-const SW = 1.8;
+const SW = 2.3;
 
 // ─── SVG Characters ───────────────────────────────────────────────────────────
 function SvgCat({ flip, c, isLooking, speedMulti=1 }: { flip:boolean; c:string; isLooking:boolean; speedMulti?:number }) {
@@ -797,7 +797,7 @@ function InteractiveBird({ spot, onDone }: { spot:BirdPerch; onDone:()=>void }) 
   const [clicked, setClicked] = useState(false);
   const flyDir  = useRef(Math.random() > 0.5 ? 1 : -1);
   const timersB = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const c = "#B8AFA6";
+  const c = "#8C7E72";
 
   const atB = (ms:number, fn:()=>void) => { const t = setTimeout(fn, ms); timersB.current.push(t); };
   const clearB = useCallback(() => { timersB.current.forEach(clearTimeout); timersB.current = []; }, []);
@@ -856,7 +856,7 @@ function InteractiveCat({ spot, onDone }: { spot:CatSpot; onDone:()=>void }) {
   const [isIdle,  setIsIdle]  = useState(false);
   const [clicked, setClicked] = useState(false);
   const timersC = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const c = "#bfb6aa";
+  const c = "#8C7E72";
 
   const atC = (ms:number, fn:()=>void) => { const t = setTimeout(fn, ms); timersC.current.push(t); };
   const clearC = useCallback(() => { timersC.current.forEach(clearTimeout); timersC.current = []; }, []);
@@ -1070,7 +1070,7 @@ function PaperPlane({ active, onDone }: { active:boolean; onDone:()=>void }) {
   }, [active, onDone]);
 
   if (!animName) return null;
-  const c = "#B8AFA6";
+  const c = "#8C7E72";
   return (
     <div style={{
       position:"absolute", left:"34%", bottom:"50%",

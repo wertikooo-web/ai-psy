@@ -122,7 +122,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
       fetch(`/api/client-materials/${c.clientId}`).then(r => r.ok ? r.json() : []),
       fetch(`/api/client-history/${c.clientId}`).then(r => r.ok ? r.json() : []),
     ]).then(([mats, hist]) => {
-      const materials = mats as import("@/lib/types").ClientMaterial[];
+      // therapist_notes are personal — excluded from AI analysis and from this list
+      const materials = (mats as import("@/lib/types").ClientMaterial[]).filter(m => m.type !== "therapist_notes");
       setClientMaterials(materials);
       setHistoryCount((hist as unknown[]).length);
       // Mark stale if any material is newer than the last analysis
@@ -570,7 +571,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               <div>
                 <p className="text-sm font-semibold text-blue-800">Транскрипт обновлён</p>
                 <p className="text-xs text-blue-600 mt-0.5">
-                  Аудио расшифровано — анализ будет по полному транскрипту. Заметки психолога сохранены во вкладке «Заметки».
+                  Аудио расшифровано — анализ будет по полному транскрипту.
                 </p>
               </div>
             </div>
