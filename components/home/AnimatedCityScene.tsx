@@ -1486,13 +1486,14 @@ export function AnimatedCityScene() {
 
   return (
     <div aria-hidden style={{
-      position:"absolute", bottom:0, left:0, width:"100%",
-      pointerEvents:"none", zIndex:0, marginBottom:"-2%",
+      position:"absolute", inset:0,
+      pointerEvents:"none", zIndex:0,
     }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/city.png" alt="" aria-hidden
-        className="pointer-events-none select-none w-full block"
-        style={{ opacity:cityOpacity, transition:"opacity 3s ease" }}
+        className="pointer-events-none select-none absolute bottom-0 w-full"
+        style={{ opacity:cityOpacity, transition:"opacity 3s ease",
+          height:"100%", objectFit:"cover", objectPosition:"bottom center" }}
       />
       <CityTint mode={timeMode}/>
       {/* Actor overlay is rendered via portal at document.body to fully escape
