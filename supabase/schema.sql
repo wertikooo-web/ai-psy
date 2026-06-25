@@ -166,13 +166,25 @@ create table if not exists public.client_materials (
   constraint client_materials_type_check
     check (type in (
       'general_history', 'therapist_notes', 'gpt_analysis',
-      'past_transcript', 'other'
+      'past_transcript', 'other', 'observation'
     ))
 );
 
 alter table public.client_materials enable row level security;
 
 create index if not exists client_materials_client_id_idx on public.client_materials (client_id);
+
+-- ── notebook ─────────────────────────────────────────────────────────────────
+-- Psychologist's personal notebook entries (cross-client free text).
+create table if not exists public.notebook (
+  id          uuid        primary key default gen_random_uuid(),
+  created_at  timestamptz not null    default now(),
+  text        text        not null    default ''
+);
+
+alter table public.notebook enable row level security;
+
+create index if not exists notebook_created_at_idx on public.notebook (created_at desc);
 
 -- ── user_profile ──────────────────────────────────────────────────────────────
 -- Single row per installation, id = 'default'

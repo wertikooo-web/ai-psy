@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getNotebookEntries, addNotebookEntry } from "@/lib/notebookStore";
+import { getEntries, addEntry } from "@/lib/data/notebook";
 import { randomUUID } from "crypto";
 
 export async function GET() {
-  return NextResponse.json(getNotebookEntries());
+  try {
+    const entries = await getEntries();
+    return NextResponse.json(entries);
+  } catch (err) {
+    console.error("[notebook GET]", err);
+    return NextResponse.json({ error: "Ошибка загрузки" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const text = (body.text ?? "").trim();
-  if (!text) return NextResponse.json({ error: "text required" }, { status: 400 });
-  const entry = { id: randomUUID(), text, createdAt: new Date().toISOString() };
-  addNotebookEntry(entry);
-  return NextResponse.json(entry, { status: 201 });
+  try {
+    const body = await req.json();
+    const text = (body.text ?? "").trim();
+    if (!text) return NextResponse.json({ error: "text required" }, { status: 400 });
+    const entry = await addEntry({ id: randomUUID(), text, createdAt: new Date().toISOString() });
+    return NextResponse.json(entry, { status: 201 });
+  } catch (err) {
+    console.error("[notebook POST]", err);
+    return NextResponse.json({ error: "Ошибка сохранения" }, { status: 500 });
+  }
 }
