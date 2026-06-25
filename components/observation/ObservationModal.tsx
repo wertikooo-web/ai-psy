@@ -1,528 +1,250 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import {
-  X, Mic, Square, Loader2, CheckCircle2, ChevronDown, PenLine, User,
-} from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { X, Eye } from "lucide-react";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 
-interface Client { id: string; name: string; }
+/* ── Palette ──────────────────────────────────────────────────────────────── */
+const C = {
+  bg:       "#FAF8F5",
+  border:   "#D8CFBE",
+  divider:  "#EDE8DE",
+  title:    "#3D3228",
+  body:     "#4A3C2E",
+  muted:    "#A8997F",
+  accent:   "#6B5D4F",
+  btnPrim:  "#4A3C2E",
+  btnHover: "#3D3228",
+  inputBg:  "#FFFFFF",
+  hint:     "#8B7D6B",
+};
 
 interface Props {
   onClose:          () => void;
   defaultClientId?: string;
+  consultationId?:  string;
 }
 
-type Phase   = "idle" | "recording" | "stopped" | "saving" | "transcribing" | "done";
-type NoteTab = "audio" | "text";
-
-function fmt(sec: number) {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
+function detectHintText(): string {
+  if (typeof navigator === "undefined") return "Можно напечатать текст или воспользоваться голосовым вводом вашего устройства.";
+  const ua = navigator.userAgent;
+  if (/Windows/i.test(ua)) return "Можно напечатать текст или нажать Win + H, чтобы продиктовать голосом.";
+  if (/Mac/i.test(ua))     return "Можно напечатать текст или использовать диктовку (Fn + D).";
+  return "Можно напечатать текст или воспользоваться голосовым вводом вашего устройства.";
 }
 
-const C = {
-  bg:     "#FDFCFA",
-  bdr:    "#E5DDD2",
-  head:   "#F0EBE3",
-  title:  "#3A2E22",
-  muted:  "#A8997F",
-  warm:   "#F0EBE1",
-  warmBdr:"#D8CFBE",
-  dark:   "#6B5D4F",
-  darker: "#4A3C2E",
-};
+export function ObservationModal({ onClose, defaultClientId, consultationId }: Props) {
+  const [text,        setText]        = useState("");
+  const [clientId,    setClientId]    = useState(defaultClientId ?? "");
+  const [clients,     setClients]     = useState<{ id: string; name: string }[]>([]);
+  const [saving,      setSaving]      = useState(false);
+  const [error,       setError]       = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const hintText    = detectHintText();
 
-const SEL_STYLE: React.CSSProperties = {
-  background: "#FFFFFF", borderColor: C.warmBdr, color: C.title,
-  borderRadius: "0.75rem", border: `1px solid ${C.warmBdr}`,
-  padding: "0.6rem 2rem 0.6rem 0.75rem", fontSize: "0.875rem",
-  width: "100%", outline: "none", appearance: "none",
-};
-
-export function ObservationModal({ onClose, defaultClientId }: Props) {
-  const [tab,       setTab]       = useState<NoteTab>("audio");
-  const [phase,     setPhase]     = useState<Phase>("idle");
-  const [elapsed,   setElapsed]   = useState(0);
-  const [blob,      setBlob]      = useState<Blob | null>(null);
-  const [textNote,  setTextNote]  = useState("");
-  const [savedText, setSavedText] = useState("");
-  const [error,     setError]     = useState("");
-
-  const [clients,       setClients]       = useState<Client[]>([]);
-  const [selClientId,   setSelClientId]   = useState(defaultClientId ?? "");
-  const [selClientName, setSelClientName] = useState("");
-
-  const mediaRef  = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-
+  /* Auto-resolve clientId from consultationId if needed */
   useEffect(() => {
-    async function load() {
-      try {
-        const res  = await fetch("/api/clients");
-        const list: Client[] = res.ok ? await res.json() : [];
-        setClients(list);
-        if (defaultClientId) {
-          const found = list.find((c) => c.id === defaultClientId);
-          if (found) setSelClientName(found.name);
-        }
-      } catch { /* ignore */ }
-    }
-    load();
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    if (defaultClientId || !consultationId) return;
+    fetch(`/api/consultations/${consultationId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((c) => { if (c?.clientId) setClientId(c.clientId); })
+      .catch(() => {});
+  }, [consultationId, defaultClientId]);
+
+  /* Load clients for picker (only when no defaultClientId) */
+  useEffect(() => {
+    if (defaultClientId) return;
+    fetch("/api/clients")
+      .then((r) => r.ok ? r.json() : [])
+      .then((list: { id: string; name?: string; full_name?: string }[]) =>
+        setClients(list.map((c) => ({ id: c.id, name: c.name ?? c.full_name ?? c.id })))
+      )
+      .catch(() => {});
   }, [defaultClientId]);
 
+  /* Auto-focus textarea */
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    const t = setTimeout(() => textareaRef.current?.focus(), 80);
+    return () => clearTimeout(t);
+  }, []);
+
+  /* Close on Escape */
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") handleCancel();
+    }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
 
-  function handleClientChange(id: string) {
-    setSelClientId(id);
-    setSelClientName(clients.find((c) => c.id === id)?.name ?? "");
-  }
+  const handleCancel = useCallback(() => {
+    if (text.trim()) {
+      if (!confirm("Закрыть без сохранения? Введённый текст будет потерян.")) return;
+    }
+    onClose();
+  }, [text, onClose]);
 
-  const canSave = !!selClientId;
-
-  // ── Audio recording ─────────────────────────────────────────────────────────
-  async function startRecording() {
+  async function handleSave() {
+    const content = text.trim();
+    if (!content || !clientId) return;
+    setSaving(true);
     setError("");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr     = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      chunksRef.current = [];
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        setBlob(new Blob(chunksRef.current, { type: "audio/webm" }));
-        setPhase("stopped");
-      };
-      mr.start(200);
-      mediaRef.current = mr;
-      setElapsed(0);
-      setPhase("recording");
-      timerRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
-    } catch {
-      setError("Нет доступа к микрофону. Разрешите доступ в настройках браузера.");
-    }
-  }
-
-  function stopRecording() {
-    if (timerRef.current) clearInterval(timerRef.current);
-    mediaRef.current?.stop();
-  }
-
-  async function saveVoiceObservation(withTranscription: boolean) {
-    if (!blob || !selClientId) return;
-    setPhase("saving");
-    setError("");
-
-    // 1) Upload audio as voice_note
-    const id   = crypto.randomUUID();
-    const form = new FormData();
-    form.append("audio",       blob, `voice-${id}.webm`);
-    form.append("id",          id);
-    form.append("durationSec", String(elapsed));
-    form.append("clientId",    selClientId);
-    form.append("clientName",  selClientName);
-
-    const vRes = await fetch("/api/voice-notes", { method: "POST", body: form });
-    if (!vRes.ok) { setError("Ошибка сохранения аудио"); setPhase("stopped"); return; }
-    const vData = await vRes.json();
-
-    // ── Путь A: без транскрипции — сохраняем сразу с финальным текстом ──────
-    if (!withTranscription) {
-      const matRes = await fetch(`/api/client-materials/${selClientId}`, {
+      const res = await fetch(`/api/client-materials/${clientId}`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          type:    "observation",
-          title:   "Голосовое наблюдение",
-          content: "Голосовое наблюдение",
+          type:           "observation",
+          title:          "Наблюдение психолога",
+          content,
+          consultationId: consultationId ?? undefined,
         }),
       });
-      if (matRes.ok) {
-        const matData = await matRes.json();
-        window.dispatchEvent(new CustomEvent("observation-created", {
-          detail: { clientId: selClientId, observation: { ...matData, status: "done" } },
-        }));
-      } else {
-        setError("Ошибка сохранения наблюдения");
-        setPhase("stopped");
-        return;
-      }
-      window.dispatchEvent(new CustomEvent("client-materials-changed", { detail: { clientId: selClientId } }));
-      setSavedText("Голосовое наблюдение");
-      setPhase("done");
-      return;
-    }
+      if (!res.ok) throw new Error("Ошибка сохранения");
+      const matData = await res.json();
 
-    // ── Путь B: с транскрипцией — placeholder "Расшифровывается..." ─────────
-    const nowIso      = new Date().toISOString();
-    const phRes = await fetch(`/api/client-materials/${selClientId}`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({
-        type:    "observation",
-        title:   "Голосовое наблюдение",
-        content: "Расшифровывается...",   // non-empty → Supabase NOT NULL ок
-      }),
-    });
-    const phData   = phRes.ok ? await phRes.json() : null;
-    const materialId = phData?.id as string | undefined;
-
-    if (materialId) {
+      /* Real-time: push to ObservationsTab */
       window.dispatchEvent(new CustomEvent("observation-created", {
-        detail: {
-          clientId: selClientId,
-          observation: { ...phData, status: "transcribing", createdAt: phData.createdAt ?? nowIso },
-        },
+        detail: { clientId, observation: { ...matData, status: "done" } },
       }));
-    }
-
-    // Транскрибируем
-    setPhase("transcribing");
-    let text = "";
-    let transcribeError = false;
-    try {
-      const tRes  = await fetch("/api/voice-notes/transcribe", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ id, audioPath: vData.audioPath ?? `/uploads/voice-${id}.webm` }),
-      });
-      const tData = await tRes.json();
-      text = tData.text ?? "";
-    } catch {
-      transcribeError = true;
-    }
-
-    const finalContent = text || (transcribeError
-      ? "Транскрипция не удалась. Аудио сохранено."
-      : "Голосовое наблюдение");
-
-    // PATCH placeholder → финальный текст
-    if (materialId) {
-      const patchRes = await fetch(`/api/client-materials/${selClientId}/${materialId}`, {
-        method:  "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ content: finalContent }),
-      });
-      const patchData = patchRes.ok ? await patchRes.json() : null;
-      window.dispatchEvent(new CustomEvent("observation-updated", {
-        detail: {
-          clientId: selClientId,
-          tempId:   materialId,
-          observation: {
-            ...(patchData ?? phData),
-            content: finalContent,
-            status:  transcribeError ? "error" : "done",
-          },
-        },
+      /* Mark analysis stale */
+      window.dispatchEvent(new CustomEvent("client-materials-changed", {
+        detail: { clientId, consultationId },
       }));
-    } else {
-      // placeholder не создался — создаём напрямую с готовым текстом
-      const fallbackRes = await fetch(`/api/client-materials/${selClientId}`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ type: "observation", title: "Голосовое наблюдение", content: finalContent }),
-      });
-      if (fallbackRes.ok) {
-        const fb = await fallbackRes.json();
-        window.dispatchEvent(new CustomEvent("observation-created", {
-          detail: { clientId: selClientId, observation: { ...fb, status: transcribeError ? "error" : "done" } },
-        }));
-      }
-    }
 
-    window.dispatchEvent(new CustomEvent("client-materials-changed", { detail: { clientId: selClientId } }));
-    setSavedText(text || "Голосовое наблюдение");
-    setPhase("done");
-  }
-
-  async function saveTextObservation() {
-    const content = textNote.trim();
-    if (!content || !selClientId) return;
-    setPhase("saving");
-    setError("");
-    try {
-      const res = await fetch(`/api/client-materials/${selClientId}`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ type: "observation", title: "Наблюдение", content }),
-      });
-      if (res.ok) {
-        const matData = await res.json();
-        window.dispatchEvent(new CustomEvent("observation-created", {
-          detail: { clientId: selClientId, observation: { ...matData, status: "done" } },
-        }));
-      }
-      setSavedText(content);
-      setPhase("done");
-      window.dispatchEvent(new CustomEvent("client-materials-changed", { detail: { clientId: selClientId } }));
+      onClose();
     } catch {
-      setError("Ошибка сохранения");
-      setPhase("idle");
+      setError("Не удалось сохранить. Попробуйте ещё раз.");
+      setSaving(false);
     }
   }
 
-  const isDone    = phase === "done";
-  const isWorking = phase === "saving" || phase === "transcribing";
-
-  // ── Client picker ─────────────────────────────────────────────────────────────
-  const ClientPicker = (
-    <div className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted }}>
-        Клиент <span className="text-rose-400">*</span>
-      </p>
-      <div className="relative">
-        <select
-          value={selClientId}
-          onChange={(e) => handleClientChange(e.target.value)}
-          style={SEL_STYLE}
-        >
-          <option value="">— Выберите клиента —</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <ChevronDown
-          size={13}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: C.muted }}
-        />
-      </div>
-      {selClientId && (
-        <p className="text-xs pl-1" style={{ color: C.muted }}>
-          <User size={10} className="inline mr-1" />
-          <strong>{selClientName}</strong> — наблюдение попадёт в карточку клиента и в контекст AI
-        </p>
-      )}
-      {!selClientId && (
-        <p className="text-xs pl-1" style={{ color: "#C9BBAA" }}>Выберите клиента чтобы продолжить</p>
-      )}
-    </div>
-  );
+  const canSave = text.trim().length > 0 && !!clientId;
 
   return (
     <ModalPortal>
+      {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
-        onClick={onClose}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: "rgba(61,50,40,0.35)", backdropFilter: "blur(2px)" }}
+        onClick={handleCancel}
       >
+        {/* Dialog */}
         <div
-          className="w-full max-w-md rounded-2xl shadow-xl overflow-hidden"
-          style={{ background: C.bg, border: `1px solid ${C.bdr}` }}
+          className="relative w-full max-w-md rounded-2xl shadow-2xl flex flex-col"
+          style={{ background: C.bg, border: `1.5px solid ${C.border}`, maxHeight: "90vh" }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div
-            className="px-6 py-4 flex items-center justify-between border-b"
-            style={{ background: C.head, borderColor: C.bdr }}
+            className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+            style={{ borderBottom: `1px solid ${C.divider}` }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ background: C.bdr }}
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: C.btnPrim }}
               >
-                {tab === "text"
-                  ? <PenLine size={14} style={{ color: C.dark }} />
-                  : <Mic size={14} style={{ color: C.dark }} />}
+                <Eye size={15} color="white" />
               </div>
-              <span className="text-sm font-semibold" style={{ color: C.title }}>
+              <h2 className="text-base font-semibold" style={{ color: C.title }}>
                 Новое наблюдение
-              </span>
+              </h2>
             </div>
-            <button onClick={onClose} style={{ color: C.muted }}>
-              <X size={16} />
+            <button
+              onClick={handleCancel}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+              style={{ color: C.muted }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = C.divider; e.currentTarget.style.color = C.body; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.muted; }}
+            >
+              <X size={15} />
             </button>
           </div>
 
-          {/* Tab switcher */}
-          {!isDone && !isWorking && (
-            <div className="flex border-b" style={{ borderColor: C.bdr }}>
-              {(["audio", "text"] as NoteTab[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setTab(t); setPhase("idle"); setError(""); }}
-                  className="flex-1 py-2.5 text-sm font-medium transition-colors"
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            {/* Client picker — only when no preset client */}
+            {!defaultClientId && !consultationId && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted }}>
+                  Клиент <span className="text-rose-400">*</span>
+                </label>
+                <select
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
                   style={{
-                    color:        tab === t ? C.title : C.muted,
-                    borderBottom: tab === t ? `2px solid ${C.dark}` : "2px solid transparent",
-                    background:   "transparent",
+                    background:  C.inputBg,
+                    border:      `1.5px solid ${C.border}`,
+                    color:       clientId ? C.body : C.muted,
+                    appearance:  "none",
                   }}
                 >
-                  {t === "audio" ? "🎙 Голосовое" : "✏️ Текстовое"}
-                </button>
-              ))}
+                  <option value="">— Выберите клиента —</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Textarea */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: C.muted }}>
+                Наблюдение
+              </label>
+              <textarea
+                ref={textareaRef}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Запишите своё наблюдение о клиенте…"
+                rows={6}
+                className="w-full rounded-xl px-3.5 py-3 text-sm leading-relaxed resize-none outline-none transition-colors"
+                style={{
+                  background:  C.inputBg,
+                  border:      `1.5px solid ${C.border}`,
+                  color:       C.body,
+                }}
+                onFocus={(e)  => { e.currentTarget.style.borderColor = C.accent; }}
+                onBlur={(e)   => { e.currentTarget.style.borderColor = C.border; }}
+              />
+              {/* Hint */}
+              <p className="text-xs leading-relaxed" style={{ color: C.hint }}>
+                {hintText}
+              </p>
             </div>
-          )}
 
-          <div className="px-6 py-5 space-y-5">
-
-            {/* ══ AUDIO TAB ══ */}
-            {tab === "audio" && !isDone && (
-              <>
-                {/* Client picker shown always in audio tab */}
-                {ClientPicker}
-
-                <div className="flex flex-col items-center gap-3 py-1">
-                  {phase === "idle" && (
-                    <>
-                      <button
-                        onClick={startRecording}
-                        disabled={!canSave}
-                        className="w-16 h-16 rounded-full flex items-center justify-center shadow-md transition-all hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={{ background: canSave ? C.dark : "#C9BBAA" }}
-                      >
-                        <Mic size={26} color="white" />
-                      </button>
-                      <span className="text-xs" style={{ color: C.muted }}>
-                        {canSave ? "Нажмите, чтобы начать запись" : "Сначала выберите клиента"}
-                      </span>
-                    </>
-                  )}
-
-                  {phase === "recording" && (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                        <span className="text-2xl font-mono font-semibold" style={{ color: C.title }}>
-                          {fmt(elapsed)}
-                        </span>
-                      </div>
-                      <button
-                        onClick={stopRecording}
-                        className="w-14 h-14 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition-all"
-                        style={{ background: "#C9BBAA" }}
-                      >
-                        <Square size={20} color={C.title} fill={C.title} />
-                      </button>
-                      <span className="text-xs" style={{ color: C.muted }}>Нажмите ■ чтобы остановить</span>
-                    </>
-                  )}
-
-                  {isWorking && (
-                    <div className="flex flex-col items-center gap-2 py-2">
-                      <Loader2 size={32} className="animate-spin" style={{ color: C.muted }} />
-                      <span className="text-sm" style={{ color: C.muted }}>
-                        {phase === "transcribing" ? "Транскрибирую через Whisper..." : "Сохраняю..."}
-                      </span>
-                    </div>
-                  )}
-
-                  {phase === "stopped" && (
-                    <div className="text-center">
-                      <div className="text-2xl font-mono font-semibold" style={{ color: C.title }}>
-                        {fmt(elapsed)}
-                      </div>
-                      <span className="text-xs block mt-0.5" style={{ color: C.muted }}>Запись готова</span>
-                    </div>
-                  )}
-                </div>
-
-                {error && <p className="text-xs text-rose-500">{error}</p>}
-
-                {phase === "stopped" && (
-                  <div className="flex gap-2.5">
-                    <button
-                      onClick={() => saveVoiceObservation(false)}
-                      disabled={!canSave}
-                      className="flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors disabled:opacity-40"
-                      style={{ borderColor: C.warmBdr, color: C.dark, background: C.warm }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "#E8E0D0"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = C.warm; }}
-                    >
-                      Сохранить без текста
-                    </button>
-                    <button
-                      onClick={() => saveVoiceObservation(true)}
-                      disabled={!canSave}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40"
-                      style={{ background: C.dark, color: "#FFFFFF" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = C.darker; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = C.dark; }}
-                    >
-                      <Mic size={13} />
-                      Транскрибировать
-                    </button>
-                  </div>
-                )}
-              </>
+            {error && (
+              <p className="text-xs text-rose-500">{error}</p>
             )}
+          </div>
 
-            {/* ══ TEXT TAB ══ */}
-            {tab === "text" && !isDone && !isWorking && (
-              <>
-                {ClientPicker}
-
-                <textarea
-                  value={textNote}
-                  onChange={(e) => setTextNote(e.target.value)}
-                  placeholder="Ваше наблюдение по клиенту..."
-                  rows={4}
-                  autoFocus={!defaultClientId}
-                  className="w-full px-3 py-2.5 rounded-xl border text-sm resize-none focus:outline-none"
-                  style={{ background: "#FFFFFF", borderColor: C.warmBdr, color: C.title }}
-                  onFocus={(e) => { e.target.style.borderColor = C.muted; }}
-                  onBlur={(e)  => { e.target.style.borderColor = C.warmBdr; }}
-                />
-
-                {error && <p className="text-xs text-rose-500">{error}</p>}
-
-                <button
-                  onClick={saveTextObservation}
-                  disabled={!textNote.trim() || !canSave}
-                  className="w-full py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-40"
-                  style={{ background: C.dark, color: "#FFFFFF" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = C.darker; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = C.dark; }}
-                >
-                  <PenLine size={14} />
-                  Сохранить наблюдение
-                </button>
-              </>
-            )}
-
-            {isWorking && tab === "text" && (
-              <div className="flex flex-col items-center gap-2 py-4">
-                <Loader2 size={32} className="animate-spin" style={{ color: C.muted }} />
-                <span className="text-sm" style={{ color: C.muted }}>Сохраняю...</span>
-              </div>
-            )}
-
-            {/* ══ DONE ══ */}
-            {isDone && (
-              <div className="flex flex-col items-center gap-3 py-2">
-                <CheckCircle2 size={36} className="text-emerald-500" />
-                <div className="text-center">
-                  <p className="text-sm font-semibold" style={{ color: C.title }}>Наблюдение сохранено</p>
-                  <p className="text-xs mt-0.5" style={{ color: C.muted }}>
-                    → <strong>{selClientName}</strong> · вкладка «Наблюдения»
-                  </p>
-                </div>
-                {savedText && (
-                  <div
-                    className="w-full rounded-xl p-3 text-xs leading-relaxed"
-                    style={{ background: C.warm, color: C.dark }}
-                  >
-                    {savedText}
-                  </div>
-                )}
-                <button
-                  onClick={onClose}
-                  className="w-full py-2.5 rounded-xl text-sm font-medium transition-colors"
-                  style={{ background: C.dark, color: "#FFFFFF" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = C.darker; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = C.dark; }}
-                >
-                  Готово
-                </button>
-              </div>
-            )}
-
+          {/* Footer */}
+          <div
+            className="flex gap-2 px-5 py-4 flex-shrink-0"
+            style={{ borderTop: `1px solid ${C.divider}` }}
+          >
+            <button
+              onClick={handleCancel}
+              className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors"
+              style={{ background: C.divider, color: C.accent }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#DDD5C5"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = C.divider; }}
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!canSave || saving}
+              className="flex-[2] py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: canSave && !saving ? C.btnPrim : "#A8997F", color: "white" }}
+              onMouseEnter={(e) => { if (canSave && !saving) e.currentTarget.style.background = C.btnHover; }}
+              onMouseLeave={(e) => { if (canSave && !saving) e.currentTarget.style.background = C.btnPrim; }}
+            >
+              {saving ? "Сохраняется…" : "Сохранить наблюдение"}
+            </button>
           </div>
         </div>
       </div>

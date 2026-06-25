@@ -4,6 +4,21 @@ import { deleteFromStorage, isStorageUrl } from "@/lib/supabase/storage";
 import { unlink } from "fs/promises";
 import path from "path";
 
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    const consultation = await getConsultation(id);
+    if (!consultation) return NextResponse.json({ error: "Не найдено" }, { status: 404 });
+    return NextResponse.json(consultation);
+  } catch (err) {
+    console.error("[consultations GET]", err);
+    return NextResponse.json({ error: "Ошибка загрузки" }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

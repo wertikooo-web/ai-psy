@@ -89,9 +89,8 @@ export interface ClientMaterial {
   fileName?: string;    // if uploaded as file
   fileUrl?: string;
   createdAt: string;    // ISO
+  consultationId?: string; // optional link to a specific consultation
   status?: "transcribing" | "error" | "done"; // client-side only, not persisted
-  voiceNoteId?: string; // reference to voice_notes row (for audio playback)
-  // Supabase: user_id uuid references auth.users
 }
 
 // ─── UI helpers ──────────────────────────────────────────────────────────────

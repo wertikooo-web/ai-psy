@@ -29,14 +29,15 @@ export async function POST(
     const content: string    = (body.content ?? "").trim();
 
     const material = {
-      id:        randomUUID(),
+      id:             randomUUID(),
       clientId,
       type,
-      title:     (body.title ?? "").trim() || MATERIAL_TYPE_LABELS[type],
+      title:          (body.title ?? "").trim() || MATERIAL_TYPE_LABELS[type],
       content,
-      fileName:  body.fileName ?? undefined,
-      fileUrl:   body.fileUrl  ?? undefined,
-      createdAt: new Date().toISOString(),
+      fileName:       body.fileName       ?? undefined,
+      fileUrl:        body.fileUrl        ?? undefined,
+      consultationId: body.consultationId ?? undefined,
+      createdAt:      new Date().toISOString(),
     };
 
     await addMaterial(material);

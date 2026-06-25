@@ -160,8 +160,9 @@ create table if not exists public.client_materials (
   type        text        not null    default 'other',
   title       text        not null    default '',
   content     text        not null    default '',
-  file_name   text,
-  file_url    text,       -- Supabase Storage URL
+  file_name       text,
+  file_url        text,           -- Supabase Storage URL
+  consultation_id uuid,           -- optional: links observation to a specific consultation
 
   constraint client_materials_type_check
     check (type in (

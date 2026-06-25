@@ -8,14 +8,15 @@ import type { ClientMaterial } from "@/lib/types";
 
 function rowToMaterial(row: Record<string, unknown>): ClientMaterial {
   return {
-    id:        row.id as string,
-    clientId:  row.client_id as string,
-    type:      row.type as ClientMaterial["type"],
-    title:     row.title as string,
-    content:   row.content as string,
-    fileName:  row.file_name as string | undefined,
-    fileUrl:   row.file_url as string | undefined,
-    createdAt: row.created_at as string,
+    id:             row.id as string,
+    clientId:       row.client_id as string,
+    type:           row.type as ClientMaterial["type"],
+    title:          row.title as string,
+    content:        row.content as string,
+    fileName:       row.file_name as string | undefined,
+    fileUrl:        row.file_url as string | undefined,
+    consultationId: row.consultation_id as string | undefined,
+    createdAt:      row.created_at as string,
   };
 }
 
@@ -37,13 +38,14 @@ export async function addMaterial(m: ClientMaterial): Promise<void> {
     const { error } = await supabaseServer!
       .from("client_materials")
       .insert({
-        id:        m.id,
-        client_id: m.clientId,
-        type:      m.type,
-        title:     m.title,
-        content:   m.content,
-        file_name: m.fileName ?? null,
-        file_url:  m.fileUrl  ?? null,
+        id:              m.id,
+        client_id:       m.clientId,
+        type:            m.type,
+        title:           m.title,
+        content:         m.content,
+        file_name:       m.fileName       ?? null,
+        file_url:        m.fileUrl        ?? null,
+        consultation_id: m.consultationId ?? null,
       });
     if (error) throw new Error(`[DAL/addMaterial] ${error.message}`);
     return;
