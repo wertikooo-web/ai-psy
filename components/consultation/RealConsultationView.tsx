@@ -278,7 +278,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#FAF8F5]">
             <div
               className="px-5 py-4 flex-shrink-0 flex items-center gap-3"
-              style={{ background: "#3D3228", borderBottom: "1px solid #2A221A" }}
+              style={{ background: "#9C9289", borderBottom: "1px solid #8A8079" }}
             >
               {/* Icon */}
               <div
