@@ -99,19 +99,8 @@
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-1px); }
 }
-@keyframes windowFlicker {
-  0%, 82%, 100% { opacity: 1; }
-  85%           { opacity: 0.55; }
-  88%           { opacity: 1; }
-  91%           { opacity: 0.7; }
-}
-@keyframes windowGlow {
-  0%, 100% { opacity: 0.85; }
-  50%       { opacity: 0.55; }
-}
 @media (prefers-reduced-motion: reduce) {
   .city-actor { display: none !important; }
-  .city-window { animation: none !important; }
 }
 
 @layer components {

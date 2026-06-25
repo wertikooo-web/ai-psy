@@ -35,12 +35,6 @@ function getTimeMode(): TimeMode {
   if (h < 6)   return "night";
   return "day";
 }
-function getLitCount(total: number, mode: TimeMode): number {
-  if (mode === "day") return 0;
-  const h = new Date().getHours();
-  if (mode === "night") return Math.floor(total * (h >= 2 && h < 5 ? rnd(0.06, 0.12) : rnd(0.14, 0.22)));
-  return Math.floor(total * rnd(0.28, 0.40));
-}
 
 // ─── Actor config ─────────────────────────────────────────────────────────────
 const WEIGHTS: Record<TimeMode, Partial<Record<ActorType, number>>> = {
@@ -79,28 +73,6 @@ const LEVEL_CFG: Record<GroundLevel, { extraBottom:number; scale:number }> = {
   2: { extraBottom: 24, scale: 0.73 },
 };
 
-// ─── Window grid ──────────────────────────────────────────────────────────────
-interface WinDef { x:number; y:number; w:number; h:number; dur:number }
-const WINDOWS: WinDef[] = (() => {
-  const out: WinDef[] = [];
-  const buildings: [number,number,number,number][] = [
-    [18,72,95,7],[108,52,145,5],[178,95,65,9],[290,68,115,6],[375,48,165,4],
-    [440,115,58,10],[575,78,100,6],[668,52,155,4],[738,98,78,7],[860,62,130,5],
-    [940,88,92,7],[1055,72,108,6],[1142,92,72,8],[1258,78,118,5],[1358,38,148,4],
-  ];
-  for (const [bx,bw,topY,floors] of buildings) {
-    const perRow = Math.max(1, Math.floor((bw-8)/26));
-    const ww = Math.max(8, Math.floor((bw-8-(perRow-1)*6)/perRow));
-    const xOff = (bw-(perRow*ww+(perRow-1)*6))/2;
-    for (let f=0;f<floors;f++) {
-      const y=topY+f*30;
-      if (y+16>390) continue;
-      for (let w=0;w<perRow;w++)
-        out.push({x:bx+xOff+w*(ww+6),y,w:ww,h:16,dur:parseFloat(rnd(5,14).toFixed(1))});
-    }
-  }
-  return out;
-})();
 
 // ─── Style helpers ────────────────────────────────────────────────────────────
 const legG = (anim: string): React.CSSProperties => ({
@@ -1279,19 +1251,6 @@ function CityTint({ mode }: { mode:TimeMode }) {
     background: mode === "evening" ? "rgba(200,140,60,0.08)" : "rgba(40,30,20,0.18)",
     transition: "background 2s ease" }}/>;
 }
-function CityWindows({ litSet, mode }: { litSet:Set<number>; mode:TimeMode }) {
-  if (mode === "day" || litSet.size === 0) return null;
-  return (
-    <svg viewBox="0 0 1400 520" preserveAspectRatio="xMidYMid meet" aria-hidden
-      style={{ position:"absolute", bottom:0, left:0, width:"100%", height:"auto", display:"block", pointerEvents:"none" }}>
-      {WINDOWS.map((w, i) => !litSet.has(i) ? null : (
-        <rect key={i} x={w.x} y={w.y} width={w.w} height={w.h} rx="2"
-          fill="rgba(255,195,90,0.48)" className="city-window"
-          style={{ animation:`${i%3===0?"windowFlicker":"windowGlow"} ${w.dur}s ease-in-out infinite` }}/>
-      ))}
-    </svg>
-  );
-}
 
 // ─── Spawn helpers (run inside setActors functional update) ───────────────────
 function makeGroundActor(prev: ActiveActor[]): ActiveActor | null {
@@ -1346,7 +1305,6 @@ function makeBirdActor(): ActiveActor {
 // ─── Main component ───────────────────────────────────────────────────────────
 export function AnimatedCityScene() {
   const [timeMode,      setTimeMode]      = useState<TimeMode>("day");
-  const [litSet,        setLitSet]        = useState<Set<number>>(new Set());
   const [actors,         setActors]        = useState<ActiveActor[]>([]);
   const [crowInfo,       setCrowInfo]      = useState<CrowInfo | null>(null);
   const [escaperActive,  setEscaperActive] = useState(false);
@@ -1385,11 +1343,6 @@ export function AnimatedCityScene() {
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    const count   = getLitCount(WINDOWS.length, timeMode);
-    const indices = [...Array(WINDOWS.length).keys()].sort(() => Math.random() - 0.5);
-    setLitSet(new Set(indices.slice(0, count)));
-  }, [timeMode]);
 
   const removeActor = useCallback((id: string) => {
     setActors(prev => prev.filter(a => a.id !== id));
@@ -1536,7 +1489,6 @@ export function AnimatedCityScene() {
         style={{ opacity:cityOpacity, transition:"opacity 3s ease" }}
       />
       <CityTint mode={timeMode}/>
-      <CityWindows litSet={litSet} mode={timeMode}/>
       {/* Actor overlay is rendered via portal at document.body to fully escape
           overflow:hidden on AppShell/main (Blink clips fixed descendants of
           overflow:hidden scroll containers on Windows). z-index:1 puts actors
