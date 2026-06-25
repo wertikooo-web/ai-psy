@@ -92,7 +92,7 @@ export default function HomePage() {
 
   return (
     // Outer scroll wrapper — no background (body handles it)
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ overflowX: "hidden" }}>
+    <div className="flex-1 min-h-0 overflow-y-auto">
 
       {/* ── Single hero section — unified background + city as absolute bg ── */}
       <section

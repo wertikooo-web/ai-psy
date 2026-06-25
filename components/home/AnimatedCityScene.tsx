@@ -583,7 +583,9 @@ const CROW_PERCHES = [
 ];
 
 function SvgCrow({ phase, fromLeft }: { phase:CrowPhase; fromLeft:boolean }) {
-  const CR = "#1C1C1E", BK = "#E8901A";
+  const c   = "#B8AFA6"; // sketch/outline style like other actors
+  const BK  = "#C8A870"; // beak/feet — warmer outline tone
+  const SW  = 2.0;
   const flying  = phase === "flying-in" || phase === "flying-out";
   const looking = phase === "looking"   || phase === "cawing";
   const cawing  = phase === "cawing";
@@ -600,65 +602,56 @@ function SvgCrow({ phase, fromLeft }: { phase:CrowPhase; fromLeft:boolean }) {
   const body = (
     <g>
       {/* body */}
-      <ellipse cx="60" cy="62" rx="22" ry="14" fill={CR}/>
+      <ellipse cx="60" cy="62" rx="22" ry="14" stroke={c} strokeWidth={SW} fill="none"/>
       {/* tail (sitting) */}
-      {!flying && <path d="M38,64 Q28,74 32,82 Q38,72 42,82 Q46,72 38,64" fill={CR}/>}
+      {!flying && <path d="M38,64 Q28,76 34,84 Q38,74 42,84 Q46,74 38,64" stroke={c} strokeWidth={SW} fill="none" strokeLinejoin="round"/>}
       {/* wings */}
       {flying ? (
         <>
-          <g style={wL}><path d="M38,60 Q14,34 6,18 Q20,30 30,46 Q18,26 22,12 Q34,28 36,54" fill={CR}/></g>
-          <g style={wR}><path d="M82,60 Q106,34 114,18 Q100,30 90,46 Q102,26 98,12 Q86,28 84,54" fill={CR}/></g>
+          <g style={wL}><path d="M38,58 Q16,36 8,18 Q22,32 32,48 Q20,28 24,14 Q36,30 38,54" stroke={c} strokeWidth={SW} fill="none" strokeLinejoin="round"/></g>
+          <g style={wR}><path d="M82,58 Q104,36 112,18 Q98,32 88,48 Q100,28 96,14 Q84,30 82,54" stroke={c} strokeWidth={SW} fill="none" strokeLinejoin="round"/></g>
         </>
       ) : (
         <>
-          <path d="M38,60 Q34,50 40,44 Q46,50 44,60" fill="#2a2a2a"/>
-          <path d="M82,60 Q86,50 80,44 Q74,50 76,60" fill="#2a2a2a"/>
-          <path d="M40,60 Q38,53 43,49" stroke="#3a3a3a" strokeWidth="1.3" fill="none"/>
-          <path d="M45,60 Q43,53 48,49" stroke="#3a3a3a" strokeWidth="1.3" fill="none"/>
-          <path d="M80,60 Q82,53 77,49" stroke="#3a3a3a" strokeWidth="1.3" fill="none"/>
-          <path d="M75,60 Q77,53 72,49" stroke="#3a3a3a" strokeWidth="1.3" fill="none"/>
+          {/* folded wings detail */}
+          <path d="M38,60 Q34,50 40,44 Q46,50 44,60" stroke={c} strokeWidth={SW} fill="none" strokeLinejoin="round"/>
+          <path d="M82,60 Q86,50 80,44 Q74,50 76,60" stroke={c} strokeWidth={SW} fill="none" strokeLinejoin="round"/>
+          <path d="M40,60 Q38,53 43,49" stroke={c} strokeWidth={1.1} fill="none"/>
+          <path d="M45,60 Q43,52 49,49" stroke={c} strokeWidth={1.1} fill="none"/>
+          <path d="M80,60 Q82,53 77,49" stroke={c} strokeWidth={1.1} fill="none"/>
+          <path d="M75,60 Q77,52 71,49" stroke={c} strokeWidth={1.1} fill="none"/>
         </>
       )}
       {/* head */}
-      <circle cx="75" cy="34" r="20" fill={CR}/>
+      <circle cx="75" cy="34" r="20" stroke={c} strokeWidth={SW} fill="none"/>
       {/* eyes */}
       {looking ? (
         <>
-          <circle cx="68" cy="29" r="7.5" fill="white"/>
-          <circle cx="66" cy="29" r="4.5" fill={CR}/>
-          <circle cx="64.5" cy="27" r="1.6" fill="white"/>
-          <circle cx="82" cy="29" r="7.5" fill="white"/>
-          <circle cx="84" cy="29" r="4.5" fill={CR}/>
-          <circle cx="85.5" cy="27" r="1.6" fill="white"/>
+          <circle cx="67" cy="29" r="5.5" stroke={c} strokeWidth={1.4} fill="none"/>
+          <circle cx="65.5" cy="29" r="2.5" fill={c}/>
+          <circle cx="83" cy="29" r="5.5" stroke={c} strokeWidth={1.4} fill="none"/>
+          <circle cx="84.5" cy="29" r="2.5" fill={c}/>
         </>
       ) : (
-        <>
-          <circle cx="84" cy="28" r="7.5" fill="white"/>
-          <circle cx="86" cy="28" r="4.5" fill={CR}/>
-          <circle cx="88" cy="26" r="1.6" fill="white"/>
-        </>
+        <circle cx="84" cy="28" r="5.5" stroke={c} strokeWidth={1.4} fill="none"/>
       )}
       {/* beak */}
       {looking ? (
         cawing ? (
-          <>
-            <path d="M67,44 L83,44 L76,54" fill={BK}/>
-            <path d="M68,48 L82,48 L76,58" fill={BK} opacity="0.9"/>
-            <path d="M68,48 L82,48 L76,56" fill="#C0392B" opacity="0.7"/>
-          </>
-        ) : <path d="M67,44 L83,44 L76,53" fill={BK}/>
+          <path d="M67,44 L83,44 L76,56 Z" stroke={BK} strokeWidth={1.5} fill="none" strokeLinejoin="round"/>
+        ) : <path d="M67,44 L83,44 L76,52 Z" stroke={BK} strokeWidth={1.5} fill="none" strokeLinejoin="round"/>
       ) : (
-        <path d="M94,30 L112,26 L94,38 Z" fill={BK}/>
+        <path d="M93,30 L110,26 L93,38 Z" stroke={BK} strokeWidth={1.4} fill="none" strokeLinejoin="round"/>
       )}
       {/* feet (sitting) */}
       {!flying && (
-        <g stroke={BK} strokeWidth="2.3" strokeLinecap="round">
+        <g stroke={BK} strokeWidth="2.0" strokeLinecap="round">
           <line x1="52" y1="75" x2="44" y2="85"/>
-          <line x1="44" y1="85" x2="35" y2="88"/>
+          <line x1="44" y1="85" x2="36" y2="88"/>
           <line x1="44" y1="85" x2="44" y2="90"/>
           <line x1="44" y1="85" x2="52" y2="89"/>
           <line x1="68" y1="75" x2="76" y2="85"/>
-          <line x1="76" y1="85" x2="85" y2="88"/>
+          <line x1="76" y1="85" x2="84" y2="88"/>
           <line x1="76" y1="85" x2="76" y2="90"/>
           <line x1="76" y1="85" x2="68" y2="89"/>
         </g>
@@ -666,22 +659,54 @@ function SvgCrow({ phase, fromLeft }: { phase:CrowPhase; fromLeft:boolean }) {
     </g>
   );
 
-  // Speech bubble — not inside flip so text stays readable
-  const bubble = cawing ? (
-    <g>
-      <rect x="32" y="-14" width="58" height="30" rx="11"
-            fill="white" stroke="#D5D5D5" strokeWidth="1.5"/>
-      <path d="M56,16 L50,27 L66,16" fill="white" stroke="#D5D5D5" strokeWidth="1.2" strokeLinejoin="round"/>
-      <text x="61" y="11" textAnchor="middle" fontSize="14" fontWeight="900"
-            fill="#111" fontFamily="system-ui,Arial,sans-serif">КАР!</text>
-    </g>
-  ) : null;
-
   return (
     <svg viewBox="0 0 120 100" width={90} height={75} aria-hidden overflow="visible">
       {!fromLeft ? <g transform="scale(-1,1) translate(-120,0)">{body}</g> : body}
-      {bubble}
     </svg>
+  );
+}
+
+// ─── Easter egg: paper airplane ───────────────────────────────────────────────
+function PaperPlane({ active, onDone }: { active:boolean; onDone:()=>void }) {
+  const [animName, setAnimName] = useState<string|null>(null);
+  const durRef = useRef(5);
+
+  useEffect(() => {
+    if (!active) { setAnimName(null); return; }
+    const id = `pln_${crypto.randomUUID().slice(0,8)}`;
+    const d  = rnd(4.5, 7);
+    durRef.current = d;
+    const styleEl = document.createElement("style");
+    styleEl.id = id;
+    styleEl.textContent = `@keyframes ${id}{`+
+      `0%   {transform:translateX(0px)   translateY(0px)   rotate(-12deg);opacity:1}`+
+      `20%  {transform:translateX(14vw)  translateY(-28px) rotate(-5deg); opacity:1}`+
+      `50%  {transform:translateX(38vw)  translateY(-52px) rotate(4deg);  opacity:1}`+
+      `78%  {transform:translateX(62vw)  translateY(-22px) rotate(10deg); opacity:1}`+
+      `100% {transform:translateX(calc(80vw + 80px)) translateY(12px) rotate(15deg);opacity:0.2}`+
+      `}`;
+    document.head.appendChild(styleEl);
+    setAnimName(id);
+    const t = setTimeout(() => { document.getElementById(id)?.remove(); setAnimName(null); onDone(); },
+      d * 1000 + 400);
+    return () => { clearTimeout(t); document.getElementById(id)?.remove(); };
+  }, [active, onDone]);
+
+  if (!animName) return null;
+  const c = "#B8AFA6";
+  return (
+    <div style={{
+      position:"absolute", left:"34%", bottom:"50%",
+      pointerEvents:"none", zIndex:4,
+      animation:`${animName} ${durRef.current.toFixed(1)}s ease-in-out forwards`,
+    }}>
+      <svg viewBox="0 0 30 22" width={30} height={22} aria-hidden>
+        <path d="M0,10 L30,0 L22,10 L30,20 Z"
+              stroke={c} strokeWidth={1.7} fill="none" strokeLinejoin="round"/>
+        <line x1="0"  y1="10" x2="22" y2="10" stroke={c} strokeWidth={1.2} strokeLinecap="round"/>
+        <path d="M22,10 L18,15"               stroke={c} strokeWidth={1.1} strokeLinecap="round"/>
+      </svg>
+    </div>
   );
 }
 
@@ -890,14 +915,17 @@ export function AnimatedCityScene() {
   const [actors,         setActors]        = useState<ActiveActor[]>([]);
   const [crowInfo,       setCrowInfo]      = useState<CrowInfo | null>(null);
   const [escaperActive,  setEscaperActive] = useState(false);
+  const [planeActive,    setPlaneActive]   = useState(false);
   const [reducedMotion,  setReducedMotion] = useState(false);
   const crowActive     = useRef(false);
   const escaperRunning = useRef(false);
+  const planeRunning   = useRef(false);
 
   const groundTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const birdTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const crowTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const escaperTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const planeTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -933,6 +961,11 @@ export function AnimatedCityScene() {
     escaperRunning.current = false;
   }, []);
 
+  const handlePlaneDone = useCallback(() => {
+    setPlaneActive(false);
+    planeRunning.current = false;
+  }, []);
+
   // Crow spawn: once per ~60s, not at night
   const scheduleCrow = useCallback((delay: number) => {
     crowTimer.current = setTimeout(() => {
@@ -953,6 +986,17 @@ export function AnimatedCityScene() {
         setEscaperActive(true);
       }
       scheduleEscaper(rnd(300_000, 600_000));
+    }, delay);
+  }, []);
+
+  // Paper airplane: once per 2-4 min, not at night
+  const schedulePlane = useCallback((delay: number) => {
+    planeTimer.current = setTimeout(() => {
+      if (getTimeMode() !== "night" && !planeRunning.current) {
+        planeRunning.current = true;
+        setPlaneActive(true);
+      }
+      schedulePlane(rnd(120_000, 240_000));
     }, delay);
   }, []);
 
@@ -996,14 +1040,16 @@ export function AnimatedCityScene() {
     scheduleGround(rnd(2_000, 5_000));
     scheduleBird(rnd(8_000, 18_000));
     scheduleCrow(rnd(10_000, 20_000));
-    scheduleEscaper(rnd(60_000, 90_000)); // first escaper 1-1.5 min after load
+    scheduleEscaper(rnd(60_000, 90_000));
+    schedulePlane(rnd(20_000, 40_000)); // first airplane after 20-40s
     return () => {
       if (groundTimer.current)  clearTimeout(groundTimer.current);
       if (birdTimer.current)    clearTimeout(birdTimer.current);
       if (crowTimer.current)    clearTimeout(crowTimer.current);
       if (escaperTimer.current) clearTimeout(escaperTimer.current);
+      if (planeTimer.current)   clearTimeout(planeTimer.current);
     };
-  }, [reducedMotion, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper]);
+  }, [reducedMotion, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane]);
 
   const cityOpacity = timeMode === "day" ? 0.55 : timeMode === "evening" ? 0.65 : 0.42;
 
@@ -1028,6 +1074,9 @@ export function AnimatedCityScene() {
         )}
         {!reducedMotion && (
           <WindowEscaper active={escaperActive} onDone={handleEscaperDone}/>
+        )}
+        {!reducedMotion && (
+          <PaperPlane active={planeActive} onDone={handlePlaneDone}/>
         )}
       </div>
     </div>
