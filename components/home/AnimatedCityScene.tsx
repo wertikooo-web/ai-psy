@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ActorType    = "cat" | "human" | "car" | "dog" | "bike" | "bird";
+type HumanVariant = "man" | "woman" | "child";
 type Direction    = "ltr" | "rtl";
 type TimeMode     = "day" | "evening" | "night";
 type GroundLevel  = 0 | 1 | 2; // 0=near, 1=mid, 2=far
@@ -18,6 +19,7 @@ interface ActiveActor {
   stopFraction?: number;  // cat & dog: random stop point
   pauseMs?:      number;  // cat: look pause / dog: pee pause
   isPeeStop?:    boolean; // dog only: this stop is a pee stop
+  humanVariant?: HumanVariant; // human only
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -220,26 +222,118 @@ function SvgDog({ flip, c, isPeeing = false, peeDurS = 3 }: { flip:boolean; c:st
   return flip ? <g transform="scale(-1,1) translate(-65,0)">{g}</g> : g;
 }
 
-function SvgHuman({ flip, c }: { flip:boolean; c:string }) {
-  const g = (
-    <g>
-      <circle cx="20" cy="9" r="8"             stroke={c} strokeWidth={SW} fill="none"/>
-      <line x1="20" y1="17" x2="20" y2="44"   stroke={c} strokeWidth={SW} strokeLinecap="round"/>
-      <g style={legG("humanArmB 0.50s ease-in-out infinite")}>
-        <path d="M20,27 L8,38"                 stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+function SvgHuman({ flip, c, variant = "man", isFleeing = false }: {
+  flip:boolean; c:string; variant?:HumanVariant; isFleeing?:boolean
+}) {
+  const speed  = isFleeing ? "0.22s" : "0.50s";
+  const armSpd = isFleeing ? "0.22s" : "0.50s";
+  const LSW = 2.3; // limb stroke width
+
+  let g: React.ReactNode;
+
+  if (variant === "child") {
+    // Big head, short limbs, waddly
+    g = (
+      <g>
+        <circle cx="22" cy="11" r="10"          stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.08}/>
+        {/* tiny neck */}
+        <line x1="22" y1="21" x2="22" y2="26"  stroke={c} strokeWidth={LSW} strokeLinecap="round"/>
+        {/* chubby torso */}
+        <path d="M13,26 Q10,36 13,42 L31,42 Q34,36 31,26 Z"
+              stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.1} strokeLinejoin="round"/>
+        {/* arms — short */}
+        <g style={{ ...legG(`humanArmB ${armSpd} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
+          <path d="M13,28 Q7,33 5,39"           stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
+        </g>
+        <g style={{ ...legG(`humanArmF ${armSpd} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
+          <path d="M31,28 Q37,33 39,39"         stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
+        </g>
+        {/* legs — short, chunky */}
+        <g style={{ ...legG(`humanLegB ${speed} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
+          <path d="M17,42 Q14,52 13,58"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M13,58 Q11,62 10,64"         stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+        </g>
+        <g style={{ ...legG(`humanLegF ${speed} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
+          <path d="M27,42 Q30,52 31,58"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M31,58 Q33,62 34,64"         stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+        </g>
       </g>
-      <g style={legG("humanArmF 0.50s ease-in-out infinite")}>
-        <path d="M20,27 L32,36"                stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+    );
+  } else if (variant === "woman") {
+    g = (
+      <g>
+        {/* hair */}
+        <ellipse cx="22" cy="8" rx="10" ry="6" stroke={c} strokeWidth={1.4} fill={c} fillOpacity={0.15}/>
+        <circle cx="22" cy="9" r="8"            stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.08}/>
+        {/* neck */}
+        <line x1="22" y1="17" x2="22" y2="22"  stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round"/>
+        {/* torso — narrower shoulders, wider hips */}
+        <path d="M12,22 L10,36 L9,44 L35,44 L34,36 L32,22 Z"
+              stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.1} strokeLinejoin="round"/>
+        {/* skirt flare */}
+        <path d="M9,44 Q5,54 8,58 Q22,55 36,58 Q39,54 35,44"
+              stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.12}/>
+        {/* arms */}
+        <g style={{ ...legG(`humanArmB ${armSpd} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
+          <path d="M12,24 Q6,31 4,39"           stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
+          <path d="M4,39 Q5,46 6,50"            stroke={c} strokeWidth={LSW-0.4} strokeLinecap="round" fill="none"/>
+        </g>
+        <g style={{ ...legG(`humanArmF ${armSpd} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
+          <path d="M32,24 Q38,31 40,39"         stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
+          <path d="M40,39 Q39,46 38,50"         stroke={c} strokeWidth={LSW-0.4} strokeLinecap="round" fill="none"/>
+        </g>
+        {/* legs — from under skirt */}
+        <g style={{ ...legG(`humanLegB ${speed} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
+          <path d="M16,58 Q14,64 13,70"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <line x1="13" y1="70" x2="10" y2="72" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round"/>
+        </g>
+        <g style={{ ...legG(`humanLegF ${speed} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
+          <path d="M28,58 Q30,64 31,70"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <line x1="31" y1="70" x2="34" y2="72" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round"/>
+        </g>
       </g>
-      <g style={legG("humanLegB 0.50s ease-in-out infinite")}>
-        <path d="M20,44 L13,60"                stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+    );
+  } else {
+    // man (default)
+    g = (
+      <g>
+        <circle cx="22" cy="9" r="8"            stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.08}/>
+        <line x1="22" y1="17" x2="22" y2="22"  stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round"/>
+        {/* torso — shirt shape with fill */}
+        <path d="M10,22 L13,44 L31,44 L34,22 Z"
+              stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.12} strokeLinejoin="round"/>
+        {/* belt */}
+        <line x1="13" y1="40" x2="31" y2="40"  stroke={c} strokeWidth={1.0} strokeLinecap="round" opacity={0.5}/>
+        {/* collar V */}
+        <path d="M18,22 L22,28 L26,22"          stroke={c} strokeWidth={1.1} fill="none" strokeLinejoin="round"/>
+        {/* left arm — two segments */}
+        <g style={{ ...legG(`humanArmB ${armSpd} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
+          <path d="M10,24 Q5,31 4,38"           stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M4,38 Q5,46 6,50"            stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+        </g>
+        {/* right arm */}
+        <g style={{ ...legG(`humanArmF ${armSpd} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
+          <path d="M34,24 Q39,31 40,38"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M40,38 Q39,46 38,50"         stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+        </g>
+        {/* left leg — thigh + calf */}
+        <g style={{ ...legG(`humanLegB ${speed} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
+          <path d="M16,44 Q13,54 12,60"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M12,60 Q11,66 10,68"         stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
+          <line x1="10" y1="68" x2="7" y2="70" stroke={c} strokeWidth={LSW-0.5} strokeLinecap="round"/>
+        </g>
+        {/* right leg */}
+        <g style={{ ...legG(`humanLegF ${speed} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
+          <path d="M28,44 Q31,54 32,60"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M32,60 Q33,66 34,68"         stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
+          <line x1="34" y1="68" x2="37" y2="70" stroke={c} strokeWidth={LSW-0.5} strokeLinecap="round"/>
+        </g>
       </g>
-      <g style={legG("humanLegF 0.50s ease-in-out infinite")}>
-        <path d="M20,44 L27,60"                stroke={c} strokeWidth={SW} strokeLinecap="round"/>
-      </g>
-    </g>
-  );
-  return flip ? <g transform="scale(-1,1) translate(-40,0)">{g}</g> : g;
+    );
+  }
+  return flip
+    ? <g transform="scale(-1,1) translate(-44,0)">{g}</g>
+    : <>{g}</>;
 }
 
 function SvgCar({ flip, c }: { flip:boolean; c:string }) {
@@ -325,8 +419,13 @@ function SvgBird({ flip, c }: { flip:boolean; c:string }) {
 interface ActorElProps { actor: ActiveActor; onFinish: (id:string) => void; }
 
 function ActorEl({ actor, onFinish }: ActorElProps) {
-  const [isLooking, setIsLooking] = useState(false);
-  const [isPeeing,  setIsPeeing]  = useState(false);
+  const [isLooking,  setIsLooking]  = useState(false);
+  const [isPeeing,   setIsPeeing]   = useState(false);
+  const [isFleeing,  setIsFleeing]  = useState(false);
+  const [jumpAnim,   setJumpAnim]   = useState<string|null>(null);
+  const [overrideAnim, setOverrideAnim] = useState<string|null>(null);
+  const startTime  = useRef(Date.now());
+  const finishRef  = useRef<ReturnType<typeof setTimeout>|null>(null);
   const meta   = ACTOR_META[actor.type];
   const color  = ACTOR_COLORS[actor.type];
   const flip   = actor.direction === "rtl";
@@ -337,9 +436,36 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
 
   // Auto-remove when crossing completes
   useEffect(() => {
-    const t = setTimeout(() => onFinish(actor.id), actor.durationS * 1000 + 700);
-    return () => clearTimeout(t);
+    finishRef.current = setTimeout(() => onFinish(actor.id), actor.durationS * 1000 + 700);
+    return () => { if (finishRef.current) clearTimeout(finishRef.current); };
   }, [actor.id, actor.durationS, onFinish]);
+
+  // Click: jump then flee at 2× speed (cats and dogs only)
+  const handleClick = useCallback(() => {
+    if (isFleeing) return;
+    setIsFleeing(true);
+    setJumpAnim("actorJump 0.38s ease-out forwards");
+    setTimeout(() => {
+      setJumpAnim(null);
+      const elapsed  = Date.now() - startTime.current;
+      const frac     = Math.min(elapsed / (actor.durationS * 1000), 0.98);
+      const total    = window.innerWidth + 320;
+      const curX     = actor.direction === "ltr"
+        ? -160 + frac * total
+        : (window.innerWidth + 160) - frac * total;
+      const toX      = actor.direction === "ltr" ? window.innerWidth + 220 : -220;
+      const remaining = Math.max(0.5, (actor.durationS * 1000 - elapsed) / 1000 / 2);
+      const fId      = `flee_${actor.id}`;
+      const styleEl  = document.createElement("style");
+      styleEl.id     = fId;
+      styleEl.textContent = `@keyframes ${fId}{from{transform:translateX(${curX.toFixed(0)}px)}to{transform:translateX(${toX}px)}}`;
+      document.head.appendChild(styleEl);
+      setOverrideAnim(`${fId} ${remaining.toFixed(2)}s linear forwards`);
+      if (finishRef.current) clearTimeout(finishRef.current);
+      finishRef.current = setTimeout(() => { onFinish(actor.id); document.getElementById(fId)?.remove(); },
+        remaining * 1000 + 300);
+    }, 400);
+  }, [isFleeing, actor, onFinish]);
 
   // Shared: inject pause keyframe for cat (look) and dog (pee)
   useEffect(() => {
@@ -370,18 +496,47 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     };
   }, [actor, isCat, isDog, dispW]);
 
+  // Bird: inject curved per-bird keyframe
+  useEffect(() => {
+    if (!isBird) return;
+    const kId = `bf_${actor.id}`;
+    const ltr = actor.direction === "ltr";
+    const [y1,y2,y3] = [rnd(-22,22), rnd(-28,28), rnd(-18,20)].map(v=>v.toFixed(0));
+    const xAt = (p: number) => ltr
+      ? `calc(${p}vw - ${(160*(1-p/100)).toFixed(0)}px)`
+      : `calc(${100-p}vw - ${(160*(1-(100-p)/100)).toFixed(0)}px)`;
+    const from = ltr ? "translateX(-160px) translateY(0)" : "translateX(calc(100vw + 160px)) translateY(0)";
+    const to   = ltr ? "translateX(calc(100vw + 160px)) translateY(0)" : "translateX(-160px) translateY(0)";
+    const styleEl = document.createElement("style");
+    styleEl.id = kId;
+    styleEl.textContent = `@keyframes ${kId}{`+
+      `0%{transform:${from}}`+
+      `25%{transform:translateX(${xAt(25)}) translateY(${y1}px)}`+
+      `50%{transform:translateX(${xAt(50)}) translateY(${y2}px)}`+
+      `75%{transform:translateX(${xAt(75)}) translateY(${y3}px)}`+
+      `100%{transform:${to}}}`;
+    document.head.appendChild(styleEl);
+    return () => document.getElementById(kId)?.remove();
+  }, [actor, isBird]);
+
   // Level config
   const levelCfg  = !isBird ? LEVEL_CFG[actor.level as GroundLevel] : null;
   const bottomVal = isBird
     ? actor.skyBottom!
     : `${BOTTOM_BASE[actor.type] + (levelCfg?.extraBottom ?? 0)}px`;
-  const scale = levelCfg?.scale ?? 1.0;
 
-  const hasCustomAnim = (isCat || isDog) && actor.stopFraction != null;
-  const moveAnim = hasCustomAnim
-    ? `cm_${actor.id} ${actor.durationS}s linear forwards`
-    : `${actor.direction === "ltr" ? "cityMoveLtr" : "cityMoveRtl"} ${actor.durationS}s linear forwards`;
+  // Child humans are visually smaller
+  const childScale = actor.type === "human" && actor.humanVariant === "child" ? 0.72 : 1.0;
+  const scale = (levelCfg?.scale ?? 1.0) * childScale;
 
+  const defaultMoveAnim = (() => {
+    if ((isCat || isDog) && actor.stopFraction != null) return `cm_${actor.id} ${actor.durationS}s linear forwards`;
+    if (isBird) return `bf_${actor.id} ${actor.durationS}s ease-in-out forwards`;
+    return `${actor.direction === "ltr" ? "cityMoveLtr" : "cityMoveRtl"} ${actor.durationS}s linear forwards`;
+  })();
+  const moveAnim = overrideAnim ?? defaultMoveAnim;
+
+  const isClickable = isCat || isDog;
   const bobStyle: React.CSSProperties = isLooking ? {} : meta.bob
     ? { animation: `cityBob ${actor.type === "bike" ? "0.38s" : "0.52s"} ease-in-out infinite` }
     : { animation: "cityRoll 0.65s ease-in-out infinite" };
@@ -389,22 +544,30 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
   return (
     <div
       className="city-actor"
-      style={{ position:"absolute", bottom:bottomVal, left:0, animation:moveAnim, willChange:"transform" }}
+      style={{
+        position:"absolute", bottom:bottomVal, left:0,
+        animation:moveAnim, willChange:"transform",
+        pointerEvents: isClickable ? "auto" : "none",
+        cursor: isClickable && !isFleeing ? "pointer" : undefined,
+      }}
+      onClick={isClickable ? handleClick : undefined}
     >
       <div style={scale !== 1 ? { transform:`scale(${scale})`, transformOrigin:"bottom center" } : undefined}>
-        <svg
-          viewBox={`0 0 ${meta.viewW} ${meta.viewH}`}
-          width={dispW} height={meta.dispH}
-          aria-hidden
-          style={bobStyle}
-        >
-          {actor.type === "cat"   && <SvgCat   flip={flip} c={color} isLooking={isLooking}/>}
-          {actor.type === "dog"   && <SvgDog   flip={flip} c={color} isPeeing={isPeeing} peeDurS={(actor.pauseMs ?? 3000)/1000}/>}
-          {actor.type === "human" && <SvgHuman flip={flip} c={color}/>}
-          {actor.type === "car"   && <SvgCar   flip={flip} c={color}/>}
-          {actor.type === "bike"  && <SvgBike  flip={flip} c={color}/>}
-          {actor.type === "bird"  && <SvgBird  flip={flip} c={color}/>}
-        </svg>
+        <div style={jumpAnim ? { animation: jumpAnim } : undefined}>
+          <svg
+            viewBox={`0 0 ${meta.viewW} ${meta.viewH}`}
+            width={dispW} height={meta.dispH}
+            aria-hidden
+            style={bobStyle}
+          >
+            {actor.type === "cat"   && <SvgCat   flip={flip} c={color} isLooking={isLooking}/>}
+            {actor.type === "dog"   && <SvgDog   flip={flip} c={color} isPeeing={isPeeing} peeDurS={(actor.pauseMs ?? 3000)/1000}/>}
+            {actor.type === "human" && <SvgHuman flip={flip} c={color} variant={actor.humanVariant} isFleeing={isFleeing}/>}
+            {actor.type === "car"   && <SvgCar   flip={flip} c={color}/>}
+            {actor.type === "bike"  && <SvgBike  flip={flip} c={color}/>}
+            {actor.type === "bird"  && <SvgBird  flip={flip} c={color}/>}
+          </svg>
+        </div>
       </div>
     </div>
   );
@@ -522,6 +685,106 @@ function SvgCrow({ phase, fromLeft }: { phase:CrowPhase; fromLeft:boolean }) {
   );
 }
 
+// ─── Easter egg: window escaper ───────────────────────────────────────────────
+type EscaperPhase = "appearing" | "opening" | "ledge" | "looking" | "fleeing";
+
+function WindowEscaper({ active, onDone }: { active:boolean; onDone:()=>void }) {
+  const [phase,   setPhase]   = useState<EscaperPhase|null>(null);
+  const [lookDir, setLookDir] = useState<"left"|"right"|"front">("front");
+
+  useEffect(() => {
+    if (!active) { setPhase(null); return; }
+    setPhase("appearing");
+    setLookDir("front");
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (ms:number, fn:()=>void) => timers.push(setTimeout(fn, ms));
+    at(900,  () => setPhase("opening"));
+    at(1700, () => setPhase("ledge"));
+    at(2700, () => { setPhase("looking"); setLookDir("left"); });
+    at(3600, () => setLookDir("right"));
+    at(4500, () => setLookDir("front")); // sees viewer!
+    at(5000, () => setPhase("fleeing"));
+    at(6600, () => { setPhase(null); onDone(); });
+    return () => timers.forEach(clearTimeout);
+  }, [active, onDone]);
+
+  if (!phase) return null;
+
+  const c   = "#9F9589";
+  const SW  = 1.6;
+  const inW = phase === "appearing" || phase === "opening";
+  const onL = phase === "ledge" || phase === "looking" || phase === "fleeing";
+  const flt = phase === "fleeing";
+  const eyeX = lookDir === "left" ? 3.5 : lookDir === "right" ? 8.5 : 6;
+  const spotted = lookDir === "front" && phase === "looking";
+
+  return (
+    <div style={{
+      position:"absolute", left:"31%", bottom:"44%",
+      pointerEvents:"none", zIndex:4, overflow:"visible",
+    }}>
+      <svg viewBox="-12 -20 72 92" width={54} height={69} aria-hidden overflow="visible">
+        {/* Window frame */}
+        <rect x="0" y="0" width="30" height="42" rx="1.5"
+              stroke={c} strokeWidth={1.6} fill="rgba(180,205,220,0.22)"/>
+        <rect x="-2" y="40" width="34" height="3.5" rx="1" fill={c} opacity={0.6}/>
+        <line x1="15" y1="0" x2="15" y2="42" stroke={c} strokeWidth={1}/>
+        <line x1="0"  y1="20" x2="30" y2="20" stroke={c} strokeWidth={1}/>
+
+        {/* Window panel opens outward */}
+        {(phase === "opening" || onL) && (
+          <rect x="0" y="0" width="14" height="42" rx="1.5"
+                stroke={c} strokeWidth={1.3} fill="rgba(185,205,220,0.12)"
+                style={{
+                  transformOrigin:"0px 21px",
+                  transform:"perspective(90px) rotateY(-68deg)",
+                  transition:"transform 0.9s ease",
+                }}/>
+        )}
+
+        {/* Person in window */}
+        {inW && (
+          <g style={{ opacity:phase==="appearing"?0.8:0.95, transition:"opacity 0.7s" }}>
+            <circle cx="15" cy="12" r="5.5" stroke={c} strokeWidth={SW} fill="none"/>
+            <line x1="15" y1="17.5" x2="15" y2="30" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+          </g>
+        )}
+
+        {/* Person on ledge */}
+        {onL && (
+          <g style={{
+            transform: flt ? "translate(8px,52px)" : "translate(0,0)",
+            transition: flt ? "transform 1.4s cubic-bezier(0.3,0,0.7,1)" : "transform 0.7s ease-out",
+            opacity: flt ? 0 : 1,
+          }}>
+            <g transform="translate(30,6)">
+              {/* head */}
+              <circle cx="7" cy="4" r="5" stroke={c} strokeWidth={SW} fill="none"/>
+              {/* eyes */}
+              {phase==="looking" && <circle cx={eyeX} cy="4" r="1.3" fill={c}/>}
+              {/* "!" bubble when spotted */}
+              {spotted && (
+                <>
+                  <ellipse cx="20" cy="-4" rx="6" ry="5" fill="white" stroke={c} strokeWidth={1}/>
+                  <text x="20" y="-1" textAnchor="middle" fontSize="8" fontWeight="bold" fill={c}>!</text>
+                </>
+              )}
+              {/* body */}
+              <line x1="7" y1="9" x2="7" y2="22" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+              {/* arms spread (comedy balance) */}
+              <line x1="7" y1="13" x2="-5" y2="10" stroke={c} strokeWidth={SW-0.4} strokeLinecap="round"/>
+              <line x1="7" y1="13" x2="19" y2="10" stroke={c} strokeWidth={SW-0.4} strokeLinecap="round"/>
+              {/* legs */}
+              <line x1="7" y1="22" x2="1"  y2="33" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+              <line x1="7" y1="22" x2="13" y2="33" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+            </g>
+          </g>
+        )}
+      </svg>
+    </div>
+  );
+}
+
 function CrowScene({ crow, onDone }: { crow:CrowInfo|null; onDone:()=>void }) {
   const [phase, setPhase] = useState<CrowPhase>("flying-in");
 
@@ -607,7 +870,10 @@ function makeGroundActor(prev: ActiveActor[]): ActiveActor | null {
   const pauseMs      = isCatStop ? Math.round(rnd(2000, 3200))
                      : isDogPee  ? Math.round(rnd(2800, 4500)) : undefined;
   const isPeeStop = isDogPee ? true : undefined;
-  return { id: crypto.randomUUID(), type, direction, durationS, level, stopFraction, pauseMs, isPeeStop };
+  const humanVariant: HumanVariant | undefined = type === "human"
+    ? (["man","man","woman","child"] as HumanVariant[])[Math.floor(Math.random() * 4)]
+    : undefined;
+  return { id: crypto.randomUUID(), type, direction, durationS, level, stopFraction, pauseMs, isPeeStop, humanVariant };
 }
 
 function makeBirdActor(): ActiveActor {
@@ -621,13 +887,17 @@ function makeBirdActor(): ActiveActor {
 export function AnimatedCityScene() {
   const [timeMode,      setTimeMode]      = useState<TimeMode>("day");
   const [litSet,        setLitSet]        = useState<Set<number>>(new Set());
-  const [actors,        setActors]        = useState<ActiveActor[]>([]);
-  const [crowInfo,      setCrowInfo]      = useState<CrowInfo | null>(null);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [actors,         setActors]        = useState<ActiveActor[]>([]);
+  const [crowInfo,       setCrowInfo]      = useState<CrowInfo | null>(null);
+  const [escaperActive,  setEscaperActive] = useState(false);
+  const [reducedMotion,  setReducedMotion] = useState(false);
+  const crowActive     = useRef(false);
+  const escaperRunning = useRef(false);
 
-  const groundTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const birdTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const crowTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const groundTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const birdTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const crowTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const escaperTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -655,16 +925,34 @@ export function AnimatedCityScene() {
 
   const handleCrowDone = useCallback(() => {
     setCrowInfo(null);
+    crowActive.current = false;
+  }, []);
+
+  const handleEscaperDone = useCallback(() => {
+    setEscaperActive(false);
+    escaperRunning.current = false;
   }, []);
 
   // Crow spawn: once per ~60s, not at night
   const scheduleCrow = useCallback((delay: number) => {
     crowTimer.current = setTimeout(() => {
       if (getTimeMode() !== "night") {
+        crowActive.current = true;
         const p = CROW_PERCHES[Math.floor(Math.random() * CROW_PERCHES.length)];
         setCrowInfo({ id: crypto.randomUUID(), fromLeft: Math.random() > 0.5, perchX: p.x, perchY: p.y });
       }
       scheduleCrow(rnd(55_000, 75_000));
+    }, delay);
+  }, []);
+
+  // Window escaper: once per 5-10 min, not at night, not while crow is active
+  const scheduleEscaper = useCallback((delay: number) => {
+    escaperTimer.current = setTimeout(() => {
+      if (getTimeMode() !== "night" && !crowActive.current && !escaperRunning.current) {
+        escaperRunning.current = true;
+        setEscaperActive(true);
+      }
+      scheduleEscaper(rnd(300_000, 600_000));
     }, delay);
   }, []);
 
@@ -707,13 +995,15 @@ export function AnimatedCityScene() {
     if (reducedMotion) return;
     scheduleGround(rnd(2_000, 5_000));
     scheduleBird(rnd(8_000, 18_000));
-    scheduleCrow(rnd(10_000, 20_000)); // first crow 10-20s after load
+    scheduleCrow(rnd(10_000, 20_000));
+    scheduleEscaper(rnd(60_000, 90_000)); // first escaper 1-1.5 min after load
     return () => {
-      if (groundTimer.current) clearTimeout(groundTimer.current);
-      if (birdTimer.current)   clearTimeout(birdTimer.current);
-      if (crowTimer.current)   clearTimeout(crowTimer.current);
+      if (groundTimer.current)  clearTimeout(groundTimer.current);
+      if (birdTimer.current)    clearTimeout(birdTimer.current);
+      if (crowTimer.current)    clearTimeout(crowTimer.current);
+      if (escaperTimer.current) clearTimeout(escaperTimer.current);
     };
-  }, [reducedMotion, scheduleGround, scheduleBird, scheduleCrow]);
+  }, [reducedMotion, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper]);
 
   const cityOpacity = timeMode === "day" ? 0.55 : timeMode === "evening" ? 0.65 : 0.42;
 
@@ -735,6 +1025,9 @@ export function AnimatedCityScene() {
         ))}
         {!reducedMotion && crowInfo && (
           <CrowScene crow={crowInfo} onDone={handleCrowDone}/>
+        )}
+        {!reducedMotion && (
+          <WindowEscaper active={escaperActive} onDone={handleEscaperDone}/>
         )}
       </div>
     </div>

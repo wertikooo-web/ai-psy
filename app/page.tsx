@@ -85,8 +85,8 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
-  const MAX_DASHBOARD_CLIENTS       = 3;
-  const MAX_DASHBOARD_CONSULTATIONS = 3;
+  const MAX_DASHBOARD_CLIENTS       = 2;
+  const MAX_DASHBOARD_CONSULTATIONS = 2;
   const recentClients       = clients.slice(0, MAX_DASHBOARD_CLIENTS);
   const recentConsultations = consultations.slice(0, MAX_DASHBOARD_CONSULTATIONS);
 
