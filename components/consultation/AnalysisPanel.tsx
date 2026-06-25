@@ -136,7 +136,7 @@ export function AnalysisPanel({
           <BrainCircuit size={15} style={{ color: "#D8CFBE" }} />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
+          <h2 className="text-lg font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
           <p className="text-xs leading-tight mt-0.5" style={{ color: "#9C8E80" }}>Анализ актуален</p>
         </div>
         <button
