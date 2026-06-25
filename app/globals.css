@@ -99,9 +99,7 @@
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-1px); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .city-actor { display: none !important; }
-}
+/* Animation controlled via Settings toggle (localStorage "cityAnimation") */
 
 @layer components {
   .client-card {
