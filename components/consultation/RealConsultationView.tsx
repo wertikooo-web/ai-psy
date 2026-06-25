@@ -291,7 +291,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               {/* Title */}
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
-                <p className="text-xs leading-tight mt-0.5" style={{ color: analysisStale ? "#C9A96E" : "#9C8E80" }}>
+                <p className="text-xs leading-tight mt-0.5" style={{ color: analysisStale ? "#C9A96E" : "#FDFAF5" }}>
                   {analysisStale
                     ? "Добавлены новые материалы. Обновите анализ, чтобы учесть их."
                     : analyzedMode
