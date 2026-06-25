@@ -170,8 +170,8 @@ export function ChatPanel({
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#FAF8F5]">
 
       {/* Header */}
-      <div className="px-5 pt-4 pb-3 border-b border-emerald-600 flex-shrink-0 bg-emerald-600">
-        <div className="flex items-start justify-between">
+      <div className="px-5 border-b border-emerald-600 flex-shrink-0 bg-emerald-600 flex items-center" style={{ height: 68 }}>
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
               <MessagesSquare size={15} className="text-white" />

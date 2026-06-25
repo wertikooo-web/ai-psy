@@ -276,54 +276,55 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
           {/* Analysis panel */}
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#FAF8F5]">
+            {/* Analysis header — fixed height to match other columns */}
             <div
-              className="px-5 py-4 flex-shrink-0 flex items-center gap-3"
-              style={{ background: "#9C9289", borderBottom: "1px solid #8A8079" }}
+              className="px-5 flex-shrink-0 flex items-center gap-3"
+              style={{ height: 68, background: "#9C9289", borderBottom: "1px solid #8A8079" }}
             >
-              {/* Icon */}
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ background: "rgba(255,255,255,0.10)" }}
               >
                 <BrainCircuit size={15} style={{ color: "#D8CFBE" }} />
               </div>
-
-              {/* Title */}
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
-                <p className="text-xs leading-tight mt-0.5" style={{ color: analysisStale ? "#C9A96E" : "#FDFAF5" }}>
-                  {analysisStale
-                    ? "Добавлены новые материалы. Обновите анализ, чтобы учесть их."
-                    : analyzedMode
-                      ? "Анализ актуален"
-                      : "Результат анализа"}
+                <p className="text-xs leading-tight mt-0.5" style={{ color: "#D8CFBE" }}>
+                  {analyzedMode ? "Анализ актуален" : "Результат анализа"}
                 </p>
               </div>
-
-              {/* Обновить анализ button — right side of analysis header */}
               <button
                 onClick={() => { setResult(null); setAnalyzedMode(null); setAnalysisStale(false); setStatus("ready"); }}
                 className="flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg transition-all whitespace-nowrap"
-                style={analysisStale ? {
-                  background: "#C9A96E",
-                  color:      "#1A0F05",
-                  boxShadow:  "0 0 0 1px rgba(201,169,110,0.5)",
-                } : {
+                style={{
                   background: "rgba(255,255,255,0.10)",
                   color:      "#C5AFA0",
                   border:     "1px solid rgba(255,255,255,0.15)",
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = analysisStale ? "#B8924F" : "rgba(255,255,255,0.18)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = analysisStale ? "#C9A96E" : "rgba(255,255,255,0.10)";
-                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.18)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; }}
                 title="Обновить анализ"
               >
                 Обновить анализ
               </button>
             </div>
+
+            {/* Stale banner — shown below header when materials changed */}
+            {analysisStale && (
+              <div className="flex items-center justify-between gap-3 px-5 py-2 flex-shrink-0" style={{ background: "#FEF3DC", borderBottom: "1px solid #E8C97A" }}>
+                <p className="text-xs" style={{ color: "#7A5420" }}>Добавлены новые материалы — обновите анализ, чтобы учесть их.</p>
+                <button
+                  onClick={() => { setResult(null); setAnalyzedMode(null); setAnalysisStale(false); setStatus("ready"); }}
+                  className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
+                  style={{ background: "#C9A96E", color: "#1A0F05" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#B8924F"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "#C9A96E"; }}
+                >
+                  Обновить
+                </button>
+              </div>
+            )}
+
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5">
               <MarkdownRenderer content={analysisResult ?? ""} />
             </div>

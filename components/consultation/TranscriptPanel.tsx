@@ -72,8 +72,8 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#FAF8F5]">
 
       {/* Header */}
-      <div className="px-5 py-4 flex-shrink-0" style={{ background: "#4E5A6E", borderBottom: "1px solid #3D4A5C" }}>
-        <div className="flex items-center justify-between">
+      <div className="px-5 flex-shrink-0 flex items-center" style={{ height: 68, background: "#4E5A6E", borderBottom: "1px solid #3D4A5C" }}>
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
               <Mic size={15} className="text-white" />

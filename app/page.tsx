@@ -97,7 +97,7 @@ export default function HomePage() {
       {/* ── Single hero section — unified background + city as absolute bg ── */}
       <section
         className="relative"
-        style={{ background: "#FAFAF9", minHeight: "100vh" }}
+        style={{ minHeight: "100vh" }}
       >
         {/* Animated city — characters, windows, time-of-day */}
         <AnimatedCityScene />
