@@ -98,20 +98,39 @@ const ACTOR_COLORS: Record<ActorType, string> = {
 };
 const SW = 1.8;
 
+const legGroupStyle = (anim: string): React.CSSProperties => ({
+  transformBox:    "fill-box" as React.CSSProperties["transformBox"],
+  transformOrigin: "50% 0%",
+  animation:       anim,
+});
+
 function SvgCat({ flip, c }: { flip: boolean; c: string }) {
   const g = (
     <g>
+      {/* Body */}
       <ellipse cx="22" cy="33" rx="15" ry="8"   stroke={c} strokeWidth={SW} fill="none"/>
+      {/* Head */}
       <circle  cx="34" cy="23" r="9"             stroke={c} strokeWidth={SW} fill="none"/>
+      {/* Ears */}
       <path d="M28,16 L25,9  L31,15"             stroke={c} strokeWidth={1.4} fill="none" strokeLinejoin="round"/>
       <path d="M38,15 L42,9  L36,16"             stroke={c} strokeWidth={1.4} fill="none" strokeLinejoin="round"/>
+      {/* Eye + nose */}
       <circle cx="36" cy="22" r="1.2"            fill={c}/>
       <path d="M33,26 L35,28 L37,26"             stroke={c} strokeWidth={0.9} fill="none"/>
-      <path d="M7,30 Q-2,21 1,11"                stroke={c} strokeWidth={SW} fill="none" strokeLinecap="round"/>
-      <line x1="14" y1="41" x2="11" y2="51"     stroke={c} strokeWidth={SW} strokeLinecap="round"/>
-      <line x1="20" y1="41" x2="23" y2="51"     stroke={c} strokeWidth={SW} strokeLinecap="round"/>
-      <line x1="27" y1="41" x2="24" y2="51"     stroke={c} strokeWidth={SW} strokeLinecap="round"/>
-      <line x1="33" y1="41" x2="36" y2="51"     stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+      {/* Tail — animated sway */}
+      <g style={{ transformBox: "fill-box" as React.CSSProperties["transformBox"], transformOrigin: "100% 100%", animation: "catTail 1.4s ease-in-out infinite" }}>
+        <path d="M7,30 Q-2,21 1,11"              stroke={c} strokeWidth={SW} fill="none" strokeLinecap="round"/>
+      </g>
+      {/* Back legs — phase B */}
+      <g style={legGroupStyle("catLegB 0.42s ease-in-out infinite")}>
+        <line x1="14" y1="41" x2="11" y2="52"   stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+        <line x1="21" y1="41" x2="24" y2="52"   stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+      </g>
+      {/* Front legs — phase F */}
+      <g style={legGroupStyle("catLegF 0.42s ease-in-out infinite")}>
+        <line x1="27" y1="41" x2="24" y2="52"   stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+        <line x1="34" y1="41" x2="37" y2="52"   stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+      </g>
     </g>
   );
   return flip ? <g transform="scale(-1,1) translate(-52,0)">{g}</g> : g;
@@ -325,7 +344,7 @@ export function AnimatedCityScene() {
       const mode      = getTimeMode();
       const type      = weightedPick(WEIGHTS[mode]);
       const direction: Direction = Math.random() > 0.5 ? "ltr" : "rtl";
-      const durationS = parseFloat(rnd(10, 20).toFixed(1));
+      const durationS = parseFloat(rnd(25, 40).toFixed(1));
 
       setActor({ id: crypto.randomUUID(), type, direction, durationS });
 

@@ -55,6 +55,19 @@
   from { transform: translateX(calc(100vw + 160px)); }
   to   { transform: translateX(-160px); }
 }
+@keyframes catLegF {
+  0%, 100% { transform: rotate(-16deg); }
+  50%       { transform: rotate(16deg);  }
+}
+@keyframes catLegB {
+  0%, 100% { transform: rotate(16deg);  }
+  50%       { transform: rotate(-16deg); }
+}
+@keyframes catTail {
+  0%, 100% { transform: rotate(0deg);   }
+  40%       { transform: rotate(-10deg); }
+  80%       { transform: rotate(6deg);  }
+}
 @keyframes cityBob {
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-4px); }
