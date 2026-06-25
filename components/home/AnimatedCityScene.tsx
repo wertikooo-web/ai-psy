@@ -410,6 +410,164 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
   );
 }
 
+// ─── Crow ─────────────────────────────────────────────────────────────────────
+type CrowPhase = "flying-in" | "perched" | "looking" | "cawing" | "flying-out";
+interface CrowInfo { id:string; fromLeft:boolean; perchX:number; perchY:number; }
+
+const CROW_PERCHES = [
+  { x:8,  y:65 }, { x:23, y:61 }, { x:44, y:69 },
+  { x:63, y:62 }, { x:80, y:66 },
+];
+
+function SvgCrow({ phase, fromLeft }: { phase:CrowPhase; fromLeft:boolean }) {
+  const CR = "#1C1C1E", BK = "#E8901A";
+  const flying  = phase === "flying-in" || phase === "flying-out";
+  const looking = phase === "looking"   || phase === "cawing";
+  const cawing  = phase === "cawing";
+
+  const wL: React.CSSProperties = {
+    transformBox:"fill-box" as React.CSSProperties["transformBox"],
+    transformOrigin:"100% 80%", animation:"crowWingL 0.42s ease-in-out infinite",
+  };
+  const wR: React.CSSProperties = {
+    transformBox:"fill-box" as React.CSSProperties["transformBox"],
+    transformOrigin:"0% 80%", animation:"crowWingR 0.42s ease-in-out infinite",
+  };
+
+  const body = (
+    <g>
+      {/* body */}
+      <ellipse cx="60" cy="62" rx="22" ry="14" fill={CR}/>
+      {/* tail (sitting) */}
+      {!flying && <path d="M38,64 Q28,74 32,82 Q38,72 42,82 Q46,72 38,64" fill={CR}/>}
+      {/* wings */}
+      {flying ? (
+        <>
+          <g style={wL}><path d="M38,60 Q14,34 6,18 Q20,30 30,46 Q18,26 22,12 Q34,28 36,54" fill={CR}/></g>
+          <g style={wR}><path d="M82,60 Q106,34 114,18 Q100,30 90,46 Q102,26 98,12 Q86,28 84,54" fill={CR}/></g>
+        </>
+      ) : (
+        <>
+          <path d="M38,60 Q34,50 40,44 Q46,50 44,60" fill="#2a2a2a"/>
+          <path d="M82,60 Q86,50 80,44 Q74,50 76,60" fill="#2a2a2a"/>
+          <path d="M40,60 Q38,53 43,49" stroke="#3a3a3a" strokeWidth="1.3" fill="none"/>
+          <path d="M45,60 Q43,53 48,49" stroke="#3a3a3a" strokeWidth="1.3" fill="none"/>
+          <path d="M80,60 Q82,53 77,49" stroke="#3a3a3a" strokeWidth="1.3" fill="none"/>
+          <path d="M75,60 Q77,53 72,49" stroke="#3a3a3a" strokeWidth="1.3" fill="none"/>
+        </>
+      )}
+      {/* head */}
+      <circle cx="75" cy="34" r="20" fill={CR}/>
+      {/* eyes */}
+      {looking ? (
+        <>
+          <circle cx="68" cy="29" r="7.5" fill="white"/>
+          <circle cx="66" cy="29" r="4.5" fill={CR}/>
+          <circle cx="64.5" cy="27" r="1.6" fill="white"/>
+          <circle cx="82" cy="29" r="7.5" fill="white"/>
+          <circle cx="84" cy="29" r="4.5" fill={CR}/>
+          <circle cx="85.5" cy="27" r="1.6" fill="white"/>
+        </>
+      ) : (
+        <>
+          <circle cx="84" cy="28" r="7.5" fill="white"/>
+          <circle cx="86" cy="28" r="4.5" fill={CR}/>
+          <circle cx="88" cy="26" r="1.6" fill="white"/>
+        </>
+      )}
+      {/* beak */}
+      {looking ? (
+        cawing ? (
+          <>
+            <path d="M67,44 L83,44 L76,54" fill={BK}/>
+            <path d="M68,48 L82,48 L76,58" fill={BK} opacity="0.9"/>
+            <path d="M68,48 L82,48 L76,56" fill="#C0392B" opacity="0.7"/>
+          </>
+        ) : <path d="M67,44 L83,44 L76,53" fill={BK}/>
+      ) : (
+        <path d="M94,30 L112,26 L94,38 Z" fill={BK}/>
+      )}
+      {/* feet (sitting) */}
+      {!flying && (
+        <g stroke={BK} strokeWidth="2.3" strokeLinecap="round">
+          <line x1="52" y1="75" x2="44" y2="85"/>
+          <line x1="44" y1="85" x2="35" y2="88"/>
+          <line x1="44" y1="85" x2="44" y2="90"/>
+          <line x1="44" y1="85" x2="52" y2="89"/>
+          <line x1="68" y1="75" x2="76" y2="85"/>
+          <line x1="76" y1="85" x2="85" y2="88"/>
+          <line x1="76" y1="85" x2="76" y2="90"/>
+          <line x1="76" y1="85" x2="68" y2="89"/>
+        </g>
+      )}
+    </g>
+  );
+
+  // Speech bubble — not inside flip so text stays readable
+  const bubble = cawing ? (
+    <g>
+      <rect x="32" y="-14" width="58" height="30" rx="11"
+            fill="white" stroke="#D5D5D5" strokeWidth="1.5"/>
+      <path d="M56,16 L50,27 L66,16" fill="white" stroke="#D5D5D5" strokeWidth="1.2" strokeLinejoin="round"/>
+      <text x="61" y="11" textAnchor="middle" fontSize="14" fontWeight="900"
+            fill="#111" fontFamily="system-ui,Arial,sans-serif">КАР!</text>
+    </g>
+  ) : null;
+
+  return (
+    <svg viewBox="0 0 120 100" width={90} height={75} aria-hidden overflow="visible">
+      {!fromLeft ? <g transform="scale(-1,1) translate(-120,0)">{body}</g> : body}
+      {bubble}
+    </svg>
+  );
+}
+
+function CrowScene({ crow, onDone }: { crow:CrowInfo|null; onDone:()=>void }) {
+  const [phase, setPhase] = useState<CrowPhase>("flying-in");
+
+  useEffect(() => {
+    if (!crow) return;
+    const kIn  = `crIn_${crow.id}`;
+    const kOut = `crOut_${crow.id}`;
+    const fromX = crow.fromLeft ? "-180px" : "calc(100vw + 180px)";
+    const toX   = crow.fromLeft ? "calc(100vw + 180px)" : "-180px";
+    const styleEl = document.createElement("style");
+    styleEl.id = `crow_${crow.id}`;
+    styleEl.textContent =
+      `@keyframes ${kIn}{from{transform:translateX(${fromX}) translateY(60px)}to{transform:none}}`+
+      `@keyframes ${kOut}{from{transform:none}to{transform:translateX(${toX}) translateY(-50px)}}`;
+    document.head.appendChild(styleEl);
+    setPhase("flying-in");
+
+    // Cumulative phase timing (ms): fly-in, perched, looking, cawing, fly-out
+    const cum = [2500, 4000, 4900, 7200, 9300];
+    const t1 = setTimeout(() => setPhase("perched"),    cum[0]);
+    const t2 = setTimeout(() => setPhase("looking"),    cum[1]);
+    const t3 = setTimeout(() => setPhase("cawing"),     cum[2]);
+    const t4 = setTimeout(() => setPhase("flying-out"), cum[3]);
+    const t5 = setTimeout(() => onDone(),               cum[4]);
+    return () => {
+      [t1,t2,t3,t4,t5].forEach(clearTimeout);
+      document.getElementById(`crow_${crow.id}`)?.remove();
+    };
+  }, [crow, onDone]);
+
+  if (!crow) return null;
+
+  const anim = phase === "flying-in"  ? `crIn_${crow.id} 2.5s ease-out forwards`
+             : phase === "flying-out" ? `crOut_${crow.id} 2.1s ease-in forwards`
+             : undefined;
+
+  return (
+    <div style={{
+      position:"absolute", left:`${crow.perchX}%`, bottom:`${crow.perchY}%`,
+      animation:anim, willChange:"transform", zIndex:5,
+    }}>
+      <SvgCrow phase={phase} fromLeft={crow.fromLeft}/>
+    </div>
+  );
+}
+
 // ─── City decorations ─────────────────────────────────────────────────────────
 function CityTint({ mode }: { mode:TimeMode }) {
   if (mode === "day") return null;
@@ -464,10 +622,12 @@ export function AnimatedCityScene() {
   const [timeMode,      setTimeMode]      = useState<TimeMode>("day");
   const [litSet,        setLitSet]        = useState<Set<number>>(new Set());
   const [actors,        setActors]        = useState<ActiveActor[]>([]);
+  const [crowInfo,      setCrowInfo]      = useState<CrowInfo | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
 
   const groundTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const birdTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const crowTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -491,6 +651,21 @@ export function AnimatedCityScene() {
 
   const removeActor = useCallback((id: string) => {
     setActors(prev => prev.filter(a => a.id !== id));
+  }, []);
+
+  const handleCrowDone = useCallback(() => {
+    setCrowInfo(null);
+  }, []);
+
+  // Crow spawn: once per ~60s, not at night
+  const scheduleCrow = useCallback((delay: number) => {
+    crowTimer.current = setTimeout(() => {
+      if (getTimeMode() !== "night") {
+        const p = CROW_PERCHES[Math.floor(Math.random() * CROW_PERCHES.length)];
+        setCrowInfo({ id: crypto.randomUUID(), fromLeft: Math.random() > 0.5, perchX: p.x, perchY: p.y });
+      }
+      scheduleCrow(rnd(55_000, 75_000));
+    }, delay);
   }, []);
 
   // Ground spawn loop — 1.5× more frequent, occasional simultaneous pair
@@ -532,11 +707,13 @@ export function AnimatedCityScene() {
     if (reducedMotion) return;
     scheduleGround(rnd(2_000, 5_000));
     scheduleBird(rnd(8_000, 18_000));
+    scheduleCrow(rnd(10_000, 20_000)); // first crow 10-20s after load
     return () => {
       if (groundTimer.current) clearTimeout(groundTimer.current);
       if (birdTimer.current)   clearTimeout(birdTimer.current);
+      if (crowTimer.current)   clearTimeout(crowTimer.current);
     };
-  }, [reducedMotion, scheduleGround, scheduleBird]);
+  }, [reducedMotion, scheduleGround, scheduleBird, scheduleCrow]);
 
   const cityOpacity = timeMode === "day" ? 0.55 : timeMode === "evening" ? 0.65 : 0.42;
 
@@ -556,6 +733,9 @@ export function AnimatedCityScene() {
         {!reducedMotion && actors.map(a => (
           <ActorEl key={a.id} actor={a} onFinish={removeActor}/>
         ))}
+        {!reducedMotion && crowInfo && (
+          <CrowScene crow={crowInfo} onDone={handleCrowDone}/>
+        )}
       </div>
     </div>
   );

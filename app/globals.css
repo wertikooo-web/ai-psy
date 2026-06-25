@@ -73,6 +73,9 @@
 /* birds */
 @keyframes birdWingL { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(-28deg)} }
 @keyframes birdWingR { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(28deg)}  }
+/* crow wings */
+@keyframes crowWingL { 0%,100%{transform:rotate(-13deg)} 50%{transform:rotate(15deg)} }
+@keyframes crowWingR { 0%,100%{transform:rotate(13deg)}  50%{transform:rotate(-15deg)} }
 /* dog pee stream */
 @keyframes peeStream {
   0%   { opacity:0;    transform:scaleY(0);   }
