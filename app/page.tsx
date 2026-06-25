@@ -91,22 +91,20 @@ export default function HomePage() {
   const recentConsultations = consultations.slice(0, MAX_DASHBOARD_CONSULTATIONS);
 
   return (
-    // Outer scroll wrapper — no background (body handles it)
-    <div className="flex-1 min-h-0 overflow-y-auto">
+    <div className="flex-1 min-h-0 overflow-hidden flex flex-col" style={{ background: "#F9F7F2" }}>
 
-      {/* ── Single hero section — unified background + city as absolute bg ── */}
+      {/* ── Single hero section — fills all available space ── */}
       <section
-        className="relative"
-        style={{ minHeight: "100vh" }}
+        className="flex-1 min-h-0 relative overflow-hidden"
       >
         {/* Animated city — characters, windows, time-of-day */}
         <AnimatedCityScene />
 
         {/* All content above z-0 background */}
-        <div className="relative z-10">
+        <div className="relative z-10 flex flex-col h-full">
 
           {/* Welcome */}
-          <div className="max-w-2xl mx-auto px-6 pt-10 lg:pt-[10vh] pb-8 text-center">
+          <div className="max-w-2xl mx-auto px-6 pt-8 pb-6 text-center">
             <div className="flex items-center justify-center gap-3 mb-2">
               {photoUrl ? (
                 <img src={photoUrl} alt={greeting}
@@ -146,8 +144,8 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Cards grid */}
-          <div className="max-w-4xl mx-auto px-6 pb-72">
+          {/* Cards grid — flex-1 to fill remaining space, no pb-72 overflow */}
+          <div className="max-w-4xl mx-auto px-6 pb-6 flex-1 min-h-0 w-full">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
               {/* Recent clients */}
