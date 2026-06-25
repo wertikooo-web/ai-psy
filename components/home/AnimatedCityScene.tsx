@@ -54,7 +54,7 @@ function weightedPick(w: Partial<Record<ActorType, number>>): ActorType {
 const ACTOR_META: Record<ActorType, { viewW:number; viewH:number; dispH:number; bob:boolean }> = {
   cat:   { viewW:52,  viewH:58, dispH:50, bob:true  },
   dog:   { viewW:65,  viewH:62, dispH:54, bob:true  },
-  human: { viewW:44,  viewH:68, dispH:65, bob:true  },
+  human: { viewW:44,  viewH:74, dispH:65, bob:true  },
   car:   { viewW:112, viewH:72, dispH:52, bob:false },
   bike:  { viewW:88,  viewH:72, dispH:58, bob:true  },
   bird:  { viewW:24,  viewH:14, dispH:14, bob:false },
@@ -117,8 +117,9 @@ const wingG = (side: "L"|"R", pivotX: string): React.CSSProperties => ({
 const SW = 1.8;
 
 // ─── SVG Characters ───────────────────────────────────────────────────────────
-function SvgCat({ flip, c, isLooking }: { flip:boolean; c:string; isLooking:boolean }) {
-  const wa = isLooking ? "none" : undefined;
+function SvgCat({ flip, c, isLooking, speedMulti=1 }: { flip:boolean; c:string; isLooking:boolean; speedMulti?:number }) {
+  const dur = (0.42 / speedMulti).toFixed(2);
+  const wa  = isLooking ? "none" : undefined;
   const g = (
     <g>
       <ellipse cx="22" cy="33" rx="15" ry="8"  stroke={c} strokeWidth={SW} fill="none"/>
@@ -142,11 +143,11 @@ function SvgCat({ flip, c, isLooking }: { flip:boolean; c:string; isLooking:bool
       <g style={{ transformBox:"fill-box" as React.CSSProperties["transformBox"], transformOrigin:"100% 100%", animation:"catTail 1.4s ease-in-out infinite" }}>
         <path d="M7,30 Q-2,21 1,11"            stroke={c} strokeWidth={SW} fill="none" strokeLinecap="round"/>
       </g>
-      <g style={legG(wa ?? "catLegB 0.42s ease-in-out infinite")}>
+      <g style={legG(wa ?? `catLegB ${dur}s ease-in-out infinite`)}>
         <line x1="14" y1="41" x2="11" y2="52" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
         <line x1="21" y1="41" x2="24" y2="52" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
       </g>
-      <g style={legG(wa ?? "catLegF 0.42s ease-in-out infinite")}>
+      <g style={legG(wa ?? `catLegF ${dur}s ease-in-out infinite`)}>
         <line x1="27" y1="41" x2="24" y2="52" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
         <line x1="34" y1="41" x2="37" y2="52" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
       </g>
@@ -155,7 +156,8 @@ function SvgCat({ flip, c, isLooking }: { flip:boolean; c:string; isLooking:bool
   return flip ? <g transform="scale(-1,1) translate(-52,0)">{g}</g> : g;
 }
 
-function SvgDog({ flip, c, isPeeing = false, peeDurS = 3 }: { flip:boolean; c:string; isPeeing?:boolean; peeDurS?:number }) {
+function SvgDog({ flip, c, isPeeing = false, peeDurS = 3, speedMulti = 1 }: { flip:boolean; c:string; isPeeing?:boolean; peeDurS?:number; speedMulti?:number }) {
+  const dogDur = (0.44 / speedMulti).toFixed(2);
   // Raised back-left leg: rotated ~80° upward from hip
   const raisedLegStyle: React.CSSProperties = {
     transformBox:    "fill-box" as React.CSSProperties["transformBox"],
@@ -206,14 +208,14 @@ function SvgDog({ flip, c, isPeeing = false, peeDurS = 3 }: { flip:boolean; c:st
           </g>
         </>
       ) : (
-        <g style={legG("dogLegB 0.44s ease-in-out infinite")}>
+        <g style={legG(`dogLegB ${dogDur}s ease-in-out infinite`)}>
           <line x1="16" y1="44" x2="12" y2="55"  stroke={c} strokeWidth={SW} strokeLinecap="round"/>
           <line x1="24" y1="44" x2="27" y2="55"  stroke={c} strokeWidth={SW} strokeLinecap="round"/>
         </g>
       )}
 
       {/* Front legs */}
-      <g style={legG(isPeeing ? "none" : "dogLegF 0.44s ease-in-out infinite")}>
+      <g style={legG(isPeeing ? "none" : `dogLegF ${dogDur}s ease-in-out infinite`)}>
         <line x1="32" y1="44" x2="28" y2="55"    stroke={c} strokeWidth={SW} strokeLinecap="round"/>
         <line x1="39" y1="44" x2="43" y2="55"    stroke={c} strokeWidth={SW} strokeLinecap="round"/>
       </g>
@@ -222,112 +224,123 @@ function SvgDog({ flip, c, isPeeing = false, peeDurS = 3 }: { flip:boolean; c:st
   return flip ? <g transform="scale(-1,1) translate(-65,0)">{g}</g> : g;
 }
 
-function SvgHuman({ flip, c, variant = "man", isFleeing = false }: {
-  flip:boolean; c:string; variant?:HumanVariant; isFleeing?:boolean
+// Profile-view walking human (facing right by default; flip mirrors to face left)
+// Draw order: back leg → back arm → torso → front arm → front leg → head (z-layers)
+function SvgHuman({ flip, c, variant = "man", speedMulti = 1 }: {
+  flip:boolean; c:string; variant?:HumanVariant; speedMulti?:number
 }) {
-  const speed  = isFleeing ? "0.22s" : "0.50s";
-  const armSpd = isFleeing ? "0.22s" : "0.50s";
-  const LSW = 2.3; // limb stroke width
+  const legDur = (0.50 / speedMulti).toFixed(2);
+  const armDur = (0.50 / speedMulti).toFixed(2);
+  const LSW = 2.1;
+  const pv  = (anim: string): React.CSSProperties => ({ ...legG(anim), transformOrigin:"50% 0%" });
 
   let g: React.ReactNode;
 
   if (variant === "child") {
-    // Big head, short limbs, waddly
+    // Big head, compact body, waddly side stride
     g = (
       <g>
-        <circle cx="22" cy="11" r="10"          stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.08}/>
-        {/* tiny neck */}
-        <line x1="22" y1="21" x2="22" y2="26"  stroke={c} strokeWidth={LSW} strokeLinecap="round"/>
-        {/* chubby torso */}
-        <path d="M13,26 Q10,36 13,42 L31,42 Q34,36 31,26 Z"
-              stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.1} strokeLinejoin="round"/>
-        {/* arms — short */}
-        <g style={{ ...legG(`humanArmB ${armSpd} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
-          <path d="M13,28 Q7,33 5,39"           stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
+        {/* back leg */}
+        <g style={pv(`humanLegF ${legDur}s ease-in-out infinite`)}>
+          <path d="M19,36 Q16,44 15,50" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M15,50 Q14,56 14,60" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+          <line x1="14" y1="60" x2="8"  y2="61" stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
         </g>
-        <g style={{ ...legG(`humanArmF ${armSpd} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
-          <path d="M31,28 Q37,33 39,39"         stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
+        {/* back arm */}
+        <g style={pv(`humanArmF ${armDur}s ease-in-out infinite`)}>
+          <path d="M18,22 Q13,29 11,35" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
         </g>
-        {/* legs — short, chunky */}
-        <g style={{ ...legG(`humanLegB ${speed} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
-          <path d="M17,42 Q14,52 13,58"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
-          <path d="M13,58 Q11,62 10,64"         stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+        {/* body */}
+        <ellipse cx="22" cy="29" rx="7" ry="8" stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.09}/>
+        {/* front arm */}
+        <g style={pv(`humanArmB ${armDur}s ease-in-out infinite`)}>
+          <path d="M24,22 Q29,29 31,35" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
         </g>
-        <g style={{ ...legG(`humanLegF ${speed} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
-          <path d="M27,42 Q30,52 31,58"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
-          <path d="M31,58 Q33,62 34,64"         stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+        {/* front leg */}
+        <g style={pv(`humanLegB ${legDur}s ease-in-out infinite`)}>
+          <path d="M23,36 Q26,44 27,50" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M27,50 Q28,56 28,60" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+          <line x1="28" y1="60" x2="34" y2="59" stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
         </g>
+        {/* head — big for child */}
+        <circle cx="24" cy="10" r="10" stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.07}/>
+        <path d="M33,10 Q36,11 33,14"  stroke={c} strokeWidth={1.0} fill="none"/>
       </g>
     );
   } else if (variant === "woman") {
     g = (
       <g>
-        {/* hair */}
-        <ellipse cx="22" cy="8" rx="10" ry="6" stroke={c} strokeWidth={1.4} fill={c} fillOpacity={0.15}/>
-        <circle cx="22" cy="9" r="8"            stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.08}/>
-        {/* neck */}
-        <line x1="22" y1="17" x2="22" y2="22"  stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round"/>
-        {/* torso — narrower shoulders, wider hips */}
-        <path d="M12,22 L10,36 L9,44 L35,44 L34,36 L32,22 Z"
-              stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.1} strokeLinejoin="round"/>
-        {/* skirt flare */}
-        <path d="M9,44 Q5,54 8,58 Q22,55 36,58 Q39,54 35,44"
-              stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.12}/>
-        {/* arms */}
-        <g style={{ ...legG(`humanArmB ${armSpd} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
-          <path d="M12,24 Q6,31 4,39"           stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
-          <path d="M4,39 Q5,46 6,50"            stroke={c} strokeWidth={LSW-0.4} strokeLinecap="round" fill="none"/>
+        {/* back leg */}
+        <g style={pv(`humanLegF ${legDur}s ease-in-out infinite`)}>
+          <path d="M19,57 Q17,63 16,69" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M16,69 Q15,72 15,74" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+          <line x1="15" y1="74" x2="9"  y2="74" stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
         </g>
-        <g style={{ ...legG(`humanArmF ${armSpd} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
-          <path d="M32,24 Q38,31 40,39"         stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
-          <path d="M40,39 Q39,46 38,50"         stroke={c} strokeWidth={LSW-0.4} strokeLinecap="round" fill="none"/>
+        {/* back arm */}
+        <g style={pv(`humanArmF ${armDur}s ease-in-out infinite`)}>
+          <path d="M18,21 Q13,30 12,37" stroke={c} strokeWidth={1.9} strokeLinecap="round" fill="none"/>
+          <path d="M12,37 Q11,44 11,47" stroke={c} strokeWidth={1.5} strokeLinecap="round" fill="none"/>
         </g>
-        {/* legs — from under skirt */}
-        <g style={{ ...legG(`humanLegB ${speed} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
-          <path d="M16,58 Q14,64 13,70"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
-          <line x1="13" y1="70" x2="10" y2="72" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round"/>
+        {/* torso — feminine profile */}
+        <path d="M17,20 Q14,28 14,36 Q13,42 16,44 L25,44 Q27,42 26,36 Q26,28 25,20 Z"
+              stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.10} strokeLinejoin="round"/>
+        {/* skirt in profile */}
+        <path d="M16,44 Q10,53 12,57 L30,57 Q32,53 25,44"
+              stroke={c} strokeWidth={SW-0.2} fill={c} fillOpacity={0.09} strokeLinejoin="round"/>
+        {/* front arm */}
+        <g style={pv(`humanArmB ${armDur}s ease-in-out infinite`)}>
+          <path d="M24,21 Q29,30 30,37" stroke={c} strokeWidth={1.9} strokeLinecap="round" fill="none"/>
+          <path d="M30,37 Q31,44 31,47" stroke={c} strokeWidth={1.5} strokeLinecap="round" fill="none"/>
         </g>
-        <g style={{ ...legG(`humanLegF ${speed} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
-          <path d="M28,58 Q30,64 31,70"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
-          <line x1="31" y1="70" x2="34" y2="72" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round"/>
+        {/* front leg */}
+        <g style={pv(`humanLegB ${legDur}s ease-in-out infinite`)}>
+          <path d="M22,57 Q25,63 26,69" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M26,69 Q27,72 27,74" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+          <line x1="27" y1="74" x2="33" y2="73" stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
         </g>
+        {/* head */}
+        <circle cx="24" cy="8" r="7.5" stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.07}/>
+        {/* hair bun/shape */}
+        <ellipse cx="21" cy="5" rx="9" ry="5" stroke={c} strokeWidth={1.3} fill={c} fillOpacity={0.12}/>
+        {/* nose */}
+        <path d="M31,8 Q34,9 31,12" stroke={c} strokeWidth={1.1} fill="none"/>
       </g>
     );
   } else {
-    // man (default)
+    // man — profile walking
     g = (
       <g>
-        <circle cx="22" cy="9" r="8"            stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.08}/>
-        <line x1="22" y1="17" x2="22" y2="22"  stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round"/>
-        {/* torso — shirt shape with fill */}
-        <path d="M10,22 L13,44 L31,44 L34,22 Z"
-              stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.12} strokeLinejoin="round"/>
+        {/* back leg */}
+        <g style={pv(`humanLegF ${legDur}s ease-in-out infinite`)}>
+          <path d="M19,44 Q16,54 15,62" stroke={c} strokeWidth={LSW+0.1} strokeLinecap="round" fill="none"/>
+          <path d="M15,62 Q14,68 14,72" stroke={c} strokeWidth={LSW-0.1} strokeLinecap="round" fill="none"/>
+          <line x1="14" y1="72" x2="8"  y2="73" stroke={c} strokeWidth={1.5} strokeLinecap="round"/>
+        </g>
+        {/* back arm */}
+        <g style={pv(`humanArmF ${armDur}s ease-in-out infinite`)}>
+          <path d="M19,21 Q14,30 12,37" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M12,37 Q11,44 11,47" stroke={c} strokeWidth={LSW-0.4} strokeLinecap="round" fill="none"/>
+        </g>
+        {/* torso — narrow profile body */}
+        <path d="M18,20 Q16,32 16,44 L25,44 Q25,32 26,20 Z"
+              stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.11} strokeLinejoin="round"/>
         {/* belt */}
-        <line x1="13" y1="40" x2="31" y2="40"  stroke={c} strokeWidth={1.0} strokeLinecap="round" opacity={0.5}/>
-        {/* collar V */}
-        <path d="M18,22 L22,28 L26,22"          stroke={c} strokeWidth={1.1} fill="none" strokeLinejoin="round"/>
-        {/* left arm — two segments */}
-        <g style={{ ...legG(`humanArmB ${armSpd} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
-          <path d="M10,24 Q5,31 4,38"           stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
-          <path d="M4,38 Q5,46 6,50"            stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+        <line x1="17" y1="40" x2="25" y2="40" stroke={c} strokeWidth={0.9} opacity={0.45}/>
+        {/* front arm */}
+        <g style={pv(`humanArmB ${armDur}s ease-in-out infinite`)}>
+          <path d="M24,21 Q29,30 31,37" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+          <path d="M31,37 Q32,44 32,47" stroke={c} strokeWidth={LSW-0.4} strokeLinecap="round" fill="none"/>
         </g>
-        {/* right arm */}
-        <g style={{ ...legG(`humanArmF ${armSpd} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
-          <path d="M34,24 Q39,31 40,38"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
-          <path d="M40,38 Q39,46 38,50"         stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+        {/* front leg */}
+        <g style={pv(`humanLegB ${legDur}s ease-in-out infinite`)}>
+          <path d="M23,44 Q26,54 27,62" stroke={c} strokeWidth={LSW+0.1} strokeLinecap="round" fill="none"/>
+          <path d="M27,62 Q28,68 29,72" stroke={c} strokeWidth={LSW-0.1} strokeLinecap="round" fill="none"/>
+          <line x1="29" y1="72" x2="35" y2="71" stroke={c} strokeWidth={1.5} strokeLinecap="round"/>
         </g>
-        {/* left leg — thigh + calf */}
-        <g style={{ ...legG(`humanLegB ${speed} ease-in-out infinite`), transformOrigin:"100% 0%" }}>
-          <path d="M16,44 Q13,54 12,60"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
-          <path d="M12,60 Q11,66 10,68"         stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
-          <line x1="10" y1="68" x2="7" y2="70" stroke={c} strokeWidth={LSW-0.5} strokeLinecap="round"/>
-        </g>
-        {/* right leg */}
-        <g style={{ ...legG(`humanLegF ${speed} ease-in-out infinite`), transformOrigin:"0% 0%" }}>
-          <path d="M28,44 Q31,54 32,60"         stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
-          <path d="M32,60 Q33,66 34,68"         stroke={c} strokeWidth={LSW-0.2} strokeLinecap="round" fill="none"/>
-          <line x1="34" y1="68" x2="37" y2="70" stroke={c} strokeWidth={LSW-0.5} strokeLinecap="round"/>
-        </g>
+        {/* head */}
+        <circle cx="24" cy="8" r="7.5" stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.07}/>
+        {/* nose bump */}
+        <path d="M31,8 Q34,9 31,12" stroke={c} strokeWidth={1.1} fill="none"/>
       </g>
     );
   }
@@ -421,9 +434,8 @@ interface ActorElProps { actor: ActiveActor; onFinish: (id:string) => void; }
 function ActorEl({ actor, onFinish }: ActorElProps) {
   const [isLooking,  setIsLooking]  = useState(false);
   const [isPeeing,   setIsPeeing]   = useState(false);
-  const [isFleeing,  setIsFleeing]  = useState(false);
-  const [jumpAnim,   setJumpAnim]   = useState<string|null>(null);
-  const [overrideAnim, setOverrideAnim] = useState<string|null>(null);
+  const [speedMulti, setSpeedMulti] = useState(1);   // 1 → 2 → 4 → 8 on each click
+  const [speedAnim,  setSpeedAnim]  = useState<string|null>(null);
   const startTime  = useRef(Date.now());
   const finishRef  = useRef<ReturnType<typeof setTimeout>|null>(null);
   const meta   = ACTOR_META[actor.type];
@@ -440,32 +452,26 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     return () => { if (finishRef.current) clearTimeout(finishRef.current); };
   }, [actor.id, actor.durationS, onFinish]);
 
-  // Click: jump then flee at 2× speed (cats and dogs only)
+  // Each click doubles speed; uses negative animation-delay to preserve position
   const handleClick = useCallback(() => {
-    if (isFleeing) return;
-    setIsFleeing(true);
-    setJumpAnim("actorJump 0.38s ease-out forwards");
-    setTimeout(() => {
-      setJumpAnim(null);
-      const elapsed  = Date.now() - startTime.current;
-      const frac     = Math.min(elapsed / (actor.durationS * 1000), 0.98);
-      const total    = window.innerWidth + 320;
-      const curX     = actor.direction === "ltr"
-        ? -160 + frac * total
-        : (window.innerWidth + 160) - frac * total;
-      const toX      = actor.direction === "ltr" ? window.innerWidth + 220 : -220;
-      const remaining = Math.max(0.5, (actor.durationS * 1000 - elapsed) / 1000 / 2);
-      const fId      = `flee_${actor.id}`;
-      const styleEl  = document.createElement("style");
-      styleEl.id     = fId;
-      styleEl.textContent = `@keyframes ${fId}{from{transform:translateX(${curX.toFixed(0)}px)}to{transform:translateX(${toX}px)}}`;
-      document.head.appendChild(styleEl);
-      setOverrideAnim(`${fId} ${remaining.toFixed(2)}s linear forwards`);
-      if (finishRef.current) clearTimeout(finishRef.current);
-      finishRef.current = setTimeout(() => { onFinish(actor.id); document.getElementById(fId)?.remove(); },
-        remaining * 1000 + 300);
-    }, 400);
-  }, [isFleeing, actor, onFinish]);
+    setSpeedMulti(prev => Math.min(prev * 2, 8));
+  }, []);
+
+  useEffect(() => {
+    if (speedMulti === 1) return;
+    const elapsed  = (Date.now() - startTime.current) / 1000;
+    const progress = Math.min(elapsed / actor.durationS, 0.995);
+    const newDur   = actor.durationS / speedMulti;
+    const negDelay = -(progress * newDur);
+    const kName    = (isCat || isDog) && actor.stopFraction != null
+      ? `cm_${actor.id}`
+      : isBird ? `bf_${actor.id}`
+      : actor.direction === "ltr" ? "cityMoveLtr" : "cityMoveRtl";
+    setSpeedAnim(`${kName} ${newDur.toFixed(2)}s linear ${negDelay.toFixed(2)}s forwards`);
+    const remaining = Math.max(0.2, newDur * (1 - progress));
+    if (finishRef.current) clearTimeout(finishRef.current);
+    finishRef.current = setTimeout(() => onFinish(actor.id), remaining * 1000 + 300);
+  }, [speedMulti]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Shared: inject pause keyframe for cat (look) and dog (pee)
   useEffect(() => {
@@ -534,9 +540,9 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     if (isBird) return `bf_${actor.id} ${actor.durationS}s ease-in-out forwards`;
     return `${actor.direction === "ltr" ? "cityMoveLtr" : "cityMoveRtl"} ${actor.durationS}s linear forwards`;
   })();
-  const moveAnim = overrideAnim ?? defaultMoveAnim;
+  const moveAnim = speedAnim ?? defaultMoveAnim;
 
-  const isClickable = isCat || isDog;
+  const isClickable = (isCat || isDog) && speedMulti < 8;
   const bobStyle: React.CSSProperties = isLooking ? {} : meta.bob
     ? { animation: `cityBob ${actor.type === "bike" ? "0.38s" : "0.52s"} ease-in-out infinite` }
     : { animation: "cityRoll 0.65s ease-in-out infinite" };
@@ -548,26 +554,24 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
         position:"absolute", bottom:bottomVal, left:0,
         animation:moveAnim, willChange:"transform",
         pointerEvents: isClickable ? "auto" : "none",
-        cursor: isClickable && !isFleeing ? "pointer" : undefined,
+        cursor: isClickable ? "pointer" : undefined,
       }}
       onClick={isClickable ? handleClick : undefined}
     >
       <div style={scale !== 1 ? { transform:`scale(${scale})`, transformOrigin:"bottom center" } : undefined}>
-        <div style={jumpAnim ? { animation: jumpAnim } : undefined}>
-          <svg
-            viewBox={`0 0 ${meta.viewW} ${meta.viewH}`}
-            width={dispW} height={meta.dispH}
-            aria-hidden
-            style={bobStyle}
-          >
-            {actor.type === "cat"   && <SvgCat   flip={flip} c={color} isLooking={isLooking}/>}
-            {actor.type === "dog"   && <SvgDog   flip={flip} c={color} isPeeing={isPeeing} peeDurS={(actor.pauseMs ?? 3000)/1000}/>}
-            {actor.type === "human" && <SvgHuman flip={flip} c={color} variant={actor.humanVariant} isFleeing={isFleeing}/>}
-            {actor.type === "car"   && <SvgCar   flip={flip} c={color}/>}
-            {actor.type === "bike"  && <SvgBike  flip={flip} c={color}/>}
-            {actor.type === "bird"  && <SvgBird  flip={flip} c={color}/>}
-          </svg>
-        </div>
+        <svg
+          viewBox={`0 0 ${meta.viewW} ${meta.viewH}`}
+          width={dispW} height={meta.dispH}
+          aria-hidden
+          style={bobStyle}
+        >
+          {actor.type === "cat"   && <SvgCat   flip={flip} c={color} isLooking={isLooking} speedMulti={speedMulti}/>}
+          {actor.type === "dog"   && <SvgDog   flip={flip} c={color} isPeeing={isPeeing} peeDurS={(actor.pauseMs ?? 3000)/1000} speedMulti={speedMulti}/>}
+          {actor.type === "human" && <SvgHuman flip={flip} c={color} variant={actor.humanVariant} speedMulti={speedMulti}/>}
+          {actor.type === "car"   && <SvgCar   flip={flip} c={color}/>}
+          {actor.type === "bike"  && <SvgBike  flip={flip} c={color}/>}
+          {actor.type === "bird"  && <SvgBird  flip={flip} c={color}/>}
+        </svg>
       </div>
     </div>
   );
