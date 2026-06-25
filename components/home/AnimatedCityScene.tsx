@@ -192,13 +192,13 @@ const ACTOR_META: Record<ActorType, { viewW: number; viewH: number; dispH: numbe
   bike:  { viewW: 88,  viewH: 72,  dispH: 58,  bob: true  },
 };
 
-// Street bottom offsets (% from bottom of the image)
+// Street bottom offsets in px — fixed, not % (so they don't depend on PNG height)
 const BOTTOM_OFFSET: Record<ActorType, string> = {
-  cat:   "9%",
-  dog:   "9%",
-  human: "9%",
-  car:   "6%",
-  bike:  "7%",
+  cat:   "28px",
+  dog:   "28px",
+  human: "26px",
+  car:   "18px",
+  bike:  "20px",
 };
 
 function ActorEl({ actor }: { actor: ActiveActor }) {
@@ -319,28 +319,28 @@ export function AnimatedCityScene() {
     setLitSet(new Set(shuffled.slice(0, count)));
   }, [timeMode]);
 
-  // Actor spawn loop
-  const spawnNext = useCallback(() => {
-    const delay = rnd(18_000, 45_000);
+  // Spawn one actor, then schedule next after it finishes
+  const spawnNext = useCallback((delay: number) => {
     timerRef.current = setTimeout(() => {
       const mode      = getTimeMode();
       const type      = weightedPick(WEIGHTS[mode]);
       const direction: Direction = Math.random() > 0.5 ? "ltr" : "rtl";
-      const durationS = parseFloat(rnd(10, 22).toFixed(1));
+      const durationS = parseFloat(rnd(10, 20).toFixed(1));
 
       setActor({ id: crypto.randomUUID(), type, direction, durationS });
 
+      // After crossing → clear + schedule next with long pause
       actorTimer.current = setTimeout(() => {
         setActor(null);
-        spawnNext();
-      }, durationS * 1000 + 800);
+        spawnNext(rnd(20_000, 45_000));
+      }, durationS * 1000 + 500);
     }, delay);
   }, []);
 
   useEffect(() => {
     if (reducedMotion) return;
-    // First appearance: 6–16 seconds after mount
-    timerRef.current = setTimeout(() => spawnNext(), rnd(6_000, 16_000));
+    // First character appears quickly — 3 to 6 seconds after mount
+    spawnNext(rnd(3_000, 6_000));
     return () => {
       if (timerRef.current)   clearTimeout(timerRef.current);
       if (actorTimer.current) clearTimeout(actorTimer.current);
