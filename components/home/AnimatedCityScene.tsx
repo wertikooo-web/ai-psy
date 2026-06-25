@@ -466,7 +466,7 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
 
   // Auto-remove when crossing completes
   useEffect(() => {
-    finishRef.current = setTimeout(() => onFinish(actor.id), actor.durationS * 1000 + 700);
+    finishRef.current = setTimeout(() => onFinish(actor.id), actor.durationS * 1000 + 2500);
     return () => { if (finishRef.current) clearTimeout(finishRef.current); };
   }, [actor.id, actor.durationS, onFinish]);
 
@@ -793,10 +793,10 @@ function SvgBus({ flip, c }: { flip:boolean; c:string }) {
 
 // ─── Interactive bird perch ───────────────────────────────────────────────────
 const BIRD_PERCH_SPOTS = [
-  { id:"bp1", x:13, y:55 },
-  { id:"bp2", x:34, y:60 },
-  { id:"bp3", x:57, y:57 },
-  { id:"bp4", x:77, y:61 },
+  { id:"bp1", x:12, y:37 },
+  { id:"bp2", x:33, y:34 },
+  { id:"bp3", x:56, y:38 },
+  { id:"bp4", x:76, y:35 },
 ] as const;
 type BirdPerch = typeof BIRD_PERCH_SPOTS[number];
 
@@ -872,9 +872,9 @@ function InteractiveBird({ spot, onDone }: { spot:BirdPerch; onDone:()=>void }) 
 
 // ─── Interactive cat from building edge ───────────────────────────────────────
 const CAT_SPOT_POSITIONS = [
-  { id:"cs1", x:8,  y:43, entryFrom:"left"  as const },
-  { id:"cs2", x:44, y:45, entryFrom:"left"  as const },
-  { id:"cs3", x:80, y:42, entryFrom:"right" as const },
+  { id:"cs1", x:10, y:16, entryFrom:"left"  as const },
+  { id:"cs2", x:48, y:15, entryFrom:"left"  as const },
+  { id:"cs3", x:78, y:17, entryFrom:"right" as const },
 ] as const;
 type CatSpot = typeof CAT_SPOT_POSITIONS[number];
 
@@ -1282,8 +1282,8 @@ function CityTint({ mode }: { mode:TimeMode }) {
 function CityWindows({ litSet, mode }: { litSet:Set<number>; mode:TimeMode }) {
   if (mode === "day" || litSet.size === 0) return null;
   return (
-    <svg viewBox="0 0 1400 520" preserveAspectRatio="xMidYMax slice" aria-hidden
-      style={{ position:"absolute", bottom:0, left:0, width:"100%", height:"100%", pointerEvents:"none" }}>
+    <svg viewBox="0 0 1400 520" preserveAspectRatio="xMidYMid meet" aria-hidden
+      style={{ position:"absolute", bottom:0, left:0, width:"100%", height:"auto", display:"block", pointerEvents:"none" }}>
       {WINDOWS.map((w, i) => !litSet.has(i) ? null : (
         <rect key={i} x={w.x} y={w.y} width={w.w} height={w.h} rx="2"
           fill="rgba(255,195,90,0.48)" className="city-window"
@@ -1478,23 +1478,13 @@ export function AnimatedCityScene() {
     }, delay);
   }, []);
 
-  // Ground spawn loop — 1.5× more frequent, occasional simultaneous pair
   const scheduleGround = useCallback((delay: number) => {
     groundTimer.current = setTimeout(() => {
       setActors(prev => {
         const a = makeGroundActor(prev);
         return a ? [...prev, a] : prev;
       });
-      // 42% chance: second actor 1.5-3s later on a different level
-      if (Math.random() < 0.42) {
-        setTimeout(() => {
-          setActors(prev => {
-            const a = makeGroundActor(prev);
-            return a ? [...prev, a] : prev;
-          });
-        }, rnd(1500, 3000));
-      }
-      scheduleGround(rnd(13_000, 28_000));
+      scheduleGround(rnd(18_000, 34_000));
     }, delay);
   }, []);
 
