@@ -21,21 +21,23 @@
 - [x] **Upload Modal** — audio file upload flow
 
 ### AnimatedCityScene (home page background)
-- [x] Animated city with day/evening/night time modes
+- [x] Animated city with day/evening/night time modes (CityTint overlay)
 - [x] Ground actors: cat, dog, human (man/woman/child), car, bike, bus, bird
 - [x] Per-level depth (near/mid/far) with scale
 - [x] Contralateral human gait (natural arm/leg sync)
 - [x] Human stop behavior (28% chance) + reverse/turn-around (18% chance)
 - [x] Cat/dog stop behavior (cat looks around, dog pees)
 - [x] Click cat/dog → speed up (up to 8×)
-- [x] City window glow (evening/night, random lit windows with flicker)
-- [x] Crow easter egg: flies in, perches, turns frontal, tucks legs, caws, flies away
+- [x] Crow easter egg: flies in → perches → turns frontal → tucks legs → caws → flies away
 - [x] Window escaper easter egg
 - [x] Paper airplane easter egg
-- [x] Interactive perched bird (clickable, sits on rooftop)
-- [x] Interactive cat from building edge (peeks out, can be clicked)
+- [x] Interactive perched bird (clickable, sits on rooftop, y=34-38% from viewport bottom)
+- [x] Interactive cat from building edge (y=15-17% from viewport bottom = ground floor)
 - [x] Actor overlay via React portal (escapes overflow:hidden Chromium clipping bug)
 - [x] Sidebar z-index (z=10) covers actors (z=1) so actors appear from behind sidebar
+- [x] No actor pairs (spawn interval 18-34s, no double-spawn logic)
+- [x] Actor finish timeout +2500ms buffer (prevents early disappearance)
+- [x] Window lighting **removed** (was broken, caused yellow rectangles in content area)
 
 ### API
 - [x] All CRUD routes for clients, consultations, notebook, voice notes
@@ -59,11 +61,11 @@
 - [ ] Docling for PDF/document parsing (future integration)
 - [ ] Use case: upload session notes in PDF → extract text → add to consultation
 
-### Polish / Known Issues (2026-06-25)
-- [ ] Interactive cat position calibration (now at y=15-17% from viewport bottom = building ground floor — may need fine-tuning per actual city.png)
-- [ ] Interactive bird position calibration (now at y=34-38% = rooftop level)
-- [ ] Actors appear from left viewport edge on mobile (no sidebar to hide behind on mobile — acceptable)
-- [ ] Human reverse animation: need to verify timing doesn't cause premature removal
+### Polish / Known Issues
+- [ ] Interactive cat position may need fine-tuning (y=15-17% from viewport bottom)
+- [ ] Interactive bird position may need fine-tuning (y=34-38% from viewport bottom)
+- [ ] Actors appear from left viewport edge on mobile (no sidebar on mobile — acceptable)
+- [ ] Human reverse animation timing not fully verified
 
 ---
 
@@ -72,3 +74,8 @@
 - `PROJECT_STATE.md` — this file
 - `components/home/AnimatedCityScene.tsx` — if working on city animation
 - `components/AppShell.tsx` — if working on layout/z-index
+
+## Last commits
+- `2aa5ac3` — Remove window lighting feature entirely
+- `bf240de` — Fix city scene bugs: windows, bird/cat positions, actor pairs
+- `35bd3ea` — Crow front-facing pose with leg tuck

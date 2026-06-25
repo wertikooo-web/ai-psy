@@ -50,7 +50,7 @@ transcript-ai-psy/
 │   ├── AppShell.tsx            — flex layout: sidebar + main; z-index layering
 │   ├── Sidebar.tsx             — nav sidebar (desktop always-on, mobile overlay)
 │   ├── home/
-│   │   └── AnimatedCityScene.tsx  — entire animated city: actors, crow, windows, easter eggs
+│   │   └── AnimatedCityScene.tsx  — entire animated city: actors, crow, easter eggs
 │   ├── dashboard/              — StatsCard, ClientList, ConsultationList, LastConsultationCard
 │   ├── client/                 — AddClientModal, ClientCard
 │   ├── consultation/           — ConsultationCard, transcript viewer
@@ -76,7 +76,7 @@ transcript-ai-psy/
 ```
 Root stacking context
 ├── z=0  — city scene div (position:absolute inside section)
-│          └── city.png image, CityWindows SVG, CityTint div
+│          └── city.png image, CityTint div
 ├── z=1  — actor overlay portal (position:fixed at document.body)
 │          └── ActorEl, CrowScene, InteractiveBird, InteractiveCat,
 │              WindowEscaper, PaperPlane
@@ -88,7 +88,7 @@ Actors at z=1 are covered by sidebar (z=10) → appear to come from behind sideb
 
 **Why portal?** Chromium on Windows clips `position:fixed` children of `overflow:hidden` scroll containers (known Blink bug). Portal to `document.body` escapes all AppShell ancestors.
 
-**CityWindows SVG height:** Must use `height:"auto"` (NOT `"100%"`). The containing city-scene div has no explicit height; `height:100%` resolves to 100vh (section height) in Chromium, placing windows far above buildings. `height:"auto"` uses the SVG intrinsic aspect ratio (viewBox 1400×520) to match city image dimensions exactly.
+**Window lighting removed.** Was: SVG overlay with glowing rects on buildings. Removed entirely (WinDef, WINDOWS, getLitCount, CityWindows, litSet, windowFlicker/windowGlow keyframes). Caused large yellow rectangles in content area due to `height:100%` resolving to 100vh instead of image height — removed rather than fixed.
 
 ---
 
@@ -112,7 +112,7 @@ All data lives in `/data/` on the Railway Volume (persistent across deploys):
 
 - **ActorType**: `cat | dog | human | car | bike | bird | bus`
 - **GroundLevel**: `0` (near) | `1` (mid) | `2` (far) — max 1 actor per level at a time
-- **TimeMode**: `day | evening | night` — weights, opacity, window glow
+- **TimeMode**: `day | evening | night` — weights, opacity, CityTint overlay
 - **Actor bottom position**: `BOTTOM_BASE[type] + LEVEL_CFG[level].extraBottom` px from viewport bottom
 - **Bird perch spots**: y=34-38% from viewport bottom (rooftop level)
 - **Interactive cat spots**: y=15-17% from viewport bottom (building ground floor)
