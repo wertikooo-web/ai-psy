@@ -502,25 +502,47 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     };
   }, [actor, isCat, isDog, dispW]);
 
-  // Bird: inject curved per-bird keyframe
+  // Bird: inject curved per-bird keyframe with correct X formula and natural Y trajectory
   useEffect(() => {
     if (!isBird) return;
     const kId = `bf_${actor.id}`;
     const ltr = actor.direction === "ltr";
-    const [y1,y2,y3] = [rnd(-22,22), rnd(-28,28), rnd(-18,20)].map(v=>v.toFixed(0));
-    const xAt = (p: number) => ltr
-      ? `calc(${p}vw - ${(160*(1-p/100)).toFixed(0)}px)`
-      : `calc(${100-p}vw - ${(160*(1-(100-p)/100)).toFixed(0)}px)`;
+
+    // Correct X at fraction p/100 for LTR: calc(p*vw + (p*3.2-160)px)
+    // For RTL: calc((100-p)*vw + (160-p*3.2)px)
+    const xAt = (p: number): string => {
+      if (ltr) {
+        const off = p * 3.2 - 160;
+        return `calc(${p}vw ${off >= 0 ? '+' : '-'} ${Math.abs(off).toFixed(0)}px)`;
+      } else {
+        const off = 160 - p * 3.2;
+        return `calc(${100 - p}vw ${off >= 0 ? '+' : '-'} ${Math.abs(off).toFixed(0)}px)`;
+      }
+    };
+
+    // 5-7 random waypoints with varied Y (up/down/flat segments randomly)
+    const numPts = Math.floor(rnd(5, 8));
+    const pts: Array<{p:number; y:number}> = [];
+    let curY = 0;
+    for (let i = 1; i < numPts; i++) {
+      const pct = (i / numPts) * 100;
+      // Each segment can go up, down, or stay relatively flat
+      const delta = rnd(-22, 22);
+      curY = Math.max(-38, Math.min(38, curY + delta));
+      pts.push({ p: pct, y: Math.round(curY) });
+    }
+
     const from = ltr ? "translateX(-160px) translateY(0)" : "translateX(calc(100vw + 160px)) translateY(0)";
     const to   = ltr ? "translateX(calc(100vw + 160px)) translateY(0)" : "translateX(-160px) translateY(0)";
+    let kf = `@keyframes ${kId}{0%{transform:${from}}`;
+    for (const {p, y} of pts) {
+      kf += `${p.toFixed(0)}%{transform:translateX(${xAt(p)}) translateY(${y}px)}`;
+    }
+    kf += `100%{transform:${to}}}`;
+
     const styleEl = document.createElement("style");
     styleEl.id = kId;
-    styleEl.textContent = `@keyframes ${kId}{`+
-      `0%{transform:${from}}`+
-      `25%{transform:translateX(${xAt(25)}) translateY(${y1}px)}`+
-      `50%{transform:translateX(${xAt(50)}) translateY(${y2}px)}`+
-      `75%{transform:translateX(${xAt(75)}) translateY(${y3}px)}`+
-      `100%{transform:${to}}}`;
+    styleEl.textContent = kf;
     document.head.appendChild(styleEl);
     return () => document.getElementById(kId)?.remove();
   }, [actor, isBird]);
@@ -537,7 +559,7 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
 
   const defaultMoveAnim = (() => {
     if ((isCat || isDog) && actor.stopFraction != null) return `cm_${actor.id} ${actor.durationS}s linear forwards`;
-    if (isBird) return `bf_${actor.id} ${actor.durationS}s ease-in-out forwards`;
+    if (isBird) return `bf_${actor.id} ${actor.durationS}s linear forwards`;
     return `${actor.direction === "ltr" ? "cityMoveLtr" : "cityMoveRtl"} ${actor.durationS}s linear forwards`;
   })();
   const moveAnim = speedAnim ?? defaultMoveAnim;
@@ -705,10 +727,11 @@ function PaperPlane({ active, onDone }: { active:boolean; onDone:()=>void }) {
       animation:`${animName} ${durRef.current.toFixed(1)}s ease-in-out forwards`,
     }}>
       <svg viewBox="0 0 30 22" width={30} height={22} aria-hidden>
-        <path d="M0,10 L30,0 L22,10 L30,20 Z"
+        {/* nose points RIGHT (direction of travel) */}
+        <path d="M30,10 L0,0 L8,10 L0,20 Z"
               stroke={c} strokeWidth={1.7} fill="none" strokeLinejoin="round"/>
-        <line x1="0"  y1="10" x2="22" y2="10" stroke={c} strokeWidth={1.2} strokeLinecap="round"/>
-        <path d="M22,10 L18,15"               stroke={c} strokeWidth={1.1} strokeLinecap="round"/>
+        <line x1="30" y1="10" x2="8" y2="10" stroke={c} strokeWidth={1.2} strokeLinecap="round"/>
+        <path d="M8,10 L12,15"                stroke={c} strokeWidth={1.1} strokeLinecap="round"/>
       </svg>
     </div>
   );
@@ -821,13 +844,21 @@ function CrowScene({ crow, onDone }: { crow:CrowInfo|null; onDone:()=>void }) {
     if (!crow) return;
     const kIn  = `crIn_${crow.id}`;
     const kOut = `crOut_${crow.id}`;
-    const fromX = crow.fromLeft ? "-180px" : "calc(100vw + 180px)";
-    const toX   = crow.fromLeft ? "calc(100vw + 180px)" : "-180px";
+    // Crow is at left:perchX% — translations must reach actual screen edges
+    const px = crow.perchX;
+    // fly-in: crow comes FROM the side it started, so it needs to travel perchX% + margin
+    const inFrom  = crow.fromLeft
+      ? `calc(-${px}vw - 180px)`          // start left of screen edge
+      : `calc(${100 - px}vw + 180px)`;    // start right of screen edge
+    // fly-out: crow exits to opposite side
+    const outTo   = crow.fromLeft
+      ? `calc(${100 - px}vw + 180px)`     // exit right screen edge
+      : `calc(-${px}vw - 180px)`;         // exit left screen edge
     const styleEl = document.createElement("style");
     styleEl.id = `crow_${crow.id}`;
     styleEl.textContent =
-      `@keyframes ${kIn}{from{transform:translateX(${fromX}) translateY(60px)}to{transform:none}}`+
-      `@keyframes ${kOut}{from{transform:none}to{transform:translateX(${toX}) translateY(-50px)}}`;
+      `@keyframes ${kIn}{from{transform:translateX(${inFrom}) translateY(60px)}to{transform:none}}`+
+      `@keyframes ${kOut}{from{transform:none}to{transform:translateX(${outTo}) translateY(-50px)}}`;
     document.head.appendChild(styleEl);
     setPhase("flying-in");
 
