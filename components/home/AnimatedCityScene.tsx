@@ -1312,7 +1312,14 @@ export function AnimatedCityScene() {
   const [planeActive,    setPlaneActive]   = useState(false);
   const [ibirdSpot,      setIbirdSpot]     = useState<BirdPerch | null>(null);
   const [icatSpot,       setIcatSpot]      = useState<CatSpot  | null>(null);
-  const [animEnabled,    setAnimEnabled]   = useState(true);
+  // Compute initial value synchronously to avoid race condition:
+  // if spawning effect sees the wrong initial value it clears its own timers.
+  const [animEnabled,    setAnimEnabled]   = useState<boolean>(() => {
+    if (typeof window === "undefined") return true; // SSR: always true, no timers run
+    const stored = localStorage.getItem("cityAnimation");
+    if (stored !== null) return stored !== "false";
+    return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
   // Mounted flag for createPortal (SSR guard)
   const [mounted,        setMounted]       = useState(false);
   const crowActive       = useRef(false);
@@ -1330,16 +1337,9 @@ export function AnimatedCityScene() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  // Sync toggle changes from Settings page (cross-tab via storage event,
+  // same-tab via dispatchEvent in settings/page.tsx)
   useEffect(() => {
-    // Read user's explicit preference first; fall back to OS reduced-motion
-    const stored = localStorage.getItem("cityAnimation");
-    if (stored !== null) {
-      setAnimEnabled(stored !== "false");
-    } else {
-      // No explicit preference: respect OS "prefers-reduced-motion"
-      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-      if (mq.matches) setAnimEnabled(false);
-    }
     const onStorage = (e: StorageEvent) => {
       if (e.key === "cityAnimation") setAnimEnabled(e.newValue !== "false");
     };
