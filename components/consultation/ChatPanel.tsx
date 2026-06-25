@@ -263,8 +263,8 @@ export function ChatPanel({
         </div>
       </div>
 
-      {/* Input */}
-      <div className="px-4 pt-3 pb-3 border-t flex-shrink-0" style={{ borderColor: "#E0D8CA" }}>
+      {/* Input — right padding reserves space for the fixed FAB button (56px + 24px offset + 8px gap) */}
+      <div className="px-4 pt-3 pb-3 border-t flex-shrink-0" style={{ borderColor: "#E0D8CA", paddingRight: "88px" }}>
         <div className="flex gap-2 items-end">
           <div className="flex-1 relative">
             <textarea
