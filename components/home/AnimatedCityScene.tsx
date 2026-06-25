@@ -604,8 +604,8 @@ type CrowPhase = "flying-in" | "perched" | "looking" | "cawing" | "flying-out";
 interface CrowInfo { id:string; fromLeft:boolean; perchX:number; perchY:number; }
 
 const CROW_PERCHES = [
-  { x:8,  y:65 }, { x:23, y:61 }, { x:44, y:69 },
-  { x:63, y:62 }, { x:80, y:66 },
+  { x:8,  y:40 }, { x:23, y:37 }, { x:44, y:42 },
+  { x:63, y:36 }, { x:80, y:41 },
 ];
 
 function SvgCrow({ phase, fromLeft }: { phase:CrowPhase; fromLeft:boolean }) {
