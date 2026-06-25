@@ -38,9 +38,9 @@ function getTimeMode(): TimeMode {
 
 // ─── Actor config ─────────────────────────────────────────────────────────────
 const WEIGHTS: Record<TimeMode, Partial<Record<ActorType, number>>> = {
-  day:     { cat: 28, human: 24, car: 22, dog: 11, bike: 8, bus: 7 },
-  evening: { cat: 38, human: 28, car: 14, dog: 9, bike: 5, bus: 6 },
-  night:   { cat: 73, human: 20, car: 5, bus: 2 },
+  day:     { cat: 30, human: 26, car: 24, dog: 12, bike: 8 },
+  evening: { cat: 42, human: 30, car: 16, dog: 6, bike: 6 },
+  night:   { cat: 75, human: 20, car: 5 },
 };
 function weightedPick(w: Partial<Record<ActorType, number>>): ActorType {
   const e = Object.entries(w) as [ActorType, number][];
@@ -56,7 +56,7 @@ const ACTOR_META: Record<ActorType, { viewW:number; viewH:number; dispH:number; 
   bus:   { viewW:134, viewH:80, dispH:58, bob:false },
   car:   { viewW:112, viewH:72, dispH:52, bob:false },
   bike:  { viewW:88,  viewH:72, dispH:58, bob:true  },
-  bird:  { viewW:24,  viewH:14, dispH:14, bob:false },
+  bird:  { viewW:24,  viewH:14, dispH:14, bob:false }, // kept for type completeness
 };
 const ACTOR_COLORS: Record<ActorType, string> = {
   cat:"#8C7E72", dog:"#8C7E72", human:"#7A6C60",
@@ -1469,22 +1469,18 @@ export function AnimatedCityScene() {
   useEffect(() => {
     if (!animEnabled) return;
     scheduleGround(rnd(2_000, 5_000));
-    scheduleBird(rnd(8_000, 18_000));
     scheduleCrow(rnd(10_000, 20_000));
     scheduleEscaper(rnd(60_000, 90_000));
     schedulePlane(rnd(20_000, 40_000));
-    scheduleIbird(rnd(45_000, 90_000));   // first interactive bird 45-90s after load
-    scheduleIcat(rnd(60_000, 120_000));   // first interactive cat 60-120s after load (offset from bird)
+    scheduleIcat(rnd(60_000, 120_000));
     return () => {
       if (groundTimer.current)  clearTimeout(groundTimer.current);
-      if (birdTimer.current)    clearTimeout(birdTimer.current);
       if (crowTimer.current)    clearTimeout(crowTimer.current);
       if (escaperTimer.current) clearTimeout(escaperTimer.current);
       if (planeTimer.current)   clearTimeout(planeTimer.current);
-      if (ibirdTimer.current)   clearTimeout(ibirdTimer.current);
       if (icatTimer.current)    clearTimeout(icatTimer.current);
     };
-  }, [animEnabled, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane, scheduleIbird, scheduleIcat]);
+  }, [animEnabled, scheduleGround, scheduleCrow, scheduleEscaper, schedulePlane, scheduleIcat]);
 
   const cityOpacity = 0.55; // fixed opacity — no dark modes since window lighting was removed
 
@@ -1513,9 +1509,6 @@ export function AnimatedCityScene() {
           )}
           <WindowEscaper active={escaperActive} onDone={handleEscaperDone}/>
           <PaperPlane active={planeActive} onDone={handlePlaneDone}/>
-          {ibirdSpot && (
-            <InteractiveBird key={ibirdSpot.id + Date.now()} spot={ibirdSpot} onDone={handleIbirdDone}/>
-          )}
           {icatSpot && (
             <InteractiveCat key={icatSpot.id + Date.now()} spot={icatSpot} onDone={handleIcatDone}/>
           )}
