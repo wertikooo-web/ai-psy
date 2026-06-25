@@ -940,7 +940,9 @@ function InteractiveCat({ spot, onDone }: { spot:CatSpot; onDone:()=>void }) {
 }
 
 // ─── Crow ─────────────────────────────────────────────────────────────────────
-type CrowPhase = "flying-in" | "perched" | "looking" | "cawing" | "flying-out";
+// Phases: flying-in → perched (profile) → looking (turns front) → sitting (tucks legs)
+//         → cawing (open beak) → flying-out (turns back, profile)
+type CrowPhase = "flying-in" | "perched" | "looking" | "sitting" | "cawing" | "flying-out";
 interface CrowInfo { id:string; fromLeft:boolean; perchX:number; perchY:number; }
 
 const CROW_PERCHES = [
@@ -949,11 +951,12 @@ const CROW_PERCHES = [
 ];
 
 function SvgCrow({ phase, fromLeft }: { phase:CrowPhase; fromLeft:boolean }) {
-  const c   = "#B8AFA6"; // sketch/outline style like other actors
-  const BK  = "#C8A870"; // beak/feet — warmer outline tone
+  const c   = "#B8AFA6";
+  const BK  = "#C8A870";
   const SW  = 2.0;
   const flying  = phase === "flying-in" || phase === "flying-out";
-  const looking = phase === "looking"   || phase === "cawing";
+  const frontal = phase === "looking" || phase === "sitting" || phase === "cawing";
+  const tucked  = phase === "sitting"  || phase === "cawing";
   const cawing  = phase === "cawing";
 
   const wL: React.CSSProperties = {
@@ -965,11 +968,62 @@ function SvgCrow({ phase, fromLeft }: { phase:CrowPhase; fromLeft:boolean }) {
     transformOrigin:"0% 80%", animation:"crowWingR 0.42s ease-in-out infinite",
   };
 
-  const body = (
+  // ── Front-facing view (looking / sitting / cawing) ─────────────────────────
+  if (frontal) {
+    // CSS transition on leg group: scaleY(0.58) from top = legs fold up toward body
+    const legStyle: React.CSSProperties = {
+      transform:       tucked ? "scaleY(0.58)" : "scaleY(1)",
+      transformBox:    "fill-box" as React.CSSProperties["transformBox"],
+      transformOrigin: "50% 0%",
+      transition:      "transform 0.8s ease-out",
+    };
+    return (
+      <svg viewBox="0 0 120 108" width={90} height={81} aria-hidden overflow="visible">
+        {/* Body: centered upright oval */}
+        <ellipse cx="60" cy="66" rx="18" ry="20" stroke={c} strokeWidth={SW} fill="none"/>
+        {/* Wings folded — visible as side arcs */}
+        <path d="M42,62 Q24,54 18,44 Q26,56 42,68" stroke={c} strokeWidth={SW} fill="none" strokeLinejoin="round"/>
+        <path d="M78,62 Q96,54 102,44 Q94,56 78,68" stroke={c} strokeWidth={SW} fill="none" strokeLinejoin="round"/>
+        {/* Wing feather hint */}
+        <path d="M44,60 Q38,54 44,50" stroke={c} strokeWidth={1.1} fill="none"/>
+        <path d="M76,60 Q82,54 76,50" stroke={c} strokeWidth={1.1} fill="none"/>
+        {/* Tail at bottom */}
+        <path d="M49,84 Q60,97 71,84" stroke={c} strokeWidth={SW} fill="none" strokeLinecap="round"/>
+        {/* Head: centered */}
+        <circle cx="60" cy="30" r="18" stroke={c} strokeWidth={SW} fill="none"/>
+        {/* Eyes: symmetric, pupils looking at viewer */}
+        <circle cx="51" cy="26" r="5.5" stroke={c} strokeWidth={1.4} fill="none"/>
+        <circle cx="52" cy="26" r="2.4" fill={c}/>
+        <circle cx="69" cy="26" r="5.5" stroke={c} strokeWidth={1.4} fill="none"/>
+        <circle cx="68" cy="26" r="2.4" fill={c}/>
+        {/* Beak: front-facing triangle pointing down */}
+        {cawing
+          ? <path d="M54,43 L66,43 L60,56 Z" stroke={BK} strokeWidth={1.5} fill="none" strokeLinejoin="round"/>
+          : <path d="M54,43 L66,43 L60,50 Z" stroke={BK} strokeWidth={1.5} fill="none" strokeLinejoin="round"/>
+        }
+        {/* Legs: animate tuck with CSS scaleY from top of group */}
+        <g style={legStyle} stroke={BK} strokeWidth="1.9" strokeLinecap="round" fill="none">
+          {/* left leg */}
+          <line x1="52" y1="84" x2="44" y2="96"/>
+          <line x1="44" y1="96" x2="36" y2="99"/>
+          <line x1="44" y1="96" x2="44" y2="103"/>
+          <line x1="44" y1="96" x2="52" y2="100"/>
+          {/* right leg */}
+          <line x1="68" y1="84" x2="76" y2="96"/>
+          <line x1="76" y1="96" x2="84" y2="99"/>
+          <line x1="76" y1="96" x2="76" y2="103"/>
+          <line x1="76" y1="96" x2="68" y2="100"/>
+        </g>
+      </svg>
+    );
+  }
+
+  // ── Profile view (flying-in, perched, flying-out) ──────────────────────────
+  const profileBody = (
     <g>
       {/* body */}
       <ellipse cx="60" cy="62" rx="22" ry="14" stroke={c} strokeWidth={SW} fill="none"/>
-      {/* tail (sitting) */}
+      {/* tail */}
       {!flying && <path d="M38,64 Q28,76 34,84 Q38,74 42,84 Q46,74 38,64" stroke={c} strokeWidth={SW} fill="none" strokeLinejoin="round"/>}
       {/* wings */}
       {flying ? (
@@ -979,7 +1033,6 @@ function SvgCrow({ phase, fromLeft }: { phase:CrowPhase; fromLeft:boolean }) {
         </>
       ) : (
         <>
-          {/* folded wings detail */}
           <path d="M38,60 Q34,50 40,44 Q46,50 44,60" stroke={c} strokeWidth={SW} fill="none" strokeLinejoin="round"/>
           <path d="M82,60 Q86,50 80,44 Q74,50 76,60" stroke={c} strokeWidth={SW} fill="none" strokeLinejoin="round"/>
           <path d="M40,60 Q38,53 43,49" stroke={c} strokeWidth={1.1} fill="none"/>
@@ -990,28 +1043,14 @@ function SvgCrow({ phase, fromLeft }: { phase:CrowPhase; fromLeft:boolean }) {
       )}
       {/* head */}
       <circle cx="75" cy="34" r="20" stroke={c} strokeWidth={SW} fill="none"/>
-      {/* eyes */}
-      {looking ? (
-        <>
-          <circle cx="67" cy="29" r="5.5" stroke={c} strokeWidth={1.4} fill="none"/>
-          <circle cx="65.5" cy="29" r="2.5" fill={c}/>
-          <circle cx="83" cy="29" r="5.5" stroke={c} strokeWidth={1.4} fill="none"/>
-          <circle cx="84.5" cy="29" r="2.5" fill={c}/>
-        </>
-      ) : (
-        <circle cx="84" cy="28" r="5.5" stroke={c} strokeWidth={1.4} fill="none"/>
-      )}
+      {/* eye (single — profile) */}
+      <circle cx="84" cy="28" r="5.5" stroke={c} strokeWidth={1.4} fill="none"/>
+      <circle cx="85" cy="28" r="2.5" fill={c}/>
       {/* beak */}
-      {looking ? (
-        cawing ? (
-          <path d="M67,44 L83,44 L76,56 Z" stroke={BK} strokeWidth={1.5} fill="none" strokeLinejoin="round"/>
-        ) : <path d="M67,44 L83,44 L76,52 Z" stroke={BK} strokeWidth={1.5} fill="none" strokeLinejoin="round"/>
-      ) : (
-        <path d="M93,30 L110,26 L93,38 Z" stroke={BK} strokeWidth={1.4} fill="none" strokeLinejoin="round"/>
-      )}
-      {/* feet (sitting) */}
+      <path d="M93,30 L110,26 L93,38 Z" stroke={BK} strokeWidth={1.4} fill="none" strokeLinejoin="round"/>
+      {/* feet */}
       {!flying && (
-        <g stroke={BK} strokeWidth="2.0" strokeLinecap="round">
+        <g stroke={BK} strokeWidth="2.0" strokeLinecap="round" fill="none">
           <line x1="52" y1="75" x2="44" y2="85"/>
           <line x1="44" y1="85" x2="36" y2="88"/>
           <line x1="44" y1="85" x2="44" y2="90"/>
@@ -1027,7 +1066,7 @@ function SvgCrow({ phase, fromLeft }: { phase:CrowPhase; fromLeft:boolean }) {
 
   return (
     <svg viewBox="0 0 120 100" width={90} height={75} aria-hidden overflow="visible">
-      {!fromLeft ? <g transform="scale(-1,1) translate(-120,0)">{body}</g> : body}
+      {!fromLeft ? <g transform="scale(-1,1) translate(-120,0)">{profileBody}</g> : profileBody}
     </svg>
   );
 }
@@ -1202,15 +1241,17 @@ function CrowScene({ crow, onDone }: { crow:CrowInfo|null; onDone:()=>void }) {
     document.head.appendChild(styleEl);
     setPhase("flying-in");
 
-    // Cumulative phase timing (ms): fly-in, perched, looking, cawing, fly-out
-    const cum = [2500, 4000, 4900, 7200, 9300];
+    // Timing: fly-in → perched (profile) → looking (turns front) →
+    //         sitting (tucks legs) → cawing (opens beak) → fly-out
+    const cum = [2400, 3600, 5000, 7000, 8400, 10000];
     const t1 = setTimeout(() => setPhase("perched"),    cum[0]);
     const t2 = setTimeout(() => setPhase("looking"),    cum[1]);
-    const t3 = setTimeout(() => setPhase("cawing"),     cum[2]);
-    const t4 = setTimeout(() => setPhase("flying-out"), cum[3]);
-    const t5 = setTimeout(() => onDone(),               cum[4]);
+    const t3 = setTimeout(() => setPhase("sitting"),    cum[2]);
+    const t4  = setTimeout(() => setPhase("cawing"),     cum[3]);
+    const t5  = setTimeout(() => setPhase("flying-out"), cum[4]);
+    const t6  = setTimeout(() => onDone(),               cum[5]);
     return () => {
-      [t1,t2,t3,t4,t5].forEach(clearTimeout);
+      [t1,t2,t3,t4,t5,t6].forEach(clearTimeout);
       document.getElementById(`crow_${crow.id}`)?.remove();
     };
   }, [crow, onDone]);
