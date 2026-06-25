@@ -1246,10 +1246,11 @@ function CrowScene({ crow, onDone }: { crow:CrowInfo|null; onDone:()=>void }) {
 
 // ─── City decorations ─────────────────────────────────────────────────────────
 function CityTint({ mode }: { mode:TimeMode }) {
-  if (mode === "day") return null;
+  // Very subtle warm tint in evening only — removed dark night overlay
+  // since window lighting was removed; city should stay light regardless of time
+  if (mode !== "evening") return null;
   return <div aria-hidden style={{ position:"absolute", inset:0, pointerEvents:"none",
-    background: mode === "evening" ? "rgba(200,140,60,0.08)" : "rgba(40,30,20,0.18)",
-    transition: "background 2s ease" }}/>;
+    background: "rgba(200,140,60,0.04)", transition: "background 2s ease" }}/>;
 }
 
 // ─── Spawn helpers (run inside setActors functional update) ───────────────────
@@ -1476,7 +1477,7 @@ export function AnimatedCityScene() {
     };
   }, [reducedMotion, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane, scheduleIbird, scheduleIcat]);
 
-  const cityOpacity = timeMode === "day" ? 0.55 : timeMode === "evening" ? 0.65 : 0.42;
+  const cityOpacity = 0.55; // fixed opacity — no dark modes since window lighting was removed
 
   return (
     <div aria-hidden style={{
