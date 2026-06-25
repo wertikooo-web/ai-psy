@@ -81,7 +81,7 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
       )}
 
       {client.currentFocus && (
-        <SectionBlock title="Текущий фокус">
+        <SectionBlock title="Запрос клиента">
           <p className="text-sm font-medium text-slate-700">{client.currentFocus}</p>
         </SectionBlock>
       )}
