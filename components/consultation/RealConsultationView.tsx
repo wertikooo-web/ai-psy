@@ -299,8 +299,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                 className="flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg transition-all whitespace-nowrap"
                 style={{
                   background: "rgba(255,255,255,0.10)",
-                  color:      "#C5AFA0",
-                  border:     "1px solid rgba(255,255,255,0.15)",
+                  color:      "#FFFFFF",
+                  border:     "1px solid rgba(255,255,255,0.30)",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.18)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; }}
