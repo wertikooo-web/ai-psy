@@ -293,7 +293,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                 <h2 className="text-sm font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
                 <p className="text-xs leading-tight mt-0.5" style={{ color: analysisStale ? "#C9A96E" : "#9C8E80" }}>
                   {analysisStale
-                    ? "Есть новые материалы"
+                    ? "Добавлены новые материалы. Обновите анализ, чтобы учесть их."
                     : analyzedMode
                       ? "Анализ актуален"
                       : "Результат анализа"}
@@ -319,9 +319,9 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = analysisStale ? "#C9A96E" : "rgba(255,255,255,0.10)";
                 }}
-                title={analysisStale ? "Добавлены новые материалы — нажмите для пересчёта" : "Запустить анализ заново"}
+                title="Обновить анализ"
               >
-                {analysisStale ? "⚡ Пересчитать" : "Обновить анализ"}
+                Обновить анализ
               </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5">
