@@ -38,8 +38,8 @@ function getTimeMode(): TimeMode {
 
 // ─── Actor config ─────────────────────────────────────────────────────────────
 const WEIGHTS: Record<TimeMode, Partial<Record<ActorType, number>>> = {
-  day:     { cat: 30, human: 26, car: 24, dog: 12, bike: 8 },
-  evening: { cat: 42, human: 30, car: 16, dog: 6, bike: 6 },
+  day:     { cat: 26, human: 22, car: 18, dog: 12, bike: 8, bus: 14 },
+  evening: { cat: 38, human: 28, car: 14, dog: 8, bike: 6, bus: 6 },
   night:   { cat: 75, human: 20, car: 5 },
 };
 function weightedPick(w: Partial<Record<ActorType, number>>): ActorType {
