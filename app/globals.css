@@ -73,6 +73,13 @@
 /* birds */
 @keyframes birdWingL { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(-28deg)} }
 @keyframes birdWingR { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(28deg)}  }
+/* dog pee stream */
+@keyframes peeStream {
+  0%   { opacity:0;    transform:scaleY(0);   }
+  12%  { opacity:0.85; transform:scaleY(1);   }
+  75%  { opacity:0.85; transform:scaleY(1);   }
+  100% { opacity:0;    transform:scaleY(0.6); }
+}
 @keyframes cityBob {
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-4px); }

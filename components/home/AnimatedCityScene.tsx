@@ -15,8 +15,9 @@ interface ActiveActor {
   durationS:     number;
   level:         GroundLevel | "sky";
   skyBottom?:    string;  // birds: e.g. "48%"
-  stopFraction?: number;  // cat only
-  pauseMs?:      number;  // cat only
+  stopFraction?: number;  // cat & dog: random stop point
+  pauseMs?:      number;  // cat: look pause / dog: pee pause
+  isPeeStop?:    boolean; // dog only: this stop is a pee stop
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -152,7 +153,19 @@ function SvgCat({ flip, c, isLooking }: { flip:boolean; c:string; isLooking:bool
   return flip ? <g transform="scale(-1,1) translate(-52,0)">{g}</g> : g;
 }
 
-function SvgDog({ flip, c }: { flip:boolean; c:string }) {
+function SvgDog({ flip, c, isPeeing = false, peeDurS = 3 }: { flip:boolean; c:string; isPeeing?:boolean; peeDurS?:number }) {
+  // Raised back-left leg: rotated ~80° upward from hip
+  const raisedLegStyle: React.CSSProperties = {
+    transformBox:    "fill-box" as React.CSSProperties["transformBox"],
+    transformOrigin: "100% 0%", // pivot at (16,44) = right edge top of bounding box
+    transform:       "rotate(-82deg)",
+  };
+  const streamStyle: React.CSSProperties = {
+    transformBox:    "fill-box" as React.CSSProperties["transformBox"],
+    transformOrigin: "50% 0%",
+    animation:       `peeStream ${peeDurS.toFixed(1)}s ease-in-out forwards`,
+  };
+
   const g = (
     <g>
       <ellipse cx="27" cy="34" rx="18" ry="10" stroke={c} strokeWidth={SW} fill="none"/>
@@ -161,16 +174,46 @@ function SvgDog({ flip, c }: { flip:boolean; c:string }) {
       <path d="M49,16 Q58,7 56,22"              stroke={c} strokeWidth={SW} fill="none" strokeLinecap="round"/>
       <circle cx="46" cy="20" r="1.2"           fill={c}/>
       <ellipse cx="50" cy="25" rx="3" ry="2"    stroke={c} strokeWidth={1.4} fill="none"/>
+      {/* Tail */}
       <g style={{ transformBox:"fill-box" as React.CSSProperties["transformBox"], transformOrigin:"100% 100%", animation:"dogTail 0.5s ease-in-out infinite" }}>
         <path d="M9,28 Q-1,13 7,6"              stroke={c} strokeWidth={SW} fill="none" strokeLinecap="round"/>
       </g>
-      <g style={legG("dogLegB 0.44s ease-in-out infinite")}>
-        <line x1="16" y1="44" x2="12" y2="55"  stroke={c} strokeWidth={SW} strokeLinecap="round"/>
-        <line x1="24" y1="44" x2="27" y2="55"  stroke={c} strokeWidth={SW} strokeLinecap="round"/>
-      </g>
-      <g style={legG("dogLegF 0.44s ease-in-out infinite")}>
-        <line x1="32" y1="44" x2="28" y2="55"  stroke={c} strokeWidth={SW} strokeLinecap="round"/>
-        <line x1="39" y1="44" x2="43" y2="55"  stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+
+      {/* Back legs */}
+      {isPeeing ? (
+        <>
+          {/* Left back leg RAISED */}
+          <g style={raisedLegStyle}>
+            <line x1="16" y1="44" x2="12" y2="55" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+            <line x1="12" y1="55" x2="9"  y2="62" stroke={c} strokeWidth={SW-0.3} strokeLinecap="round"/>
+          </g>
+          {/* Right back leg — standing still */}
+          <line x1="24" y1="44" x2="27" y2="56"   stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+          <line x1="27" y1="56" x2="25" y2="62"   stroke={c} strokeWidth={SW-0.3} strokeLinecap="round"/>
+          {/* Pee stream — dotted arc downward from raised-leg area */}
+          <g style={streamStyle}>
+            <line x1="14" y1="46" x2="10" y2="62"
+                  stroke={c} strokeWidth={1.6}
+                  strokeDasharray="1.8 2.8"
+                  strokeLinecap="round"
+                  opacity="0.82"/>
+            {/* Small splash dots at ground */}
+            <circle cx="9"  cy="63" r="1.0" fill={c} opacity="0.5"/>
+            <circle cx="11" cy="65" r="0.8" fill={c} opacity="0.35"/>
+            <circle cx="7"  cy="65" r="0.7" fill={c} opacity="0.3"/>
+          </g>
+        </>
+      ) : (
+        <g style={legG("dogLegB 0.44s ease-in-out infinite")}>
+          <line x1="16" y1="44" x2="12" y2="55"  stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+          <line x1="24" y1="44" x2="27" y2="55"  stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+        </g>
+      )}
+
+      {/* Front legs */}
+      <g style={legG(isPeeing ? "none" : "dogLegF 0.44s ease-in-out infinite")}>
+        <line x1="32" y1="44" x2="28" y2="55"    stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+        <line x1="39" y1="44" x2="43" y2="55"    stroke={c} strokeWidth={SW} strokeLinecap="round"/>
       </g>
     </g>
   );
@@ -283,11 +326,13 @@ interface ActorElProps { actor: ActiveActor; onFinish: (id:string) => void; }
 
 function ActorEl({ actor, onFinish }: ActorElProps) {
   const [isLooking, setIsLooking] = useState(false);
+  const [isPeeing,  setIsPeeing]  = useState(false);
   const meta   = ACTOR_META[actor.type];
   const color  = ACTOR_COLORS[actor.type];
   const flip   = actor.direction === "rtl";
   const dispW  = Math.round(meta.dispH * (meta.viewW / meta.viewH));
   const isCat  = actor.type === "cat";
+  const isDog  = actor.type === "dog";
   const isBird = actor.type === "bird";
 
   // Auto-remove when crossing completes
@@ -296,11 +341,12 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     return () => clearTimeout(t);
   }, [actor.id, actor.durationS, onFinish]);
 
-  // Cat pause-and-look: inject per-actor CSS keyframe
+  // Shared: inject pause keyframe for cat (look) and dog (pee)
   useEffect(() => {
-    if (!isCat || actor.stopFraction == null || actor.pauseMs == null) return;
-    const sf  = actor.stopFraction;
-    const pf  = actor.pauseMs / (actor.durationS * 1000);
+    const needsPause = (isCat || isDog) && actor.stopFraction != null && actor.pauseMs != null;
+    if (!needsPause) return;
+    const sf  = actor.stopFraction!;
+    const pf  = actor.pauseMs! / (actor.durationS * 1000);
     const k1  = sf;
     const k2  = Math.min(sf + pf, 0.97);
     const kId = `cm_${actor.id}`;
@@ -312,14 +358,17 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     styleEl.id = kId;
     styleEl.textContent = `@keyframes ${kId}{0%{transform:translateX(${fromPos})}${(k1*100).toFixed(2)}%{transform:translateX(${stopPos})}${(k2*100).toFixed(2)}%{transform:translateX(${stopPos})}100%{transform:translateX(${toPos})}}`;
     document.head.appendChild(styleEl);
-    const t1 = window.setTimeout(() => setIsLooking(true),  sf * actor.durationS * 1000 - 100);
-    const t2 = window.setTimeout(() => setIsLooking(false), (sf + pf) * actor.durationS * 1000 + 100);
+
+    const onStart  = sf * actor.durationS * 1000 - 100;
+    const onEnd    = (sf + pf) * actor.durationS * 1000 + 100;
+    const t1 = window.setTimeout(() => { if (isCat) setIsLooking(true);  if (isDog) setIsPeeing(true);  }, onStart);
+    const t2 = window.setTimeout(() => { if (isCat) setIsLooking(false); if (isDog) setIsPeeing(false); }, onEnd);
     return () => {
       document.getElementById(kId)?.remove();
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [actor, isCat, dispW]);
+  }, [actor, isCat, isDog, dispW]);
 
   // Level config
   const levelCfg  = !isBird ? LEVEL_CFG[actor.level as GroundLevel] : null;
@@ -328,7 +377,8 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     : `${BOTTOM_BASE[actor.type] + (levelCfg?.extraBottom ?? 0)}px`;
   const scale = levelCfg?.scale ?? 1.0;
 
-  const moveAnim = isCat && actor.stopFraction != null
+  const hasCustomAnim = (isCat || isDog) && actor.stopFraction != null;
+  const moveAnim = hasCustomAnim
     ? `cm_${actor.id} ${actor.durationS}s linear forwards`
     : `${actor.direction === "ltr" ? "cityMoveLtr" : "cityMoveRtl"} ${actor.durationS}s linear forwards`;
 
@@ -349,7 +399,7 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
           style={bobStyle}
         >
           {actor.type === "cat"   && <SvgCat   flip={flip} c={color} isLooking={isLooking}/>}
-          {actor.type === "dog"   && <SvgDog   flip={flip} c={color}/>}
+          {actor.type === "dog"   && <SvgDog   flip={flip} c={color} isPeeing={isPeeing} peeDurS={(actor.pauseMs ?? 3000)/1000}/>}
           {actor.type === "human" && <SvgHuman flip={flip} c={color}/>}
           {actor.type === "car"   && <SvgCar   flip={flip} c={color}/>}
           {actor.type === "bike"  && <SvgBike  flip={flip} c={color}/>}
@@ -393,9 +443,13 @@ function makeGroundActor(prev: ActiveActor[]): ActiveActor | null {
   const type         = weightedPick(WEIGHTS[mode]);
   const direction: Direction = Math.random() > 0.5 ? "ltr" : "rtl";
   const durationS    = parseFloat(rnd(28, 42).toFixed(1));
-  const stopFraction = type === "cat" ? parseFloat(rnd(0.25, 0.68).toFixed(2)) : undefined;
-  const pauseMs      = type === "cat" ? Math.round(rnd(2000, 3200)) : undefined;
-  return { id: crypto.randomUUID(), type, direction, durationS, level, stopFraction, pauseMs };
+  const isCatStop = type === "cat";
+  const isDogPee  = type === "dog" && Math.random() < 0.55; // 55% dogs stop to pee
+  const stopFraction = (isCatStop || isDogPee) ? parseFloat(rnd(0.28, 0.65).toFixed(2)) : undefined;
+  const pauseMs      = isCatStop ? Math.round(rnd(2000, 3200))
+                     : isDogPee  ? Math.round(rnd(2800, 4500)) : undefined;
+  const isPeeStop = isDogPee ? true : undefined;
+  return { id: crypto.randomUUID(), type, direction, durationS, level, stopFraction, pauseMs, isPeeStop };
 }
 
 function makeBirdActor(): ActiveActor {
