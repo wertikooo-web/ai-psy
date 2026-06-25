@@ -19,7 +19,10 @@ interface ActiveActor {
   stopFraction?: number;  // cat & dog: random stop point
   pauseMs?:      number;  // cat: look pause / dog: pee pause
   isPeeStop?:    boolean; // dog only: this stop is a pee stop
-  humanVariant?: HumanVariant; // human only
+  humanVariant?:         HumanVariant; // human only
+  humanStopFraction?:    number;       // human: pause point (0-1)
+  humanStopMs?:          number;       // human: pause duration ms
+  humanReverseFraction?: number;       // human: turn-around point (0-1)
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -226,34 +229,41 @@ function SvgDog({ flip, c, isPeeing = false, peeDurS = 3, speedMulti = 1 }: { fl
 
 // Profile-view walking human (facing right by default; flip mirrors to face left)
 // Draw order: back leg → back arm → torso → front arm → front leg → head (z-layers)
-function SvgHuman({ flip, c, variant = "man", speedMulti = 1 }: {
-  flip:boolean; c:string; variant?:HumanVariant; speedMulti?:number
+// Contralateral gait: back leg pairs with front arm (opposite-side swing)
+function SvgHuman({ flip, c, variant = "man", speedMulti = 1, isStopped = false }: {
+  flip:boolean; c:string; variant?:HumanVariant; speedMulti?:number; isStopped?:boolean
 }) {
   const legDur = (0.50 / speedMulti).toFixed(2);
   const armDur = (0.50 / speedMulti).toFixed(2);
+  const ps  = isStopped ? "paused" : "running";
   const LSW = 2.1;
-  const pv  = (anim: string): React.CSSProperties => ({ ...legG(anim), transformOrigin:"50% 0%" });
+  // pv: pivot at top of limb; ps = animationPlayState (paused when standing still)
+  const pv = (anim: string): React.CSSProperties => ({
+    transformBox:       "fill-box" as React.CSSProperties["transformBox"],
+    transformOrigin:    "50% 0%",
+    animation:          anim,
+    animationPlayState: ps,
+  });
 
   let g: React.ReactNode;
 
   if (variant === "child") {
-    // Big head, compact body, waddly side stride
     g = (
       <g>
-        {/* back leg */}
+        {/* back leg — swings same direction as front arm (contralateral) */}
         <g style={pv(`humanLegF ${legDur}s ease-in-out infinite`)}>
           <path d="M19,36 Q16,44 15,50" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
           <path d="M15,50 Q14,56 14,60" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
           <line x1="14" y1="60" x2="8"  y2="61" stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
         </g>
-        {/* back arm */}
-        <g style={pv(`humanArmF ${armDur}s ease-in-out infinite`)}>
+        {/* back arm — opposite phase to back leg (contralateral pair: backLeg+frontArm) */}
+        <g style={pv(`humanArmB ${armDur}s ease-in-out infinite`)}>
           <path d="M18,22 Q13,29 11,35" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
         </g>
         {/* body */}
         <ellipse cx="22" cy="29" rx="7" ry="8" stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.09}/>
-        {/* front arm */}
-        <g style={pv(`humanArmB ${armDur}s ease-in-out infinite`)}>
+        {/* front arm — same phase as back leg (contralateral) */}
+        <g style={pv(`humanArmF ${armDur}s ease-in-out infinite`)}>
           <path d="M24,22 Q29,29 31,35" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
         </g>
         {/* front leg */}
@@ -276,8 +286,8 @@ function SvgHuman({ flip, c, variant = "man", speedMulti = 1 }: {
           <path d="M16,69 Q15,72 15,74" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
           <line x1="15" y1="74" x2="9"  y2="74" stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
         </g>
-        {/* back arm */}
-        <g style={pv(`humanArmF ${armDur}s ease-in-out infinite`)}>
+        {/* back arm — contralateral: pairs with front leg */}
+        <g style={pv(`humanArmB ${armDur}s ease-in-out infinite`)}>
           <path d="M18,21 Q13,30 12,37" stroke={c} strokeWidth={1.9} strokeLinecap="round" fill="none"/>
           <path d="M12,37 Q11,44 11,47" stroke={c} strokeWidth={1.5} strokeLinecap="round" fill="none"/>
         </g>
@@ -287,8 +297,8 @@ function SvgHuman({ flip, c, variant = "man", speedMulti = 1 }: {
         {/* skirt in profile */}
         <path d="M16,44 Q10,53 12,57 L30,57 Q32,53 25,44"
               stroke={c} strokeWidth={SW-0.2} fill={c} fillOpacity={0.09} strokeLinejoin="round"/>
-        {/* front arm */}
-        <g style={pv(`humanArmB ${armDur}s ease-in-out infinite`)}>
+        {/* front arm — contralateral: pairs with back leg */}
+        <g style={pv(`humanArmF ${armDur}s ease-in-out infinite`)}>
           <path d="M24,21 Q29,30 30,37" stroke={c} strokeWidth={1.9} strokeLinecap="round" fill="none"/>
           <path d="M30,37 Q31,44 31,47" stroke={c} strokeWidth={1.5} strokeLinecap="round" fill="none"/>
         </g>
@@ -300,9 +310,7 @@ function SvgHuman({ flip, c, variant = "man", speedMulti = 1 }: {
         </g>
         {/* head */}
         <circle cx="24" cy="8" r="7.5" stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.07}/>
-        {/* hair bun/shape */}
         <ellipse cx="21" cy="5" rx="9" ry="5" stroke={c} strokeWidth={1.3} fill={c} fillOpacity={0.12}/>
-        {/* nose */}
         <path d="M31,8 Q34,9 31,12" stroke={c} strokeWidth={1.1} fill="none"/>
       </g>
     );
@@ -316,8 +324,8 @@ function SvgHuman({ flip, c, variant = "man", speedMulti = 1 }: {
           <path d="M15,62 Q14,68 14,72" stroke={c} strokeWidth={LSW-0.1} strokeLinecap="round" fill="none"/>
           <line x1="14" y1="72" x2="8"  y2="73" stroke={c} strokeWidth={1.5} strokeLinecap="round"/>
         </g>
-        {/* back arm */}
-        <g style={pv(`humanArmF ${armDur}s ease-in-out infinite`)}>
+        {/* back arm — contralateral: pairs with front leg */}
+        <g style={pv(`humanArmB ${armDur}s ease-in-out infinite`)}>
           <path d="M19,21 Q14,30 12,37" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
           <path d="M12,37 Q11,44 11,47" stroke={c} strokeWidth={LSW-0.4} strokeLinecap="round" fill="none"/>
         </g>
@@ -326,8 +334,8 @@ function SvgHuman({ flip, c, variant = "man", speedMulti = 1 }: {
               stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.11} strokeLinejoin="round"/>
         {/* belt */}
         <line x1="17" y1="40" x2="25" y2="40" stroke={c} strokeWidth={0.9} opacity={0.45}/>
-        {/* front arm */}
-        <g style={pv(`humanArmB ${armDur}s ease-in-out infinite`)}>
+        {/* front arm — contralateral: pairs with back leg */}
+        <g style={pv(`humanArmF ${armDur}s ease-in-out infinite`)}>
           <path d="M24,21 Q29,30 31,37" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
           <path d="M31,37 Q32,44 32,47" stroke={c} strokeWidth={LSW-0.4} strokeLinecap="round" fill="none"/>
         </g>
@@ -339,7 +347,6 @@ function SvgHuman({ flip, c, variant = "man", speedMulti = 1 }: {
         </g>
         {/* head */}
         <circle cx="24" cy="8" r="7.5" stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.07}/>
-        {/* nose bump */}
         <path d="M31,8 Q34,9 31,12" stroke={c} strokeWidth={1.1} fill="none"/>
       </g>
     );
@@ -432,19 +439,29 @@ function SvgBird({ flip, c }: { flip:boolean; c:string }) {
 interface ActorElProps { actor: ActiveActor; onFinish: (id:string) => void; }
 
 function ActorEl({ actor, onFinish }: ActorElProps) {
-  const [isLooking,  setIsLooking]  = useState(false);
-  const [isPeeing,   setIsPeeing]   = useState(false);
-  const [speedMulti, setSpeedMulti] = useState(1);   // 1 → 2 → 4 → 8 on each click
-  const [speedAnim,  setSpeedAnim]  = useState<string|null>(null);
+  const [isLooking,      setIsLooking]      = useState(false);
+  const [isPeeing,       setIsPeeing]       = useState(false);
+  const [isHumanStopped, setIsHumanStopped] = useState(false);
+  const [speedMulti,     setSpeedMulti]     = useState(1);
+  const [speedAnim,      setSpeedAnim]      = useState<string|null>(null);
+  const [flipDir,        setFlipDir]        = useState(actor.direction === "rtl");
+  // humanRevAnim is initialised eagerly so the div has a valid animation string from first render
+  const [humanRevAnim,   setHumanRevAnim]   = useState<string|null>(() => {
+    if (actor.type !== "human" || actor.humanReverseFraction == null) return null;
+    const dur1 = actor.durationS * actor.humanReverseFraction;
+    return `hr1_${actor.id} ${dur1.toFixed(2)}s linear forwards`;
+  });
+
   const startTime  = useRef(Date.now());
   const finishRef  = useRef<ReturnType<typeof setTimeout>|null>(null);
-  const meta   = ACTOR_META[actor.type];
-  const color  = ACTOR_COLORS[actor.type];
-  const flip   = actor.direction === "rtl";
-  const dispW  = Math.round(meta.dispH * (meta.viewW / meta.viewH));
-  const isCat  = actor.type === "cat";
-  const isDog  = actor.type === "dog";
-  const isBird = actor.type === "bird";
+  const meta    = ACTOR_META[actor.type];
+  const color   = ACTOR_COLORS[actor.type];
+  const dispW   = Math.round(meta.dispH * (meta.viewW / meta.viewH));
+  const isCat   = actor.type === "cat";
+  const isDog   = actor.type === "dog";
+  const isHuman = actor.type === "human";
+  const isBird  = actor.type === "bird";
+  const flip    = isHuman ? flipDir : actor.direction === "rtl";
 
   // Auto-remove when crossing completes
   useEffect(() => {
@@ -452,7 +469,7 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     return () => { if (finishRef.current) clearTimeout(finishRef.current); };
   }, [actor.id, actor.durationS, onFinish]);
 
-  // Each click doubles speed; uses negative animation-delay to preserve position
+  // Click: doubles speed; uses negative animation-delay to preserve position
   const handleClick = useCallback(() => {
     setSpeedMulti(prev => Math.min(prev * 2, 8));
   }, []);
@@ -465,6 +482,8 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     const negDelay = -(progress * newDur);
     const kName    = (isCat || isDog) && actor.stopFraction != null
       ? `cm_${actor.id}`
+      : isHuman && actor.humanStopFraction != null
+      ? `hm_${actor.id}`
       : isBird ? `bf_${actor.id}`
       : actor.direction === "ltr" ? "cityMoveLtr" : "cityMoveRtl";
     setSpeedAnim(`${kName} ${newDur.toFixed(2)}s linear ${negDelay.toFixed(2)}s forwards`);
@@ -473,7 +492,7 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     finishRef.current = setTimeout(() => onFinish(actor.id), remaining * 1000 + 300);
   }, [speedMulti]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Shared: inject pause keyframe for cat (look) and dog (pee)
+  // Cat (look) and dog (pee): inject pause keyframe + visual state
   useEffect(() => {
     const needsPause = (isCat || isDog) && actor.stopFraction != null && actor.pauseMs != null;
     if (!needsPause) return;
@@ -490,9 +509,8 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
     styleEl.id = kId;
     styleEl.textContent = `@keyframes ${kId}{0%{transform:translateX(${fromPos})}${(k1*100).toFixed(2)}%{transform:translateX(${stopPos})}${(k2*100).toFixed(2)}%{transform:translateX(${stopPos})}100%{transform:translateX(${toPos})}}`;
     document.head.appendChild(styleEl);
-
-    const onStart  = sf * actor.durationS * 1000 - 100;
-    const onEnd    = (sf + pf) * actor.durationS * 1000 + 100;
+    const onStart = sf * actor.durationS * 1000 - 100;
+    const onEnd   = (sf + pf) * actor.durationS * 1000 + 100;
     const t1 = window.setTimeout(() => { if (isCat) setIsLooking(true);  if (isDog) setIsPeeing(true);  }, onStart);
     const t2 = window.setTimeout(() => { if (isCat) setIsLooking(false); if (isDog) setIsPeeing(false); }, onEnd);
     return () => {
@@ -501,6 +519,86 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
       window.clearTimeout(t2);
     };
   }, [actor, isCat, isDog, dispW]);
+
+  // Human stop: pause at random point, legs freeze, then continue
+  useEffect(() => {
+    if (!isHuman || actor.humanStopFraction == null || actor.humanStopMs == null) return;
+    const sf  = actor.humanStopFraction;
+    const pf  = actor.humanStopMs / (actor.durationS * 1000);
+    const k1  = sf;
+    const k2  = Math.min(sf + pf, 0.97);
+    const kId = `hm_${actor.id}`;
+    const stopVw  = actor.direction === "ltr" ? sf : (1 - sf);
+    const stopPos = `calc(${stopVw * 100}vw - ${dispW / 2}px)`;
+    const fromPos = actor.direction === "ltr" ? "-160px" : "calc(100vw + 160px)";
+    const toPos   = actor.direction === "ltr" ? "calc(100vw + 160px)" : "-160px";
+    const styleEl = document.createElement("style");
+    styleEl.id = kId;
+    styleEl.textContent = `@keyframes ${kId}{0%{transform:translateX(${fromPos})}${(k1*100).toFixed(2)}%{transform:translateX(${stopPos})}${(k2*100).toFixed(2)}%{transform:translateX(${stopPos})}100%{transform:translateX(${toPos})}}`;
+    document.head.appendChild(styleEl);
+    const onStart = sf * actor.durationS * 1000 - 100;
+    const onEnd   = (sf + pf) * actor.durationS * 1000 + 100;
+    const t1 = window.setTimeout(() => setIsHumanStopped(true),  onStart);
+    const t2 = window.setTimeout(() => setIsHumanStopped(false), onEnd);
+    return () => {
+      document.getElementById(kId)?.remove();
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [actor, isHuman, dispW]);
+
+  // Human reverse: walk to reversePoint, flip, walk back to origin edge
+  useEffect(() => {
+    if (!isHuman || actor.humanReverseFraction == null) return;
+    const rf  = actor.humanReverseFraction;
+    const ltr = actor.direction === "ltr";
+    const dur1 = actor.durationS * rf;
+
+    // Position at reverse point (same formula as bird x-calculation)
+    const revOff = rf * 320 - 160;
+    const revPos = ltr
+      ? `calc(${(rf * 100).toFixed(1)}vw ${revOff >= 0 ? '+' : '-'} ${Math.abs(revOff).toFixed(0)}px)`
+      : `calc(${((1 - rf) * 100).toFixed(1)}vw ${(-revOff) >= 0 ? '+' : '-'} ${Math.abs(-revOff).toFixed(0)}px)`;
+
+    const fromPos = ltr ? "translateX(-160px)" : "translateX(calc(100vw + 160px))";
+    const oppEdge = ltr ? "translateX(-160px)"  : "translateX(calc(100vw + 160px))"; // returns to same edge
+
+    const kId1 = `hr1_${actor.id}`;
+    const kId2 = `hr2_${actor.id}`;
+
+    // Phase 1: walk to reverse point
+    const s1 = document.createElement("style");
+    s1.id = kId1;
+    s1.textContent = `@keyframes ${kId1}{from{transform:${fromPos}}to{transform:translateX(${revPos})}}`;
+    document.head.appendChild(s1);
+
+    // At reverse point: freeze legs + flip
+    const t1 = setTimeout(() => {
+      setIsHumanStopped(true);
+      setFlipDir(d => !d);
+    }, dur1 * 1000);
+
+    // After 400ms pause: resume in opposite direction
+    const t2 = setTimeout(() => {
+      setIsHumanStopped(false);
+      const s2 = document.createElement("style");
+      s2.id = kId2;
+      s2.textContent = `@keyframes ${kId2}{from{transform:translateX(${revPos})}to{transform:${oppEdge}}}`;
+      document.head.appendChild(s2);
+      setHumanRevAnim(`${kId2} ${dur1.toFixed(2)}s linear forwards`);
+    }, dur1 * 1000 + 400);
+
+    // Override finish timer: total = phase1 + pause + phase2
+    const totalMs = (dur1 * 2 + 0.4 + 0.6) * 1000;
+    if (finishRef.current) clearTimeout(finishRef.current);
+    finishRef.current = setTimeout(() => onFinish(actor.id), totalMs);
+
+    return () => {
+      clearTimeout(t1); clearTimeout(t2);
+      document.getElementById(kId1)?.remove();
+      document.getElementById(kId2)?.remove();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Bird: inject curved per-bird keyframe with correct X formula and natural Y trajectory
   useEffect(() => {
@@ -559,10 +657,12 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
 
   const defaultMoveAnim = (() => {
     if ((isCat || isDog) && actor.stopFraction != null) return `cm_${actor.id} ${actor.durationS}s linear forwards`;
+    if (isHuman && actor.humanStopFraction != null)     return `hm_${actor.id} ${actor.durationS}s linear forwards`;
     if (isBird) return `bf_${actor.id} ${actor.durationS}s linear forwards`;
     return `${actor.direction === "ltr" ? "cityMoveLtr" : "cityMoveRtl"} ${actor.durationS}s linear forwards`;
   })();
-  const moveAnim = speedAnim ?? defaultMoveAnim;
+  // humanRevAnim overrides everything (phase 1/2 for reversing humans); speedAnim overrides for click acceleration
+  const moveAnim = humanRevAnim ?? speedAnim ?? defaultMoveAnim;
 
   const isClickable = (isCat || isDog) && speedMulti < 8;
   const bobStyle: React.CSSProperties = isLooking ? {} : meta.bob
@@ -589,10 +689,158 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
         >
           {actor.type === "cat"   && <SvgCat   flip={flip} c={color} isLooking={isLooking} speedMulti={speedMulti}/>}
           {actor.type === "dog"   && <SvgDog   flip={flip} c={color} isPeeing={isPeeing} peeDurS={(actor.pauseMs ?? 3000)/1000} speedMulti={speedMulti}/>}
-          {actor.type === "human" && <SvgHuman flip={flip} c={color} variant={actor.humanVariant} speedMulti={speedMulti}/>}
+          {actor.type === "human" && <SvgHuman flip={flip} c={color} variant={actor.humanVariant} speedMulti={speedMulti} isStopped={isHumanStopped}/>}
           {actor.type === "car"   && <SvgCar   flip={flip} c={color}/>}
           {actor.type === "bike"  && <SvgBike  flip={flip} c={color}/>}
           {actor.type === "bird"  && <SvgBird  flip={flip} c={color}/>}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// ─── Interactive bird perch ───────────────────────────────────────────────────
+const BIRD_PERCH_SPOTS = [
+  { id:"bp1", x:13, y:55 },
+  { id:"bp2", x:34, y:60 },
+  { id:"bp3", x:57, y:57 },
+  { id:"bp4", x:77, y:61 },
+] as const;
+type BirdPerch = typeof BIRD_PERCH_SPOTS[number];
+
+function SvgBirdSit({ c }: { c:string }) {
+  return (
+    <g>
+      <ellipse cx="13" cy="9"  rx="8" ry="5"   stroke={c} strokeWidth={1.5} fill="none"/>
+      <path d="M5,10 Q2,13 3,16"               stroke={c} strokeWidth={1.3} fill="none" strokeLinecap="round"/>
+      <circle  cx="19" cy="5"  r="5"            stroke={c} strokeWidth={1.5} fill="none"/>
+      <circle  cx="21" cy="4"  r="1"            fill={c}/>
+      <path d="M23,5 L27,6 L23,7"              stroke="#C8A870" strokeWidth={1.1} strokeLinecap="round"/>
+      <path d="M7,9 Q13,7 17,8"               stroke={c} strokeWidth={1.0} fill="none"/>
+      <line x1="11" y1="14" x2="9"  y2="17"   stroke="#C8A870" strokeWidth={1.3} strokeLinecap="round"/>
+      <line x1="9"  y1="17" x2="6"  y2="18"   stroke="#C8A870" strokeWidth={1.1} strokeLinecap="round"/>
+      <line x1="9"  y1="17" x2="9"  y2="20"   stroke="#C8A870" strokeWidth={1.1} strokeLinecap="round"/>
+      <line x1="15" y1="14" x2="17" y2="17"   stroke="#C8A870" strokeWidth={1.3} strokeLinecap="round"/>
+      <line x1="17" y1="17" x2="20" y2="18"   stroke="#C8A870" strokeWidth={1.1} strokeLinecap="round"/>
+      <line x1="17" y1="17" x2="17" y2="20"   stroke="#C8A870" strokeWidth={1.1} strokeLinecap="round"/>
+    </g>
+  );
+}
+
+function InteractiveBird({ spot, onDone }: { spot:BirdPerch; onDone:()=>void }) {
+  const [visible, setVisible] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [clicked, setClicked] = useState(false);
+  const flyDir  = useRef(Math.random() > 0.5 ? 1 : -1);
+  const timersB = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const c = "#B8AFA6";
+
+  const atB = (ms:number, fn:()=>void) => { const t = setTimeout(fn, ms); timersB.current.push(t); };
+  const clearB = useCallback(() => { timersB.current.forEach(clearTimeout); timersB.current = []; }, []);
+
+  useEffect(() => {
+    atB(40,  () => setVisible(true));
+    const idleMs = Math.round(rnd(10_000, 15_000));
+    atB(1200 + idleMs, () => { setLeaving(true); atB(900, onDone); });
+    return clearB;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleClick = useCallback(() => {
+    if (clicked || leaving) return;
+    setClicked(true);
+    clearB();
+    setLeaving(true);
+    setTimeout(onDone, 900);
+  }, [clicked, leaving, clearB, onDone]);
+
+  const tx = leaving ? `${flyDir.current * 32}vw` : "0px";
+  const ty = !visible ? "-45px" : leaving ? "-55px" : "0px";
+  const op = !visible || leaving ? 0 : 1;
+
+  return (
+    <div
+      role="button" tabIndex={0} aria-label="Спугнуть птицу"
+      style={{
+        position:"absolute", left:`${spot.x}%`, bottom:`${spot.y}%`,
+        pointerEvents:"auto", cursor:"pointer",
+        padding:"14px", margin:"-14px",
+        transition:"transform 0.85s cubic-bezier(0.2,0,0.1,1), opacity 0.65s ease",
+        transform:`translateX(${tx}) translateY(${ty})`,
+        opacity:op,
+      }}
+      onClick={handleClick}
+      onKeyDown={(e)=>{ if(e.key==="Enter"||e.key===" ") handleClick(); }}
+    >
+      <svg viewBox="0 0 30 22" width={30} height={22} aria-hidden>
+        <SvgBirdSit c={c}/>
+      </svg>
+    </div>
+  );
+}
+
+// ─── Interactive cat from building edge ───────────────────────────────────────
+const CAT_SPOT_POSITIONS = [
+  { id:"cs1", x:8,  y:43, entryFrom:"left"  as const },
+  { id:"cs2", x:44, y:45, entryFrom:"left"  as const },
+  { id:"cs3", x:80, y:42, entryFrom:"right" as const },
+] as const;
+type CatSpot = typeof CAT_SPOT_POSITIONS[number];
+
+function InteractiveCat({ spot, onDone }: { spot:CatSpot; onDone:()=>void }) {
+  const [visible, setVisible] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [isIdle,  setIsIdle]  = useState(false);
+  const [clicked, setClicked] = useState(false);
+  const timersC = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const c = "#bfb6aa";
+
+  const atC = (ms:number, fn:()=>void) => { const t = setTimeout(fn, ms); timersC.current.push(t); };
+  const clearC = useCallback(() => { timersC.current.forEach(clearTimeout); timersC.current = []; }, []);
+
+  useEffect(() => {
+    atC(40,  () => setVisible(true));
+    atC(1400, () => setIsIdle(true));
+    const idleMs = Math.round(rnd(12_000, 20_000));
+    atC(1400 + idleMs, () => { setIsIdle(false); setLeaving(true); atC(1100, onDone); });
+    return clearC;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleClick = useCallback(() => {
+    if (clicked || leaving) return;
+    setClicked(true);
+    clearC();
+    setIsIdle(false);
+    setLeaving(true);
+    setTimeout(onDone, 1000);
+  }, [clicked, leaving, clearC, onDone]);
+
+  const fromLeft = spot.entryFrom === "left";
+  const dispW = 44;
+  // Slide from behind building edge; the container clips during entry/exit
+  const slideX = !visible ? (fromLeft ? -dispW : dispW) : leaving ? (fromLeft ? -dispW - 8 : dispW + 8) : 0;
+  const op     = !visible || leaving ? 0 : 1;
+
+  return (
+    <div style={{
+      position:"absolute", left:`${spot.x}%`, bottom:`${spot.y}%`,
+      width: dispW + 20, height:52, overflow:"hidden",
+      pointerEvents: isIdle ? "auto" : "none",
+    }}>
+      <div
+        role={isIdle ? "button" : undefined}
+        tabIndex={isIdle ? 0 : undefined}
+        aria-label={isIdle ? "Позвать кошку" : undefined}
+        style={{
+          transform:`translateX(${slideX}px)`,
+          opacity: op,
+          transition:"transform 1.4s ease-out, opacity 0.7s ease",
+          cursor: isIdle ? "pointer" : "default",
+        }}
+        onClick={isIdle ? handleClick : undefined}
+        onKeyDown={isIdle ? (e)=>{ if(e.key==="Enter"||e.key===" ") handleClick(); } : undefined}
+      >
+        <svg viewBox="0 0 52 58" width={dispW} height={50} aria-hidden>
+          <SvgCat flip={!fromLeft} c={c} isLooking={isIdle}/>
         </svg>
       </div>
     </div>
@@ -933,7 +1181,26 @@ function makeGroundActor(prev: ActiveActor[]): ActiveActor | null {
   const humanVariant: HumanVariant | undefined = type === "human"
     ? (["man","man","woman","child"] as HumanVariant[])[Math.floor(Math.random() * 4)]
     : undefined;
-  return { id: crypto.randomUUID(), type, direction, durationS, level, stopFraction, pauseMs, isPeeStop, humanVariant };
+
+  // Human: random stop or turn-around
+  let humanStopFraction: number | undefined;
+  let humanStopMs: number | undefined;
+  let humanReverseFraction: number | undefined;
+  if (type === "human") {
+    const r = Math.random();
+    if (r < 0.28) {           // 28%: stop and stand
+      humanStopFraction = parseFloat(rnd(0.25, 0.65).toFixed(2));
+      humanStopMs       = Math.round(rnd(2000, 4500));
+    } else if (r < 0.46) {   // 18%: turn around
+      humanReverseFraction = parseFloat(rnd(0.28, 0.70).toFixed(2));
+    }
+  }
+
+  return {
+    id: crypto.randomUUID(), type, direction, durationS, level,
+    stopFraction, pauseMs, isPeeStop, humanVariant,
+    humanStopFraction, humanStopMs, humanReverseFraction,
+  };
 }
 
 function makeBirdActor(): ActiveActor {
@@ -951,16 +1218,21 @@ export function AnimatedCityScene() {
   const [crowInfo,       setCrowInfo]      = useState<CrowInfo | null>(null);
   const [escaperActive,  setEscaperActive] = useState(false);
   const [planeActive,    setPlaneActive]   = useState(false);
+  const [ibirdSpot,      setIbirdSpot]     = useState<BirdPerch | null>(null);
+  const [icatSpot,       setIcatSpot]      = useState<CatSpot  | null>(null);
   const [reducedMotion,  setReducedMotion] = useState(false);
-  const crowActive     = useRef(false);
-  const escaperRunning = useRef(false);
-  const planeRunning   = useRef(false);
+  const crowActive       = useRef(false);
+  const escaperRunning   = useRef(false);
+  const planeRunning     = useRef(false);
+  const interactiveActive = useRef(false);  // one interactive event at a time
 
   const groundTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const birdTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const crowTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const escaperTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const planeTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ibirdTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const icatTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1001,6 +1273,16 @@ export function AnimatedCityScene() {
     planeRunning.current = false;
   }, []);
 
+  const handleIbirdDone = useCallback(() => {
+    setIbirdSpot(null);
+    interactiveActive.current = false;
+  }, []);
+
+  const handleIcatDone = useCallback(() => {
+    setIcatSpot(null);
+    interactiveActive.current = false;
+  }, []);
+
   // Crow spawn: once per ~60s, not at night
   const scheduleCrow = useCallback((delay: number) => {
     crowTimer.current = setTimeout(() => {
@@ -1032,6 +1314,30 @@ export function AnimatedCityScene() {
         setPlaneActive(true);
       }
       schedulePlane(rnd(120_000, 240_000));
+    }, delay);
+  }, []);
+
+  // Interactive bird: sits on roof, can be clicked, 2-3 min intervals
+  const scheduleIbird = useCallback((delay: number) => {
+    ibirdTimer.current = setTimeout(() => {
+      if (getTimeMode() !== "night" && !interactiveActive.current) {
+        interactiveActive.current = true;
+        const spot = BIRD_PERCH_SPOTS[Math.floor(Math.random() * BIRD_PERCH_SPOTS.length)];
+        setIbirdSpot(spot);
+      }
+      scheduleIbird(rnd(120_000, 180_000));
+    }, delay);
+  }, []);
+
+  // Interactive cat: comes out from behind building, 2-3 min intervals
+  const scheduleIcat = useCallback((delay: number) => {
+    icatTimer.current = setTimeout(() => {
+      if (getTimeMode() !== "night" && !interactiveActive.current) {
+        interactiveActive.current = true;
+        const spot = CAT_SPOT_POSITIONS[Math.floor(Math.random() * CAT_SPOT_POSITIONS.length)];
+        setIcatSpot(spot);
+      }
+      scheduleIcat(rnd(120_000, 180_000));
     }, delay);
   }, []);
 
@@ -1076,15 +1382,19 @@ export function AnimatedCityScene() {
     scheduleBird(rnd(8_000, 18_000));
     scheduleCrow(rnd(10_000, 20_000));
     scheduleEscaper(rnd(60_000, 90_000));
-    schedulePlane(rnd(20_000, 40_000)); // first airplane after 20-40s
+    schedulePlane(rnd(20_000, 40_000));
+    scheduleIbird(rnd(45_000, 90_000));   // first interactive bird 45-90s after load
+    scheduleIcat(rnd(60_000, 120_000));   // first interactive cat 60-120s after load (offset from bird)
     return () => {
       if (groundTimer.current)  clearTimeout(groundTimer.current);
       if (birdTimer.current)    clearTimeout(birdTimer.current);
       if (crowTimer.current)    clearTimeout(crowTimer.current);
       if (escaperTimer.current) clearTimeout(escaperTimer.current);
       if (planeTimer.current)   clearTimeout(planeTimer.current);
+      if (ibirdTimer.current)   clearTimeout(ibirdTimer.current);
+      if (icatTimer.current)    clearTimeout(icatTimer.current);
     };
-  }, [reducedMotion, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane]);
+  }, [reducedMotion, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane, scheduleIbird, scheduleIcat]);
 
   const cityOpacity = timeMode === "day" ? 0.55 : timeMode === "evening" ? 0.65 : 0.42;
 
@@ -1100,7 +1410,9 @@ export function AnimatedCityScene() {
       />
       <CityTint mode={timeMode}/>
       <CityWindows litSet={litSet} mode={timeMode}/>
-      <div style={{ position:"absolute", inset:0 }}>
+      {/* Fixed overlay for actors — position:fixed escapes all overflow:hidden ancestors
+          so characters travel the full viewport width without clipping */}
+      <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:0 }}>
         {!reducedMotion && actors.map(a => (
           <ActorEl key={a.id} actor={a} onFinish={removeActor}/>
         ))}
@@ -1112,6 +1424,12 @@ export function AnimatedCityScene() {
         )}
         {!reducedMotion && (
           <PaperPlane active={planeActive} onDone={handlePlaneDone}/>
+        )}
+        {!reducedMotion && ibirdSpot && (
+          <InteractiveBird key={ibirdSpot.id + Date.now()} spot={ibirdSpot} onDone={handleIbirdDone}/>
+        )}
+        {!reducedMotion && icatSpot && (
+          <InteractiveCat key={icatSpot.id + Date.now()} spot={icatSpot} onDone={handleIcatDone}/>
         )}
       </div>
     </div>
