@@ -399,12 +399,29 @@ export function TranscriptPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ consultationId }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Ошибка форматирования");
+
+      // Railway can return plain-text "upstream error" (502) — parse safely
+      const ct = res.headers.get("content-type") ?? "";
+      if (!res.ok) {
+        const msg = ct.includes("application/json")
+          ? ((await res.json().catch(() => ({}))).error ?? "Ошибка форматирования")
+          : await res.text().catch(() => "Ошибка сервера");
+        throw new Error(
+          msg || "Не удалось разделить транскрипт по репликам. Исходный текст сохранён."
+        );
+      }
+      if (!ct.includes("application/json")) {
+        throw new Error("Неожиданный ответ от сервера. Исходный текст сохранён.");
+      }
+      await res.json();
       onFormattedCreated?.();
       onRefresh?.();
     } catch (e) {
-      setFormatError(e instanceof Error ? e.message : "Ошибка");
+      setFormatError(
+        e instanceof Error
+          ? e.message
+          : "Не удалось разделить транскрипт по репликам. Исходный текст сохранён."
+      );
     } finally {
       setFormatting(false);
     }
@@ -440,11 +457,16 @@ export function TranscriptPanel({
 
   // ── Export ──────────────────────────────────────────────────────────────────
   function doExport(fmt: "txt" | "md") {
-    const segs = transcriptFormatted ?? [];
     const base = safeBaseName(clientName, consultationDate);
     if (fmt === "txt") {
-      downloadText(buildTxt(segs, clientName, consultationDate), `${base}.txt`);
+      if (hasFormatted) {
+        downloadText(buildTxt(transcriptFormatted!, clientName, consultationDate), `${base}.txt`);
+      } else if (plainText) {
+        // Fallback: export raw text
+        downloadText(plainText, `${base}_исходный.txt`);
+      }
     } else {
+      const segs = transcriptFormatted ?? [];
       downloadText(buildMd(segs, clientName, consultationDate), `${base}.md`, "text/markdown;charset=utf-8");
     }
     setActionsOpen(false);
@@ -452,24 +474,23 @@ export function TranscriptPanel({
 
   // ── Confirm dialog config ───────────────────────────────────────────────────
   function confirmConfig(action: ConfirmAction): ConfirmDialogProps & { show: boolean } {
-    const rawGoneWarning = !hasTranscriptRaw
-      ? " Исходный текст уже удалён. "
-      : "";
-
     if (action === "delete-raw") return {
       show: true,
       title: "Удалить исходный сплошной текст?",
-      description: "Разобранная версия по репликам останется. Исходный текст невозможно восстановить.",
+      description: hasFormatted
+        ? "Разобранная версия по репликам останется. Исходный текст невозможно восстановить."
+        : "После удаления текст консультации в системе не останется. Аудиозапись при этом не будет удалена. Это действие нельзя отменить.",
       confirmLabel: "Удалить исходный текст",
       onConfirm: () => execDelete("delete-raw"),
       onCancel: () => setConfirmAction(null),
+      danger: !hasFormatted,
     };
     if (action === "delete-formatted") return {
       show: true,
       title: "Удалить разобранный транскрипт?",
-      description: rawGoneWarning
-        ? `${rawGoneWarning}После удаления текст консультации в системе не останется. Аудиозапись при этом не будет удалена.`
-        : "Разобранный транскрипт со всеми репликами и таймкодами будет удалён. Это может повлиять на AI-анализ.",
+      description: hasTranscriptRaw
+        ? "Разобранный транскрипт со всеми репликами и таймкодами будет удалён. Исходный сплошной текст останется."
+        : "После удаления текст консультации в системе не останется. Аудиозапись при этом не будет удалена.",
       confirmLabel: "Удалить разобранный транскрипт",
       onConfirm: () => execDelete("delete-formatted"),
       onCancel: () => setConfirmAction(null),
@@ -544,8 +565,8 @@ export function TranscriptPanel({
                   className="absolute right-0 top-full mt-1 rounded-xl border shadow-xl z-50 py-1 min-w-[220px]"
                   style={{ background: "#FAF8F5", borderColor: "#D8CFBE" }}
                 >
-                  {/* Export section */}
-                  {hasFormatted && (
+                  {/* Export section — show if any transcript exists */}
+                  {(hasFormatted || (hasTranscriptRaw && !!plainText)) && (
                     <>
                       <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>
                         Экспорт
@@ -555,29 +576,34 @@ export function TranscriptPanel({
                         className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-stone-100 transition-colors text-left"
                         style={{ color: "#3D3228" }}
                       >
-                        <Download size={12} /> Скачать TXT
+                        <Download size={12} />
+                        {hasFormatted ? "Скачать TXT" : "Скачать исходный текст (TXT)"}
                       </button>
-                      <button
-                        onClick={() => doExport("md")}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-stone-100 transition-colors text-left"
-                        style={{ color: "#3D3228" }}
-                      >
-                        <Download size={12} /> Скачать Markdown
-                      </button>
+                      {hasFormatted && (
+                        <button
+                          onClick={() => doExport("md")}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-stone-100 transition-colors text-left"
+                          style={{ color: "#3D3228" }}
+                        >
+                          <Download size={12} /> Скачать Markdown
+                        </button>
+                      )}
                       <div className="h-px mx-3 my-1" style={{ background: "#E8E3DA" }} />
                     </>
                   )}
-                  {/* Danger section */}
-                  <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>
-                    Удаление
-                  </div>
-                  {hasTranscriptRaw && hasFormatted && (
+                  {/* Deletion section — show each action based on what exists */}
+                  {(hasTranscriptRaw || hasFormatted || !audioDeleted) && (
+                    <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>
+                      Удаление
+                    </div>
+                  )}
+                  {hasTranscriptRaw && (
                     <button
                       onClick={() => { setActionsOpen(false); setConfirmAction("delete-raw"); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-red-50 transition-colors text-left"
                       style={{ color: "#C75B3A" }}
                     >
-                      <Trash2 size={12} /> Удалить исходный текст
+                      <Trash2 size={12} /> Удалить исходный транскрипт
                     </button>
                   )}
                   {hasFormatted && (

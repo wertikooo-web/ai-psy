@@ -10,12 +10,8 @@ export async function DELETE(
     const c = await getConsultation(id);
     if (!c) return NextResponse.json({ error: "Не найдено" }, { status: 404 });
 
-    // Only allow deletion of raw text if formatted version exists
-    if (!c.transcriptFormatted?.length) {
-      return NextResponse.json(
-        { error: "Нельзя удалить исходный текст: форматированная версия ещё не создана" },
-        { status: 400 }
-      );
+    if (!c.transcript?.text) {
+      return NextResponse.json({ error: "Исходный транскрипт уже удалён" }, { status: 400 });
     }
 
     await updateConsultation(id, {

@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     let gptResponse: string;
     try {
       const completion = await openai.chat.completions.create({
-        model:       "gpt-4o",
+        model:       "gpt-4o-mini",  // faster → avoids Railway 60s timeout
         temperature: 0.1,
         max_tokens:  4000,
         messages: [
