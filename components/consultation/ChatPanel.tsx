@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "@/lib/mockData";
 import { Send, BrainCircuit, User, ChevronsLeft, ChevronsRight, MessagesSquare, AlertCircle, Mic, MicOff } from "lucide-react";
 import clsx from "clsx";
-import ReactMarkdown from "react-markdown";
 
 interface ChatPanelProps {
   messages:             ChatMessage[];
@@ -215,19 +214,9 @@ export function ChatPanel({
                     : "bg-brand-500 text-white rounded-tr-sm whitespace-pre-wrap"
                 )}>
                   {isAI ? (
-                    <ReactMarkdown
-                      components={{
-                        p:      ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                        ul:     ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
-                        ol:     ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
-                        li:     ({ children }) => <li className="leading-snug">{children}</li>,
-                        h3:     ({ children }) => <p className="font-semibold mt-2 mb-1">{children}</p>,
-                        h4:     ({ children }) => <p className="font-medium mt-1.5 mb-0.5">{children}</p>,
-                      }}
-                    >
+                    <span style={{ whiteSpace: "pre-wrap", lineHeight: "1.6", display: "block" }}>
                       {msg.content}
-                    </ReactMarkdown>
+                    </span>
                   ) : msg.content}
                 </div>
                 <span className="text-xs text-slate-300 mt-1 px-1">{msg.timestamp}</span>
