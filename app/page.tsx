@@ -22,56 +22,72 @@ function formatDate(iso: string) {
 }
 
 // ── Design tokens (same as clients page) ─────────────────────────────────────
-const TAB_BG  = "#D4C5B1";
-const TAB_HOV = "#C8B89F";
+const CARD_NORMAL = "#F3EBDD";
+const CARD_HOVER  = "#D4C5B1";
+
+// ── Shared compact card shell ─────────────────────────────────────────────────
+function DashCard({ onClick, ariaLabel, children }: {
+  onClick: () => void;
+  ariaLabel: string;
+  children: React.ReactNode;
+}) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      aria-label={ariaLabel}
+      className="w-full text-left"
+      style={{
+        display:      "flex",
+        alignItems:   "center",
+        gap:          12,
+        padding:      "12px 16px",
+        background:   hov ? CARD_HOVER : CARD_NORMAL,
+        border:       "1px solid #CFC0A9",
+        borderRadius: 14,
+        boxShadow:    hov
+          ? "0 2px 6px rgba(80,60,40,0.10), 0 8px 20px rgba(80,60,40,0.10)"
+          : "0 1px 3px rgba(80,60,40,0.06), 0 6px 16px rgba(80,60,40,0.07)",
+        transition:   "background 0.18s ease, box-shadow 0.18s ease",
+        cursor:       "pointer",
+      }}
+    >
+      {children}
+      <ArrowRight
+        size={14}
+        style={{
+          flexShrink: 0,
+          color:      hov ? "#4A3C2E" : "#A8997F",
+          transform:  hov ? "translateX(3px)" : "translateX(0)",
+          transition: "transform 0.15s ease, color 0.15s ease",
+        }}
+      />
+    </button>
+  );
+}
 
 // ── Compact client card ───────────────────────────────────────────────────────
 function DashClientCard({ client, onClick }: { client: AnyClient; onClick: () => void }) {
-  const [tabHov, setTabHov] = useState(false);
   return (
-    <div className="client-card flex flex-col">
-      <div className="px-4 pt-4 pb-3 flex items-center gap-3">
-        <Avatar initials={client.initials} color={client.color} size="sm" />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold truncate" style={{ color: "#3D3228" }}>
-            {client.name}
-          </div>
-          <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "#A8997F" }}>
-            <span className="flex items-center gap-1">
-              <Users size={10} />
-              {client.totalConsultations} встреч
-            </span>
-            {client.lastConsultation && (
-              <span>{formatDate(client.lastConsultation)}</span>
-            )}
-          </div>
+    <DashCard onClick={onClick} ariaLabel={`Открыть карточку клиента ${client.name}`}>
+      <Avatar initials={client.initials} color={client.color} size="sm" />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold truncate" style={{ color: "#3D3228" }}>
+          {client.name}
+        </div>
+        <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "#6B5D4F" }}>
+          <span className="flex items-center gap-1">
+            <Users size={10} />
+            {client.totalConsultations} встреч
+          </span>
+          {client.lastConsultation && (
+            <span>{formatDate(client.lastConsultation)}</span>
+          )}
         </div>
       </div>
-      <button
-        onClick={onClick}
-        onMouseEnter={() => setTabHov(true)}
-        onMouseLeave={() => setTabHov(false)}
-        className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium"
-        style={{
-          background:  tabHov ? TAB_HOV : TAB_BG,
-          color:       "#3D3228",
-          borderTop:   "1px solid #C4B49E",
-          boxShadow:   "inset 0 1px 0 rgba(255,255,255,0.22)",
-          transition:  "background 0.18s ease",
-          borderRadius: "0 0 14px 14px",
-        }}
-      >
-        <span>Открыть карточку</span>
-        <ArrowRight
-          size={13}
-          style={{
-            color:     "#78716C",
-            transform: tabHov ? "translateX(3px)" : "translateX(0)",
-            transition: "transform 0.15s ease",
-          }}
-        />
-      </button>
-    </div>
+    </DashCard>
   );
 }
 
@@ -79,61 +95,34 @@ function DashClientCard({ client, onClick }: { client: AnyClient; onClick: () =>
 function DashConsultCard({ c, index, onClick }: {
   c: AnyConsultation; index: number; onClick: () => void;
 }) {
-  const [tabHov, setTabHov] = useState(false);
   const hasAnalysis   = !!((c as StoredConsultation).analyses?.length) || c.isMock;
   const hasTranscript = !!(c as StoredConsultation).transcript?.text   || c.isMock;
   const label = c.title || c.topic || `Консультация #${c.sessionNumber ?? (index + 1)}`;
 
   return (
-    <div className="client-card flex flex-col">
-      <div className="px-4 pt-4 pb-3 flex items-center gap-3">
-        <Avatar initials={c.clientInitials ?? "?"} color={c.clientColor ?? "#94a3b8"} size="sm" />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold truncate" style={{ color: "#3D3228" }}>
-            {c.clientName}
-          </div>
-          <div className="text-xs truncate mt-0.5" style={{ color: "#A8997F" }}>
-            {label}
-          </div>
+    <DashCard onClick={onClick} ariaLabel={`Открыть консультацию ${c.clientName}`}>
+      <Avatar initials={c.clientInitials ?? "?"} color={c.clientColor ?? "#94a3b8"} size="sm" />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold truncate" style={{ color: "#3D3228" }}>
+          {c.clientName}
         </div>
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <span className="text-xs" style={{ color: "#C9BBAA" }}>{formatDate(c.createdAt)}</span>
-          {hasAnalysis ? (
-            <span className="flex items-center gap-0.5 text-xs text-emerald-600">
-              <CheckCircle2 size={10} /> анализ
-            </span>
-          ) : hasTranscript ? (
-            <span className="flex items-center gap-0.5 text-xs" style={{ color: "#A8997F" }}>
-              <Clock size={10} /> транскрипт
-            </span>
-          ) : null}
+        <div className="text-xs truncate mt-0.5" style={{ color: "#6B5D4F" }}>
+          {label}
         </div>
       </div>
-      <button
-        onClick={onClick}
-        onMouseEnter={() => setTabHov(true)}
-        onMouseLeave={() => setTabHov(false)}
-        className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium"
-        style={{
-          background:  tabHov ? TAB_HOV : TAB_BG,
-          color:       "#3D3228",
-          borderTop:   "1px solid #C4B49E",
-          boxShadow:   "inset 0 1px 0 rgba(255,255,255,0.22)",
-          transition:  "background 0.18s ease",
-          borderRadius: "0 0 14px 14px",
-        }}
-      >
-        <span>Открыть</span>
-        <ArrowRight
-          size={13}
-          style={{
-            color:     "#78716C",
-            transform: tabHov ? "translateX(3px)" : "translateX(0)",
-            transition: "transform 0.15s ease",
-          }}
-        />
-      </button>
-    </div>
+      <div className="flex flex-col items-end gap-1 flex-shrink-0 mr-1">
+        <span className="text-xs" style={{ color: "#78716C" }}>{formatDate(c.createdAt)}</span>
+        {hasAnalysis ? (
+          <span className="flex items-center gap-0.5 text-xs text-emerald-600">
+            <CheckCircle2 size={10} /> анализ
+          </span>
+        ) : hasTranscript ? (
+          <span className="flex items-center gap-0.5 text-xs" style={{ color: "#78716C" }}>
+            <Clock size={10} /> транскрипт
+          </span>
+        ) : null}
+      </div>
+    </DashCard>
   );
 }
 
