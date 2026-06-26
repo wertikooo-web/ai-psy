@@ -872,30 +872,46 @@ export function TranscriptPanel({
         <>
           {/* ── Formatted segments (saved to DB) ── */}
           {hasFormatted && (
-            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
-              {audioDeleted && (
-                <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: "#FFF8EE", border: "1px solid #E8D5AA", color: "#7A5420" }}>
-                  <AlertTriangle size={11} />
-                  Исходная аудиозапись удалена — таймкоды остаются, но не запускают плеер
-                </div>
-              )}
-              <div className="mb-3 flex items-center gap-3 text-xs" style={{ color: "#A8997F" }}>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-brand-200 inline-block" />Психолог</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-200 inline-block" />Клиент</span>
+            <>
+              {/* Legend strip — fixed height, matches analysis tabs bar */}
+              <div
+                className="flex-shrink-0 flex items-center gap-4 px-4 text-xs"
+                style={{ height: 36, background: "#F5F0E8", borderBottom: "1px solid #D8CFBE", color: "#A8997F" }}
+              >
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-brand-200 inline-block flex-shrink-0" />
+                  Психолог
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-200 inline-block flex-shrink-0" />
+                  Клиент
+                </span>
                 {showTimestamps && !audioDeleted && hasRealTimecodes && (
-                  <span className="flex items-center gap-1"><Clock size={10} /> нажмите на время для перехода</span>
+                  <span className="flex items-center gap-1 ml-auto">
+                    <Clock size={10} /> нажмите на время для перехода
+                  </span>
                 )}
               </div>
-              <FormattedTranscript
-                segments={transcriptFormatted!}
-                audioDeleted={audioDeleted}
-                showTimestamps={showTimestamps}
-                onSeek={(sec) => seekRef.current?.(sec)}
-              />
-              <div className="mt-4 pt-3 border-t text-xs text-center" style={{ borderColor: "#E0D8CA", color: "#A8997F" }}>
-                {transcriptFormatted!.length} реплик
+
+              {/* Scrollable transcript */}
+              <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
+                {audioDeleted && (
+                  <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: "#FFF8EE", border: "1px solid #E8D5AA", color: "#7A5420" }}>
+                    <AlertTriangle size={11} />
+                    Исходная аудиозапись удалена — таймкоды остаются, но не запускают плеер
+                  </div>
+                )}
+                <FormattedTranscript
+                  segments={transcriptFormatted!}
+                  audioDeleted={audioDeleted}
+                  showTimestamps={showTimestamps}
+                  onSeek={(sec) => seekRef.current?.(sec)}
+                />
+                <div className="mt-4 pt-3 border-t text-xs text-center" style={{ borderColor: "#E0D8CA", color: "#A8997F" }}>
+                  {transcriptFormatted!.length} реплик
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* ── Plain text (no formatted yet) ── */}
