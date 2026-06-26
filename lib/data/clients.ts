@@ -13,7 +13,7 @@ import type { StoredClient, ClientStatus } from "@/lib/clientStore";
 
 // ── Supabase row → StoredClient ───────────────────────────────────────────────
 // Maps snake_case DB columns to the camelCase shape used throughout the app.
-function rowToClient(row: Record<string, unknown>): StoredClient {
+function rowToClient(row: Record<string, unknown>, consultationCount?: number): StoredClient {
   return {
     id:                 row.id as string,
     name:               row.full_name as string,
@@ -23,7 +23,7 @@ function rowToClient(row: Record<string, unknown>): StoredClient {
     concern:            (row.concern as string) ?? "",
     status:             (row.status as ClientStatus) ?? "active",
     createdAt:          row.created_at as string,
-    totalConsultations: (row.sessions_count as number) ?? 0,
+    totalConsultations: consultationCount ?? (row.sessions_count as number) ?? 0,
     lastConsultation:   (row.last_session_date as string) ?? "",
     mainTopics:         (row.main_topics as string[]) ?? [],
     lastShift:          "",
@@ -41,14 +41,32 @@ function initials(name: string): string {
 
 export async function getClients(): Promise<StoredClient[]> {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabaseServer!
-      .from("clients")
-      .select("*")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+    // Fetch clients and active consultation counts in parallel (2 queries, no N+1)
+    const [clientsRes, countsRes] = await Promise.all([
+      supabaseServer!
+        .from("clients")
+        .select("*")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false }),
+      supabaseServer!
+        .from("consultations")
+        .select("client_id")
+        .is("deleted_at", null)
+        .not("client_id", "is", null),
+    ]);
 
-    if (error) throw new Error(`[DAL/getClients] ${error.message}`);
-    return (data ?? []).map(rowToClient);
+    if (clientsRes.error) throw new Error(`[DAL/getClients] ${clientsRes.error.message}`);
+
+    // Build client_id → count map from the consultations result
+    const countMap = new Map<string, number>();
+    for (const row of (countsRes.data ?? [])) {
+      const cid = row.client_id as string;
+      countMap.set(cid, (countMap.get(cid) ?? 0) + 1);
+    }
+
+    return (clientsRes.data ?? []).map(row =>
+      rowToClient(row, countMap.get(row.id as string) ?? 0)
+    );
   }
   return jsonStore.readAll();
 }

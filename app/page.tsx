@@ -10,6 +10,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { AddClientModal } from "@/components/client/AddClientModal";
 import { UserPlus, Mic, ArrowRight, CheckCircle2, Clock, Users } from "lucide-react";
+import { pluralMeetings } from "@/lib/format";
 import { AnimatedCityScene } from "@/components/home/AnimatedCityScene";
 
 type AnyClient       = StoredClient       & { isMock?: boolean };
@@ -80,7 +81,7 @@ function DashClientCard({ client, onClick }: { client: AnyClient; onClick: () =>
         <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "#6B5D4F" }}>
           <span className="flex items-center gap-1">
             <Users size={10} />
-            {client.totalConsultations} встреч
+            {pluralMeetings(client.totalConsultations ?? 0)}
           </span>
           {client.lastConsultation && (
             <span>{formatDate(client.lastConsultation)}</span>

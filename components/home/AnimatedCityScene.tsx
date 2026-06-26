@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { createPortal } from "react-dom";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -38,8 +38,8 @@ function getTimeMode(): TimeMode {
 
 // ─── Actor config ─────────────────────────────────────────────────────────────
 const WEIGHTS: Record<TimeMode, Partial<Record<ActorType, number>>> = {
-  day:     { dog: 40, bike: 28, bus: 20, human: 8, cat: 3, car: 1 },
-  evening: { dog: 38, bike: 22, bus: 18, human: 12, cat: 8, car: 2 },
+  day:     { dog: 35, bike: 25, bus: 18, human: 8, cat: 12, car: 2 },
+  evening: { dog: 32, bike: 20, bus: 15, human: 12, cat: 16, car: 5 },
   night:   { cat: 65, human: 25, car: 10 },
 };
 function weightedPick(w: Partial<Record<ActorType, number>>): ActorType {
@@ -411,7 +411,7 @@ function SvgBird({ flip, c }: { flip:boolean; c:string }) {
 // ─── Actor element ────────────────────────────────────────────────────────────
 interface ActorElProps { actor: ActiveActor; onFinish: (id:string) => void; }
 
-function ActorEl({ actor, onFinish }: ActorElProps) {
+const ActorEl = memo(function ActorEl({ actor, onFinish }: ActorElProps) {
   const [isLooking,      setIsLooking]      = useState(false);
   const [isPeeing,       setIsPeeing]       = useState(false);
   const [isHumanStopped, setIsHumanStopped] = useState(false);
@@ -521,7 +521,7 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [actor, isCat, isDog, dispW]);
+  }, [actor.id, actor.stopFraction, actor.pauseMs, actor.durationS, actor.direction, isCat, isDog, dispW]);
 
   // Human stop: pause at random point, legs freeze, then continue
   useEffect(() => {
@@ -548,7 +548,7 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [actor, isHuman, dispW]);
+  }, [actor.id, actor.humanStopFraction, actor.humanStopMs, actor.durationS, actor.direction, isHuman, dispW]);
 
   // Human reverse: walk to reversePoint, flip, walk back to origin edge
   useEffect(() => {
@@ -701,7 +701,7 @@ function ActorEl({ actor, onFinish }: ActorElProps) {
       </div>
     </div>
   );
-}
+}); // memo(ActorEl)
 
 // ─── Bus ──────────────────────────────────────────────────────────────────────
 function SvgBus({ flip, c }: { flip:boolean; c:string }) {

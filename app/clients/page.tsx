@@ -12,6 +12,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { AddClientModal } from "@/components/client/AddClientModal";
 import { clients as mockClients } from "@/lib/mockData";
 import type { StoredClient, ClientStatus } from "@/lib/clientStore";
+import { pluralMeetings } from "@/lib/format";
 
 const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
@@ -170,7 +171,7 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
   return (
     <div
       className="client-card flex flex-col"
-      style={{ minHeight: 292, position: "relative" }}
+      style={{ minHeight: 205, position: "relative" }}
     >
       {/* ── Action buttons: белая пилюля, всегда в правом верхнем углу ── */}
       <div
@@ -211,7 +212,7 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
       </div>
 
       {/* ── 1. Имя + возраст ── */}
-      <div className="p-5 pb-3 flex items-start gap-3">
+      <div className="p-3.5 pb-2 flex items-start gap-3">
         <Avatar initials={client.initials} color={client.color} size="lg" />
         <div className="min-w-0 flex-1 pr-20">
           <h2 className="font-semibold text-slate-800 truncate leading-tight">{client.name}</h2>
@@ -222,10 +223,10 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
       </div>
 
       {/* ── 2. Встречи + дата ── */}
-      <div className="px-5 pb-2 flex items-center gap-3 text-xs" style={{ color: "#A8997F" }}>
+      <div className="px-3.5 pb-1.5 flex items-center gap-3 text-xs" style={{ color: "#A8997F" }}>
         <div className="flex items-center gap-1">
           <Users size={11} />
-          <span>{client.totalConsultations} встреч</span>
+          <span>{pluralMeetings(client.totalConsultations ?? 0)}</span>
         </div>
         {client.lastConsultation && (
           <span>
@@ -235,7 +236,7 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
       </div>
 
       {/* ── 3. Основной запрос ── */}
-      <div className="px-5 flex-1 flex flex-col gap-3">
+      <div className="px-3.5 flex-1 flex flex-col gap-3">
         {client.concern ? (
           <p className="text-sm leading-relaxed line-clamp-2" style={{ color: "#4A3C2E" }}>
             {client.concern}
