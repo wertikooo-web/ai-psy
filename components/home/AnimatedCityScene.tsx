@@ -91,7 +91,7 @@ const wingG = (side: "L"|"R", pivotX: string): React.CSSProperties => ({
   animation:       `birdWing${side} 0.32s ease-in-out infinite`,
 });
 
-const SW = 2.3;
+const SW = 1.8;
 
 // ─── SVG Characters ───────────────────────────────────────────────────────────
 function SvgCat({ flip, c, isLooking, speedMulti=1 }: { flip:boolean; c:string; isLooking:boolean; speedMulti?:number }) {
