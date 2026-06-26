@@ -2,10 +2,44 @@
 
 import { useState } from "react";
 import { TranscriptSegment } from "@/lib/mockData";
-import { Search, User, Stethoscope, ChevronsLeft, ChevronsRight, Mic, NotebookPen, FileText, Paperclip, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, User, Stethoscope, ChevronsLeft, ChevronsRight, Mic, NotebookPen, FileText, Paperclip, ChevronDown, ChevronUp, Users, Loader2 } from "lucide-react";
 import clsx from "clsx";
 import type { ClientMaterial } from "@/lib/types";
 import { MATERIAL_TYPE_LABELS } from "@/lib/types";
+
+// ── Speaker-labelled transcript renderer ──────────────────────────────────────
+function SpeakerTranscript({ text }: { text: string }) {
+  return (
+    <div className="space-y-2.5">
+      {text.split("\n").filter(Boolean).map((line, i) => {
+        const isTherapist = line.startsWith("П:");
+        const isClient    = line.startsWith("К:");
+        const body        = line.replace(/^[ПКпк—–-]+:\s*/, "");
+        return (
+          <div key={i} className={clsx(
+            "flex gap-2.5",
+            isTherapist ? "flex-row-reverse" : "flex-row",
+          )}>
+            <div className={clsx(
+              "w-5 h-5 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center text-[9px] font-bold",
+              isTherapist ? "bg-brand-100 text-brand-600" :
+              isClient    ? "bg-amber-100 text-amber-600" :
+                            "bg-slate-100 text-slate-400",
+            )}>
+              {isTherapist ? "П" : isClient ? "К" : "?"}
+            </div>
+            <p className={clsx(
+              "text-sm leading-relaxed rounded-xl px-3 py-1.5 max-w-[85%]",
+              isTherapist ? "bg-brand-50 text-slate-700 rounded-tr-sm" :
+              isClient    ? "bg-amber-50 text-slate-700 rounded-tl-sm" :
+                            "bg-slate-50 text-slate-500 rounded-tl-sm",
+            )}>{body}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 type ActiveTab = "transcript" | "notes" | "materials";
 
@@ -24,6 +58,29 @@ function formatDate(iso: string) {
 }
 
 export function TranscriptPanel({ segments, collapsed, onToggle, plainText, notesText, isNotes, materials = [] }: TranscriptPanelProps) {
+  const [formatted, setFormatted]       = useState<string | null>(null);
+  const [formatting, setFormatting]     = useState(false);
+  const [formatError, setFormatError]   = useState<string | null>(null);
+
+  async function formatSpeakers() {
+    if (!plainText) return;
+    setFormatting(true);
+    setFormatError(null);
+    try {
+      const res = await fetch("/api/format-transcript", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: plainText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Ошибка форматирования");
+      setFormatted(data.formatted);
+    } catch (e) {
+      setFormatError(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setFormatting(false);
+    }
+  }
   const [query, setQuery]           = useState("");
   const [expandedMat, setExpandedMat] = useState<string | null>(null);
 
@@ -225,7 +282,41 @@ export function TranscriptPanel({ segments, collapsed, onToggle, plainText, note
               </div>
             </div>
           )}
-          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{plainText}</p>
+
+          {/* Format button */}
+          {!formatted && (
+            <div className="mb-4">
+              <button
+                onClick={formatSpeakers}
+                disabled={formatting}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors"
+                style={{ borderColor: "#CFC0A9", color: "#6B5D4F", background: "#F9F5EE" }}
+              >
+                {formatting
+                  ? <><Loader2 size={11} className="animate-spin" />Разделяю реплики...</>
+                  : <><Users size={11} />Разделить по репликам</>
+                }
+              </button>
+              {formatError && <p className="text-xs text-red-500 mt-1">{formatError}</p>}
+            </div>
+          )}
+
+          {formatted && (
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3 text-xs text-slate-400">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-brand-200 inline-block"/>П — психолог</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-200 inline-block"/>К — клиент</span>
+              </div>
+              <button onClick={() => setFormatted(null)} className="text-xs text-slate-400 hover:text-slate-600">
+                сырой текст
+              </button>
+            </div>
+          )}
+
+          {formatted
+            ? <SpeakerTranscript text={formatted} />
+            : <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{plainText}</p>
+          }
         </div>
       )}
 
