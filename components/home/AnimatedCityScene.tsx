@@ -38,9 +38,9 @@ function getTimeMode(): TimeMode {
 
 // ─── Actor config ─────────────────────────────────────────────────────────────
 const WEIGHTS: Record<TimeMode, Partial<Record<ActorType, number>>> = {
-  day:     { cat: 26, human: 22, car: 18, dog: 12, bike: 8, bus: 14 },
-  evening: { cat: 38, human: 28, car: 14, dog: 8, bike: 6, bus: 6 },
-  night:   { cat: 75, human: 20, car: 5 },
+  day:     { dog: 40, bike: 28, bus: 20, human: 8, cat: 3, car: 1 },
+  evening: { dog: 38, bike: 22, bus: 18, human: 12, cat: 8, car: 2 },
+  night:   { cat: 65, human: 25, car: 10 },
 };
 function weightedPick(w: Partial<Record<ActorType, number>>): ActorType {
   const e = Object.entries(w) as [ActorType, number][];
@@ -1266,13 +1266,13 @@ function makeGroundActor(prev: ActiveActor[]): ActiveActor | null {
   const direction: Direction = Math.random() > 0.5 ? "ltr" : "rtl";
   const durationS    = parseFloat(rnd(28, 42).toFixed(1));
   const isCatStop = type === "cat";
-  const isDogPee  = type === "dog" && Math.random() < 0.55; // 55% dogs stop to pee
+  const isDogPee  = type === "dog" && Math.random() < 0.50; // 50% dogs stop to pee
   const stopFraction = (isCatStop || isDogPee) ? parseFloat(rnd(0.28, 0.65).toFixed(2)) : undefined;
   const pauseMs      = isCatStop ? Math.round(rnd(2000, 3200))
                      : isDogPee  ? Math.round(rnd(2800, 4500)) : undefined;
   const isPeeStop = isDogPee ? true : undefined;
   const humanVariant: HumanVariant | undefined = type === "human"
-    ? (["man","man","woman","child"] as HumanVariant[])[Math.floor(Math.random() * 4)]
+    ? (Math.random() < 0.18 ? "child" : Math.random() < 0.5 ? "man" : "woman")
     : undefined;
 
   // Human: random stop or turn-around
@@ -1391,7 +1391,7 @@ export function AnimatedCityScene() {
         const p = CROW_PERCHES[Math.floor(Math.random() * CROW_PERCHES.length)];
         setCrowInfo({ id: crypto.randomUUID(), fromLeft: Math.random() > 0.5, perchX: p.x, perchY: p.y });
       }
-      scheduleCrow(rnd(55_000, 75_000));
+      scheduleCrow(rnd(68_000, 94_000));
     }, delay);
   }, []);
 
@@ -1444,10 +1444,20 @@ export function AnimatedCityScene() {
   const scheduleGround = useCallback((delay: number) => {
     groundTimer.current = setTimeout(() => {
       setActors(prev => {
-        const a = makeGroundActor(prev);
-        return a ? [...prev, a] : prev;
+        const a1 = makeGroundActor(prev);
+        if (!a1) return prev;
+        // 30% chance: spawn a second actor on a different level slightly later
+        if (Math.random() < 0.30) {
+          setTimeout(() => {
+            setActors(p2 => {
+              const a2 = makeGroundActor(p2);
+              return a2 ? [...p2, a2] : p2;
+            });
+          }, rnd(600, 2200));
+        }
+        return [...prev, a1];
       });
-      scheduleGround(rnd(18_000, 34_000));
+      scheduleGround(rnd(5_000, 12_000));
     }, delay);
   }, []);
 
@@ -1468,8 +1478,8 @@ export function AnimatedCityScene() {
 
   useEffect(() => {
     if (!animEnabled) return;
-    scheduleGround(rnd(2_000, 5_000));
-    scheduleCrow(rnd(10_000, 20_000));
+    scheduleGround(rnd(1_000, 3_000));
+    scheduleCrow(rnd(12_500, 25_000));
     scheduleEscaper(rnd(60_000, 90_000));
     schedulePlane(rnd(20_000, 40_000));
     scheduleIcat(rnd(60_000, 120_000));
@@ -1495,6 +1505,12 @@ export function AnimatedCityScene() {
         style={{ opacity:cityOpacity, transition:"opacity 3s ease",
           height:"100%", objectFit:"cover", objectPosition:"bottom center" }}
       />
+      {/* Road boundary line — same color/weight as actor strokes */}
+      <div aria-hidden style={{
+        position:"absolute", bottom:"1cm", left:0, right:0,
+        height:`${SW}px`, background:"#8C7E72",
+        opacity: cityOpacity, pointerEvents:"none",
+      }}/>
       <CityTint mode={timeMode}/>
       {/* Actor overlay is rendered via portal at document.body to fully escape
           overflow:hidden on AppShell/main (Blink clips fixed descendants of
