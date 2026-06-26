@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
     await addConsultation(record);
     return NextResponse.json({ id: record.id }, { status: 201 });
   } catch (err) {
-    console.error("Consultation create error:", err);
-    return NextResponse.json({ error: "Ошибка создания записи" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Consultation create error:", msg);
+    return NextResponse.json({ error: `Ошибка создания записи: ${msg}` }, { status: 500 });
   }
 }
