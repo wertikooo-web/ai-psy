@@ -349,6 +349,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             materials={clientMaterials}
             transcriptFormatted={c.transcriptFormatted}
             hasTranscriptRaw={!!c.transcript?.text}
+            hasWhisperSegments={!!c.transcriptSegments?.length}
             audioDeletedAt={c.audioDeletedAt}
             clientName={c.clientName}
             consultationDate={c.createdAt}

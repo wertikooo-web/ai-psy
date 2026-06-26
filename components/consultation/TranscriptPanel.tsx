@@ -326,9 +326,10 @@ interface TranscriptPanelProps {
   notesText?:          string;
   isNotes?:            boolean;
   materials?:          ClientMaterial[];
-  // new
+  // transcript state
   transcriptFormatted?: FormattedSegment[];
   hasTranscriptRaw?:    boolean;
+  hasWhisperSegments?:  boolean;  // true = Whisper saved segments (real timecodes available)
   audioDeletedAt?:      string;
   clientName?:          string;
   consultationDate?:    string;
@@ -353,14 +354,17 @@ export function TranscriptPanel({
   materials = [],
   transcriptFormatted,
   hasTranscriptRaw = true,
+  hasWhisperSegments = false,
   audioDeletedAt,
   clientName = "",
   consultationDate = "",
   onRefresh,
   onFormattedCreated,
 }: TranscriptPanelProps) {
-  const [formatting, setFormatting]     = useState(false);
-  const [formatError, setFormatError]   = useState<string | null>(null);
+  const [formatting, setFormatting]         = useState(false);
+  const [formatError, setFormatError]       = useState<string | null>(null);
+  const [retranscribing, setRetranscribing] = useState(false);
+  const [retranscribeMsg, setRetranscribeMsg] = useState<string | null>(null);
   const [query, setQuery]               = useState("");
   const [expandedMat, setExpandedMat]   = useState<string | null>(null);
   const [actionsOpen, setActionsOpen]   = useState(false);
@@ -424,6 +428,36 @@ export function TranscriptPanel({
       );
     } finally {
       setFormatting(false);
+    }
+  }
+
+  // ── Re-transcribe (for old consultations without Whisper segments) ──────────
+  async function retranscribeForTimecodes() {
+    setRetranscribing(true);
+    setRetranscribeMsg(null);
+    setFormatError(null);
+    try {
+      const res = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consultationId }),
+      });
+      const ct = res.headers.get("content-type") ?? "";
+      if (!res.ok) {
+        const msg = ct.includes("application/json")
+          ? ((await res.json().catch(() => ({}))).error ?? "Ошибка транскрибации")
+          : await res.text().catch(() => "Ошибка сервера");
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      setRetranscribeMsg(
+        `Готово! Получено ${data.segmentsCount ?? 0} сегментов с таймкодами. Теперь можно разделить по репликам.`
+      );
+      onRefresh?.();
+    } catch (e) {
+      setFormatError(e instanceof Error ? e.message : "Ошибка повторной транскрибации");
+    } finally {
+      setRetranscribing(false);
     }
   }
 
@@ -807,19 +841,74 @@ export function TranscriptPanel({
                   </div>
                 </div>
               )}
+
+              {/* ── Timecode status banner ── */}
+              {!hasWhisperSegments && (
+                <div
+                  className="rounded-xl border px-4 py-3 mb-4 space-y-2"
+                  style={{ background: "#FFF8EE", borderColor: "#E8C97A" }}
+                >
+                  <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: "#7A5420" }}>
+                    <AlertTriangle size={12} style={{ flexShrink: 0 }} />
+                    Таймкоды недоступны для этой записи
+                  </div>
+                  <p className="text-xs leading-relaxed" style={{ color: "#8A6030" }}>
+                    Запись создана без временны́х меток. Разбивка по репликам будет выполнена без таймкодов.
+                  </p>
+                  {!audioDeleted ? (
+                    <div className="pt-1">
+                      <button
+                        onClick={retranscribeForTimecodes}
+                        disabled={retranscribing}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
+                        style={{ background: "#FEF3DC", borderColor: "#D4A84B", color: "#7A5420" }}
+                      >
+                        {retranscribing
+                          ? <><Loader2 size={11} className="animate-spin" />Транскрибирую повторно...</>
+                          : <><Clock size={11} />Пересоздать транскрипт с таймкодами</>
+                        }
+                      </button>
+                      <p className="text-[11px] mt-1.5" style={{ color: "#A8997F" }}>
+                        Аудиозапись будет обработана повторно. Это займёт 1–2 минуты.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs" style={{ color: "#A8997F" }}>
+                      Аудиозапись удалена — пересоздать транскрипт с таймкодами невозможно.
+                    </p>
+                  )}
+                  {retranscribeMsg && (
+                    <p className="text-xs font-medium" style={{ color: "#3D7A3D" }}>{retranscribeMsg}</p>
+                  )}
+                </div>
+              )}
+
+              {/* ── Split button ── */}
               <div className="mb-4">
                 <button
                   onClick={formatSpeakers}
-                  disabled={formatting}
+                  disabled={formatting || retranscribing}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors"
                   style={{ borderColor: "#CFC0A9", color: "#6B5D4F", background: "#F9F5EE" }}
                 >
                   {formatting
                     ? <><Loader2 size={11} className="animate-spin" />Разделяю реплики...</>
-                    : <><Users size={11} />Разделить по репликам</>
+                    : <><Users size={11} />
+                      {hasWhisperSegments ? "Разделить по репликам с таймкодами" : "Разделить по репликам"}
+                    </>
                   }
                 </button>
-                {formatError && <p className="text-xs text-red-500 mt-1">{formatError}</p>}
+                {hasWhisperSegments && (
+                  <p className="text-[11px] mt-1" style={{ color: "#7A9A7A" }}>
+                    Реальные таймкоды из Whisper будут сохранены
+                  </p>
+                )}
+                {formatError && (
+                  <div className="mt-2 text-xs rounded-lg px-3 py-2" style={{ background: "#FFF0EE", color: "#C75B3A", border: "1px solid #F8C4B4" }}>
+                    {formatError}
+                    <p className="mt-0.5 opacity-70">Исходный текст сохранён и не изменён.</p>
+                  </div>
+                )}
               </div>
               <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{plainText}</p>
             </div>
