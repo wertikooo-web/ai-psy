@@ -7,7 +7,7 @@ import {
   Search, User, Stethoscope, ChevronsLeft, ChevronsRight, Mic,
   NotebookPen, FileText, Paperclip, ChevronDown, ChevronUp, Users,
   Loader2, Play, Pause, MoreHorizontal, Download, Trash2, AlertTriangle,
-  Volume2, Clock,
+  Volume2, Clock, EyeOff, Eye,
 } from "lucide-react";
 import clsx from "clsx";
 import type { ClientMaterial } from "@/lib/types";
@@ -41,13 +41,14 @@ function buildTxt(
   segments: FormattedSegment[],
   clientName: string,
   date: string,
+  withTimestamps: boolean,
 ): string {
   const dateStr = date ? formatDateRu(date) : "";
   const header = [`Клиент: ${clientName}`, dateStr ? `Дата консультации: ${dateStr}` : "", ""].join("\n");
   const body = segments
     .map((s) => {
       const who = s.speaker === "therapist" ? "Психолог" : s.speaker === "client" ? "Клиент" : "Неизвестно";
-      const ts = s.start_seconds > 0 ? `[${fmtTime(s.start_seconds)}] ` : "";
+      const ts = withTimestamps && s.start_seconds > 0 ? `[${fmtTime(s.start_seconds)}] ` : "";
       return `${ts}${who}:\n${s.text}`;
     })
     .join("\n\n");
@@ -58,6 +59,7 @@ function buildMd(
   segments: FormattedSegment[],
   clientName: string,
   date: string,
+  withTimestamps: boolean,
 ): string {
   const dateStr = date ? formatDateRu(date) : "";
   const lines: string[] = [
@@ -69,7 +71,7 @@ function buildMd(
   ];
   segments.forEach((s) => {
     const who = s.speaker === "therapist" ? "Психолог" : s.speaker === "client" ? "Клиент" : "Неизвестно";
-    const ts = s.start_seconds > 0 ? `${fmtTime(s.start_seconds)} — ` : "";
+    const ts = withTimestamps && s.start_seconds > 0 ? `${fmtTime(s.start_seconds)} — ` : "";
     lines.push(`## ${ts}${who}`, "", s.text, "");
   });
   return lines.filter((l) => l !== undefined).join("\n");
@@ -216,10 +218,12 @@ function ConfirmDialog({ title, description, confirmLabel = "Удалить", on
 function FormattedTranscript({
   segments,
   audioDeleted,
+  showTimestamps,
   onSeek,
 }: {
   segments: FormattedSegment[];
   audioDeleted: boolean;
+  showTimestamps: boolean;
   onSeek: (sec: number) => void;
 }) {
   return (
@@ -227,7 +231,7 @@ function FormattedTranscript({
       {segments.map((seg) => {
         const isTherapist = seg.speaker === "therapist";
         const isClient    = seg.speaker === "client";
-        const hasTime     = seg.start_seconds > 0;
+        const hasTime     = showTimestamps && seg.start_seconds > 0;
         return (
           <div key={seg.order_index} className="flex gap-2.5">
             <div className={clsx(
@@ -399,10 +403,29 @@ export function TranscriptPanel({
   // Stable close helper used by menu items
   const closeMenu = useCallback(() => setActionsOpen(false), []);
 
+  const TIMESTAMPS_KEY = "transcript_show_timestamps";
+  const [showTimestamps, setShowTimestamps] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const stored = localStorage.getItem(TIMESTAMPS_KEY);
+    return stored === null ? true : stored === "true";
+  });
+
+  function toggleTimestamps() {
+    setShowTimestamps((v) => {
+      const next = !v;
+      localStorage.setItem(TIMESTAMPS_KEY, String(next));
+      return next;
+    });
+    closeMenu();
+  }
+
   const hasFormatted   = (transcriptFormatted?.length ?? 0) > 0;
   const hasBoth        = !!plainText && !!notesText;
   const hasMaterials   = materials.length > 0;
   const audioDeleted   = !!audioDeletedAt;
+  // True if at least one formatted segment has a real timecode
+  const hasRealTimecodes = hasFormatted &&
+    (transcriptFormatted ?? []).some((s) => s.start_seconds > 0);
 
   const defaultTab: ActiveTab = plainText || hasFormatted ? "transcript" : notesText ? "notes" : "materials";
   const [activeTab, setActiveTab] = useState<ActiveTab>(defaultTab);
@@ -519,14 +542,13 @@ export function TranscriptPanel({
     const base = safeBaseName(clientName, consultationDate);
     if (fmt === "txt") {
       if (hasFormatted) {
-        downloadText(buildTxt(transcriptFormatted!, clientName, consultationDate), `${base}.txt`);
+        downloadText(buildTxt(transcriptFormatted!, clientName, consultationDate, showTimestamps), `${base}.txt`);
       } else if (plainText) {
-        // Fallback: export raw text
         downloadText(plainText, `${base}_исходный.txt`);
       }
     } else {
       const segs = transcriptFormatted ?? [];
-      downloadText(buildMd(segs, clientName, consultationDate), `${base}.md`, "text/markdown;charset=utf-8");
+      downloadText(buildMd(segs, clientName, consultationDate, showTimestamps), `${base}.md`, "text/markdown;charset=utf-8");
     }
   }
 
@@ -646,6 +668,25 @@ export function TranscriptPanel({
                           <Download size={12} /> Скачать Markdown
                         </button>
                       )}
+                      <div className="h-px mx-3 my-1" style={{ background: "#E8E3DA" }} />
+                    </>
+                  )}
+                  {/* Display section — only when formatted segments with real timecodes exist */}
+                  {hasRealTimecodes && (
+                    <>
+                      <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>
+                        Вид
+                      </div>
+                      <button
+                        onClick={toggleTimestamps}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-stone-100 transition-colors text-left"
+                        style={{ color: "#3D3228" }}
+                      >
+                        {showTimestamps
+                          ? <><EyeOff size={12} /> Скрыть таймкоды</>
+                          : <><Eye    size={12} /> Показать таймкоды</>
+                        }
+                      </button>
                       <div className="h-px mx-3 my-1" style={{ background: "#E8E3DA" }} />
                     </>
                   )}
@@ -841,11 +882,14 @@ export function TranscriptPanel({
               <div className="mb-3 flex items-center gap-3 text-xs" style={{ color: "#A8997F" }}>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-brand-200 inline-block" />Психолог</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-200 inline-block" />Клиент</span>
-                {!audioDeleted && <span className="flex items-center gap-1"><Clock size={10} /> нажмите на время для перехода</span>}
+                {showTimestamps && !audioDeleted && hasRealTimecodes && (
+                  <span className="flex items-center gap-1"><Clock size={10} /> нажмите на время для перехода</span>
+                )}
               </div>
               <FormattedTranscript
                 segments={transcriptFormatted!}
                 audioDeleted={audioDeleted}
+                showTimestamps={showTimestamps}
                 onSeek={(sec) => seekRef.current?.(sec)}
               />
               <div className="mt-4 pt-3 border-t text-xs text-center" style={{ borderColor: "#E0D8CA", color: "#A8997F" }}>
