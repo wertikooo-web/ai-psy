@@ -16,16 +16,51 @@ interface ChatPanelProps {
   onMessageConsumed?:  () => void;
 }
 
-function formatAIResponse(text: string): string {
-  if (text.includes("\n\n")) return text;
-  const sentences = text.match(/[^.!?]+[.!?]+["»]?\s*/g);
-  if (!sentences || sentences.length <= 4) return text;
-  const SENTENCES_PER_PARA = 2;
-  const paragraphs: string[] = [];
-  for (let i = 0; i < sentences.length; i += SENTENCES_PER_PARA) {
-    paragraphs.push(sentences.slice(i, i + SENTENCES_PER_PARA).join("").trim());
+// Applied at render time to every AI message (covers both new and old stored messages).
+function formatChatMessage(text: string): string {
+  const t = text.trim();
+  if (!t) return t;
+
+  // 1. Already has paragraph breaks → fine as-is
+  if (t.includes("\n\n")) return t;
+
+  // 2. Has single line breaks → expand to paragraph breaks,
+  //    but keep consecutive list-item lines together (- … / * … / 1. …)
+  if (t.includes("\n")) {
+    return t.replace(/\n(?=[^\n])/g, (_match: string, offset: number) => {
+      const nextLine = t.slice(offset + 1);
+      if (/^[-*•]\s/.test(nextLine) || /^\d+[.)]\s/.test(nextLine)) return "\n";
+      return "\n\n";
+    });
   }
-  return paragraphs.join("\n\n");
+
+  // 3. Solid wall of text — split only if long enough and multi-sentence
+  if (t.length < 280) return t;
+
+  // Safe sentence split: break at [.!?] + whitespace + Cyrillic/Latin uppercase.
+  // Character-by-character avoids regex misfires on т.е., т.д., decimals, initials.
+  const sentences: string[] = [];
+  let cur = "";
+  for (let i = 0; i < t.length; i++) {
+    cur += t[i];
+    const ch    = t[i];
+    const next  = t[i + 1] ?? "";
+    const after = t[i + 2] ?? "";
+    if (/[.!?]/.test(ch) && /\s/.test(next) && /[А-ЯЁA-Z]/.test(after)) {
+      sentences.push(cur.trim());
+      cur = "";
+      i++; // skip the space separator
+    }
+  }
+  if (cur.trim()) sentences.push(cur.trim());
+  if (sentences.length <= 2) return t;
+
+  // Group 2 sentences per paragraph
+  const paras: string[] = [];
+  for (let i = 0; i < sentences.length; i += 2) {
+    paras.push(sentences.slice(i, i + 2).join(" "));
+  }
+  return paras.join("\n\n");
 }
 
 const QUICK_PROMPTS = [
@@ -156,7 +191,7 @@ export function ChatPanel({
       const aiMsg: ChatMessage = {
         id:        `a${Date.now()}`,
         role:      "assistant",
-        content:   formatAIResponse(data.reply),
+        content:   formatChatMessage(data.reply),
         timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages(m => [...m, aiMsg]);
@@ -311,7 +346,7 @@ export function ChatPanel({
                 )}>
                   {isAI ? (
                     <span style={{ whiteSpace: "pre-wrap", lineHeight: "1.6", display: "block" }}>
-                      {msg.content}
+                      {formatChatMessage(msg.content)}
                     </span>
                   ) : msg.content}
                 </div>
