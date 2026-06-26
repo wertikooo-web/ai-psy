@@ -56,8 +56,8 @@ export async function POST(req: NextRequest) {
       mode: mode as AnalysisMode,
       transcript,
       clientContext: clientContext || undefined,
-      provider: "openai",
-      model,
+      provider: "anthropic",
+      model: model?.startsWith("gpt") ? "claude-sonnet-4-6" : (model ?? "claude-sonnet-4-6"),
     });
 
     // Persist result
