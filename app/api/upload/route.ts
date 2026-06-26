@@ -6,27 +6,56 @@ import path from "path";
 import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 
 const execAsync = promisify(exec);
-const SUPABASE_MAX = 49 * 1024 * 1024; // 49 MB (safe under 50 MB free tier)
-const WHISPER_MAX  = 24 * 1024 * 1024; // 24 MB (safe under 25 MB Whisper limit)
+
+// Whisper API limit is 25 MB — compress anything above this threshold
+const COMPRESS_THRESHOLD = 23 * 1024 * 1024; // 23 MB (safe margin)
+
+// 1. Railway accepts the body: Next.js Route Handlers have no built-in body size
+//    limit for formData() — only Server Actions respect bodySizeLimit.
+//    Node.js HTTP server default is effectively unlimited.
+// 2. maxDuration = 300 s covers upload + ffmpeg + Supabase transfer for large files.
+// 3. Temp files are always deleted in the finally block below.
+// 4. The whole file is buffered once in memory (unavoidable for ffmpeg piping).
+//    At 16kbps mono the compressed output is ~7 MB/hour, handling 3+ hour sessions.
+export const maxDuration = 300;
 
 async function compressAudio(inputBuffer: Buffer, originalName: string): Promise<Buffer> {
-  const tmpIn  = `/tmp/upload_in_${Date.now()}`;
-  const tmpOut = `/tmp/upload_out_${Date.now()}.mp3`;
+  // Use a unique id so parallel uploads don't collide in /tmp
+  const id     = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const tmpIn  = `/tmp/audio_in_${id}`;
+  const tmpOut = `/tmp/audio_out_${id}.mp3`;
   try {
     await writeFile(tmpIn, inputBuffer);
-    // Compress to mp3 32kbps mono — ~14 MB/hour, good enough for speech
-    await execAsync(`ffmpeg -i "${tmpIn}" -vn -ar 16000 -ac 1 -b:a 32k "${tmpOut}" -y`);
-    const compressed = await readFile(tmpOut);
-    console.log(`[upload] compressed ${originalName}: ${(inputBuffer.length/1024/1024).toFixed(1)}MB → ${(compressed.length/1024/1024).toFixed(1)}MB`);
+
+    // 16 kbps mono @ 16 kHz ≈ 7.2 MB/hour — handles 3+ hour sessions under 23 MB
+    // If still over limit, retry at 8 kbps (≈ 3.6 MB/hour, handles 6+ hours)
+    await execAsync(
+      `ffmpeg -i "${tmpIn}" -vn -ar 16000 -ac 1 -b:a 16k "${tmpOut}" -y`,
+      { timeout: 120_000 },
+    );
+
+    let compressed = await readFile(tmpOut);
+
+    if (compressed.length > COMPRESS_THRESHOLD) {
+      // Very long recording — compress harder at 8 kbps
+      await execAsync(
+        `ffmpeg -i "${tmpIn}" -vn -ar 8000 -ac 1 -b:a 8k "${tmpOut}" -y`,
+        { timeout: 120_000 },
+      );
+      compressed = await readFile(tmpOut);
+    }
+
+    console.log(
+      `[upload] ${originalName}: ${(inputBuffer.length / 1024 / 1024).toFixed(1)} MB` +
+      ` → ${(compressed.length / 1024 / 1024).toFixed(1)} MB`,
+    );
     return compressed;
   } finally {
+    // Always remove both temp files regardless of success or failure
     await unlink(tmpIn).catch(() => {});
     await unlink(tmpOut).catch(() => {});
   }
 }
-
-// Allow up to 500 MB uploads and 5-minute timeout
-export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,22 +71,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Неподдерживаемый формат файла" }, { status: 400 });
     }
 
-    const MAX_SIZE = 500 * 1024 * 1024; // 500 MB hard cap before compression
-    if (file.size > MAX_SIZE) {
+    // 500 MB hard cap — compression brings this well under all service limits
+    const MAX_RAW = 500 * 1024 * 1024;
+    if (file.size > MAX_RAW) {
       return NextResponse.json(
         { error: `Файл слишком большой (${(file.size / 1024 / 1024).toFixed(0)} МБ). Максимум — 500 МБ.` },
         { status: 413 },
       );
     }
 
+    // Buffer the file once — this is the only copy held in memory
     let buffer: Buffer = Buffer.from(await file.arrayBuffer());
-    let storedExt = file.name.match(/\.[^.]+$/)?.[0] ?? ".mp3";
+    let storedExt  = file.name.match(/\.[^.]+$/)?.[0] ?? ".mp3";
     let contentType = file.type || "audio/mpeg";
 
-    // Compress if file exceeds Supabase or Whisper limits
-    if (buffer.length > Math.min(SUPABASE_MAX, WHISPER_MAX)) {
-      buffer     = await compressAudio(buffer, file.name);
-      storedExt  = ".mp3";
+    if (buffer.length > COMPRESS_THRESHOLD) {
+      buffer      = await compressAudio(buffer, file.name);
+      storedExt   = ".mp3";
       contentType = "audio/mpeg";
     }
 
@@ -75,12 +105,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         fileName:   file.name,
         fileUrl:    `storage://audio/${storedName}`,
-        fileSize:   file.size,
+        fileSize:   buffer.length,
         uploadedAt: new Date().toISOString(),
       });
     }
 
-    // Fallback: local filesystem (Railway ephemeral — fine for dev/testing)
+    // Fallback: local filesystem (Railway ephemeral — works for dev/testing only)
     const uploadDir = path.join(process.cwd(), "public", "uploads");
     await mkdir(uploadDir, { recursive: true });
     await writeFile(path.join(uploadDir, storedName), buffer);
@@ -88,15 +118,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       fileName:   file.name,
       fileUrl:    `/uploads/${storedName}`,
-      fileSize:   file.size,
+      fileSize:   buffer.length,
       uploadedAt: new Date().toISOString(),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[upload] error:", msg);
-    return NextResponse.json(
-      { error: `Ошибка загрузки: ${msg}` },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: `Ошибка загрузки: ${msg}` }, { status: 500 });
   }
 }
