@@ -5,7 +5,7 @@
 
 import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 import * as jsonStore from "@/lib/consultationStore";
-import type { StoredConsultation, WhisperSegment, FormattedSegment } from "@/lib/consultationStore";
+import type { StoredConsultation, WhisperSegment, FormattedSegment, AnalysisEvidence } from "@/lib/consultationStore";
 
 function rowToConsultation(row: Record<string, unknown>): StoredConsultation {
   return {
@@ -36,6 +36,7 @@ function rowToConsultation(row: Record<string, unknown>): StoredConsultation {
     transcriptRawDeletedAt:        row.transcript_raw_deleted_at as string | undefined,
     transcriptFormattedDeletedAt:  row.transcript_formatted_deleted_at as string | undefined,
     analyses: (row.analyses as StoredConsultation["analyses"]) ?? [],
+    analysisEvidence: (row.analysis_evidence as AnalysisEvidence | null) ?? undefined,
   };
 }
 
@@ -121,7 +122,8 @@ export async function updateConsultation(id: string, updates: Partial<StoredCons
     if (updates.status      !== undefined) patch.status         = updates.status;
     if (updates.clientId    !== undefined) patch.client_id      = updates.clientId;
     if (updates.clientName  !== undefined) patch.client_name    = updates.clientName;
-    if (updates.analyses    !== undefined) patch.analyses       = updates.analyses;
+    if (updates.analyses          !== undefined) patch.analyses          = updates.analyses;
+    if (updates.analysisEvidence  !== undefined) patch.analysis_evidence = updates.analysisEvidence ?? null;
     if (updates.audio !== undefined) {
       patch.audio_file_name = updates.audio?.fileName ?? null;
       patch.audio_file_url  = updates.audio?.fileUrl  ?? null;

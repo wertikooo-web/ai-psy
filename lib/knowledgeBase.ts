@@ -9,6 +9,9 @@ export interface AnalysisPromptInput {
   mode: AnalysisMode;
   transcript: string;
   clientContext?: string;
+  styleHint?: "professional" | "simple" | "academic";
+  lengthHint?: "brief" | "standard" | "detailed";
+  extraInstructions?: string;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -130,7 +133,7 @@ export async function loadKnowledgeFiles(files: string[]): Promise<string> {
  *   6. task instruction (mode label)
  */
 export async function buildAnalysisPrompt(input: AnalysisPromptInput): Promise<string> {
-  const { mode, transcript, clientContext } = input;
+  const { mode, transcript, clientContext, styleHint, lengthHint, extraInstructions } = input;
 
   const files = getKnowledgeFilesForMode(mode);
   const knowledge = await loadKnowledgeFiles(files);
@@ -167,14 +170,30 @@ export async function buildAnalysisPrompt(input: AnalysisPromptInput): Promise<s
     next_session:      "400–600 слов",
   };
 
-  sections.push(
+  const styleInstruction: Record<string, string> = {
+    professional: "",
+    simple:       "\n\nСТИЛЬ: Пиши простым и понятным языком, минимум профессиональных терминов. Формулируй мысли так, чтобы было легко читать без специальной подготовки.",
+    academic:     "\n\nСТИЛЬ: Используй строгий академический язык. Аргументируй каждый тезис с опорой на конкретные эпизоды из транскрипта. Используй профессиональную терминологию.",
+  };
+
+  const lengthInstruction =
+    lengthHint === "brief"
+      ? "КРАТКИЙ — до 300 слов. Только самое существенное, без развёрнутых пояснений."
+      : lengthHint === "detailed"
+        ? `ПОДРОБНЫЙ — ${wordTarget[mode]} и более. Развёрнутые обоснования, все значимые наблюдения.`
+        : wordTarget[mode];
+
+  const taskText =
     `# Задача\n\n` +
     `Режим: ${modeLabel[mode]}.\n` +
     `Прочитай транскрипт и сформулируй аналитический разбор в соответствии с базой знаний выше.\n` +
     `Используй голос думающего коллеги-супервизора. Опирайся только на то, что есть в тексте.\n` +
     `Формат: связный аналитический текст, разбитый на смысловые блоки с заголовками.\n` +
-    `Объём: ${wordTarget[mode]}.`
-  );
+    `Объём: ${lengthInstruction}.` +
+    (styleInstruction[styleHint ?? "professional"] ?? "") +
+    (extraInstructions?.trim() ? `\n\nДОПОЛНИТЕЛЬНЫЕ ИНСТРУКЦИИ ОТ ПСИХОЛОГА:\n${extraInstructions.trim()}` : "");
+
+  sections.push(taskText);
 
   return sections.join("\n\n---\n\n");
 }

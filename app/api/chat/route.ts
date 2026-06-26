@@ -181,6 +181,19 @@ ${consultationMeta ? `\n${consultationMeta}` : ""}
     // ── Call model ────────────────────────────────────────────────────────────
     const profile = await readProfile();
     const model   = profile.aiModel ?? "gpt-4o";
+    const chatStyle = profile.chatStyle ?? "normal";
+    const aiInstructions = profile.aiInstructions ?? "";
+
+    const chatStyleConfig = {
+      brief:    { maxTokens: 350, instruction: "\n\nСТИЛЬ ОТВЕТА: Очень кратко — 2-3 предложения максимум. Прямо к сути, без вступлений." },
+      normal:   { maxTokens: 800, instruction: "" },
+      detailed: { maxTokens: 1400, instruction: "\n\nСТИЛЬ ОТВЕТА: Можно давать развёрнутые ответы с подробными объяснениями и примерами из транскрипта." },
+    };
+    const { maxTokens, instruction: chatInstruction } = chatStyleConfig[chatStyle] ?? chatStyleConfig.normal;
+
+    const finalSystemPrompt = systemPrompt
+      + chatInstruction
+      + (aiInstructions.trim() ? `\n\nДОПОЛНИТЕЛЬНЫЕ ИНСТРУКЦИИ ОТ ПСИХОЛОГА:\n${aiInstructions.trim()}` : "");
 
     const openai = new OpenAI({ apiKey });
 
@@ -189,13 +202,13 @@ ${consultationMeta ? `\n${consultationMeta}` : ""}
       model,
       ...(isOModel ? {} : { temperature: 0.7 }),
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: finalSystemPrompt },
         ...messages.map((m) => ({
           role:    m.role as "user" | "assistant",
           content: m.content,
         })),
       ],
-      max_tokens: 800,
+      max_tokens: maxTokens,
     });
 
     const reply = completion.choices[0]?.message?.content ?? "Не удалось получить ответ.";

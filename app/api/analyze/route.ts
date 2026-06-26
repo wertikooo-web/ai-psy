@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getConsultation, updateConsultation } from "@/lib/data/consultations";
+import { buildEvidence, transcriptHash } from "@/lib/evidenceService";
 import { generateAnalysis } from "@/lib/analysisService";
 import type { AnalysisMode } from "@/lib/knowledgeBase";
 import { getClients as readAllClients } from "@/lib/data/clients";
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
     // Mark as analyzing
     await updateConsultation(consultationId, { status: "analyzing" });
 
-    // Read model from user profile settings
+    // Read model and style settings from user profile
     const profile = await readProfile();
     const model = profile.aiModel ?? "gpt-4o";
 
@@ -94,6 +95,9 @@ export async function POST(req: NextRequest) {
       clientContext: clientContext || undefined,
       provider: "openai",
       model,
+      styleHint:         profile.analysisStyle     ?? "professional",
+      lengthHint:        profile.analysisLength    ?? "standard",
+      extraInstructions: profile.aiInstructions    ?? "",
     });
 
     // Persist result
@@ -110,6 +114,23 @@ export async function POST(req: NextRequest) {
       status:   "done",
       analyses: [...withoutCurrent, entry],
     });
+
+    // Build evidence in background if missing or stale — never blocks the response
+    const existingEvidence = consultation.analysisEvidence;
+    const currentHash = transcriptHash(transcript);
+    const evidenceIsStale = !existingEvidence || existingEvidence.source.sourceHash !== currentHash;
+    if (evidenceIsStale) {
+      buildEvidence({
+        consultationId,
+        transcriptText:      transcript,
+        transcriptFormatted: consultation.transcriptFormatted?.length
+          ? consultation.transcriptFormatted
+          : undefined,
+        model,
+      })
+        .then((evidence) => updateConsultation(consultationId, { analysisEvidence: evidence }))
+        .catch((err) => console.error("[analyze] evidence background build failed:", err));
+    }
 
     return NextResponse.json({
       id:       entry.id,

@@ -19,6 +19,10 @@ function rowToProfile(row: Record<string, unknown>): UserProfile {
     defaultAnalysisMode:  (row.default_analysis_mode as string) ?? "working",
     photoUrl:             (row.photo_url as string)             ?? undefined,
     aiModel:              (row.ai_model as string)              ?? "gpt-4o",
+    analysisStyle:        ((row.analysis_style as string)  || "professional") as UserProfile["analysisStyle"],
+    analysisLength:       ((row.analysis_length as string) || "standard")     as UserProfile["analysisLength"],
+    chatStyle:            ((row.chat_style as string)      || "normal")        as UserProfile["chatStyle"],
+    aiInstructions:       (row.ai_instructions as string)       ?? "",
   };
 }
 
@@ -47,6 +51,10 @@ export async function writeProfile(profile: Partial<UserProfile>): Promise<void>
     if (profile.defaultAnalysisMode !== undefined) patch.default_analysis_mode = profile.defaultAnalysisMode;
     if (profile.photoUrl            !== undefined) patch.photo_url             = profile.photoUrl;
     if (profile.aiModel             !== undefined) patch.ai_model              = profile.aiModel;
+    if (profile.analysisStyle       !== undefined) patch.analysis_style        = profile.analysisStyle;
+    if (profile.analysisLength      !== undefined) patch.analysis_length       = profile.analysisLength;
+    if (profile.chatStyle           !== undefined) patch.chat_style            = profile.chatStyle;
+    if (profile.aiInstructions      !== undefined) patch.ai_instructions       = profile.aiInstructions;
 
     const { error } = await supabaseServer!
       .from("user_profile")

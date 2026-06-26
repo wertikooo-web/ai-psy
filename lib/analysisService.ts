@@ -10,6 +10,9 @@ export interface GenerateAnalysisInput {
   provider?: LLMProvider;
   model?: string;
   temperature?: number;
+  styleHint?: "professional" | "simple" | "academic";
+  lengthHint?: "brief" | "standard" | "detailed";
+  extraInstructions?: string;
 }
 
 export interface GenerateAnalysisOutput {
@@ -70,6 +73,9 @@ export async function generateAnalysis(
     provider: providerName = DEFAULT_PROVIDER,
     model,
     temperature,
+    styleHint,
+    lengthHint,
+    extraInstructions,
   } = input;
 
   const providerClient = getProvider(providerName);
@@ -116,6 +122,9 @@ export async function generateAnalysis(
     mode,
     transcript: effectiveTranscript,
     clientContext,
+    styleHint,
+    lengthHint,
+    extraInstructions,
   });
 
   const result = await providerClient.generateText({

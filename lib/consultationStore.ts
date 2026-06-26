@@ -25,6 +25,64 @@ export interface FormattedSegment {
   text:          string;
 }
 
+// ── Analysis Evidence types (spec v1.0) ───────────────────────────────────────
+
+export type EvidenceItem = {
+  segmentId?:   string;
+  quote:        string;
+  speaker:      "client" | "psychologist" | "unknown";
+  startSeconds?: number;
+  endSeconds?:   number;
+  confidence:   "high" | "medium" | "low";
+  reason?:      string;
+};
+
+export type ThemeEvidence = {
+  label:       string;
+  occurrences: number;
+  evidence:    EvidenceItem[];
+  confidence:  "high" | "medium" | "low";
+};
+
+export type PhraseEvidence = {
+  phrase:      string;
+  occurrences: number;
+  evidence:    EvidenceItem[];
+  confidence:  "high" | "medium" | "low";
+};
+
+export type MarkerEvidence = {
+  total:    number;
+  examples: EvidenceItem[];
+};
+
+export type AnalysisEvidence = {
+  version:     "1.0";
+  generatedAt: string;
+
+  source: {
+    consultationId:      string;
+    transcriptVersion?:  string;
+    transcriptUpdatedAt?: string;
+    sourceHash:          string;
+    hasSpeakerLabels:    boolean;
+    hasTimestamps:       boolean;
+  };
+
+  quality: {
+    speakerSeparation:  "good" | "partial" | "poor" | "unknown";
+    transcriptionNoise: "low" | "medium" | "high" | "unknown";
+    notes:              string[];
+  };
+
+  repeatedThemes:          ThemeEvidence[];
+  repeatedPhrases:         PhraseEvidence[];
+  uncertaintyMarkers:      MarkerEvidence;
+  possibleOffTopicAnswers: EvidenceItem[];
+  importantQuotes:         EvidenceItem[];
+  possibleTranscriptionIssues: EvidenceItem[];
+};
+
 export interface StoredConsultation {
   id: string;
   clientId: string;
@@ -73,6 +131,9 @@ export interface StoredConsultation {
     result: string;
     createdAt: string;
   }>;
+
+  // Hidden evidence layer — extracted from transcript text, never re-runs Whisper
+  analysisEvidence?: AnalysisEvidence;
 
   // Legacy fields — kept for records created before this model change
   fileName?: string;

@@ -91,7 +91,7 @@ export function UploadModal({
   useEffect(() => {
     fetch("/api/clients")
       .then((r) => r.json())
-      .then((data: StoredClient[]) => setRealClients(data))
+      .then((data: unknown) => setRealClients(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, []);
 
