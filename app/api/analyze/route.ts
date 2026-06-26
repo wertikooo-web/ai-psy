@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getConsultation, updateConsultation } from "@/lib/data/consultations";
 import { buildEvidence, transcriptHash, canonicalTranscriptText } from "@/lib/evidenceService";
-import { generateAnalysis } from "@/lib/analysisService";
+import { generateAnalysis, extractBlocks } from "@/lib/analysisService";
 import type { AnalysisMode } from "@/lib/knowledgeBase";
 import { getClients as readAllClients } from "@/lib/data/clients";
 import { getHistoryForClient as getHistory } from "@/lib/data/clientHistory";
@@ -89,6 +89,8 @@ export async function POST(req: NextRequest) {
     const profile = await readProfile();
     const model = profile.aiModel ?? "gpt-4o";
 
+    const currentEvidence = consultation.analysisEvidence;
+
     const output = await generateAnalysis({
       mode: mode as AnalysisMode,
       transcript,
@@ -98,6 +100,7 @@ export async function POST(req: NextRequest) {
       styleHint:         profile.analysisStyle     ?? "professional",
       lengthHint:        profile.analysisLength    ?? "standard",
       extraInstructions: profile.aiInstructions    ?? "",
+      analysisEvidence:  currentEvidence,
     });
 
     // Persist result
@@ -115,14 +118,33 @@ export async function POST(req: NextRequest) {
       analyses: [...withoutCurrent, entry],
     });
 
+    // Extract analysis blocks in background if evidence is available
+    if (currentEvidence) {
+      extractBlocks(output.text, currentEvidence, model, "openai")
+        .then(async (blocks) => {
+          if (blocks.length === 0) return;
+          // Re-read to get latest analyses array, then patch the entry we just saved
+          const fresh = await getConsultation(consultationId);
+          if (!fresh) return;
+          const updatedAnalyses = (fresh.analyses ?? []).map((a) =>
+            a.id === entry.id ? { ...a, blocks } : a,
+          );
+          await updateConsultation(consultationId, { analyses: updatedAnalyses });
+          console.log(`[analysisBlocks] consultationId=${consultationId} blocks=${blocks.length} ok=true`);
+        })
+        .catch((err) => {
+          const msg = err instanceof Error ? err.message : "unknown";
+          console.error(`[analysisBlocks] consultationId=${consultationId} background failed: ${msg}`);
+        });
+    }
+
     // Build evidence in background if missing or stale — never blocks the response
-    const existingEvidence = consultation.analysisEvidence;
     const canonicalText = canonicalTranscriptText(
       consultation.transcriptFormatted,
       consultation.transcript?.text,
     );
     const currentHash = transcriptHash(canonicalText);
-    const evidenceIsStale = !existingEvidence || existingEvidence.source.sourceHash !== currentHash;
+    const evidenceIsStale = !currentEvidence || currentEvidence.source.sourceHash !== currentHash;
     if (evidenceIsStale) {
       buildEvidence({
         consultationId,

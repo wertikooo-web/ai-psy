@@ -1,5 +1,12 @@
 import { buildAnalysisPrompt, getKnowledgeFilesForMode, type AnalysisMode } from "./knowledgeBase";
 import { getProvider, DEFAULT_PROVIDER, type LLMProvider } from "./llm";
+import type { AnalysisEvidence } from "./consultationStore";
+import type { AnalysisBlock } from "./analysisBlocks";
+import {
+  prepareEvidenceForAnalysis,
+  buildBlockExtractionPrompt,
+  BlocksOutputSchema,
+} from "./analysisBlocks";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +20,7 @@ export interface GenerateAnalysisInput {
   styleHint?: "professional" | "simple" | "academic";
   lengthHint?: "brief" | "standard" | "detailed";
   extraInstructions?: string;
+  analysisEvidence?: AnalysisEvidence;
 }
 
 export interface GenerateAnalysisOutput {
@@ -23,6 +31,55 @@ export interface GenerateAnalysisOutput {
   knowledgeFiles: string[];
   promptChars: number;
   promptTokensEstimate: number;
+}
+
+// ── Block extraction (second pass, short LLM call) ────────────────────────────
+
+export async function extractBlocks(
+  analysisText: string,
+  evidence: AnalysisEvidence,
+  model: string | undefined,
+  providerName: LLMProvider,
+): Promise<AnalysisBlock[]> {
+  const prepared = prepareEvidenceForAnalysis(evidence);
+  const { systemPrompt, userPrompt } = buildBlockExtractionPrompt(analysisText, prepared);
+
+  const providerClient = getProvider(providerName);
+  let raw: string;
+  try {
+    const result = await providerClient.generateText({
+      systemPrompt,
+      userPrompt,
+      model,
+      temperature: 0.1,
+      maxTokens:   4000,
+    });
+    raw = result.text
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "unknown";
+    console.error(`[analysisBlocks] LLM call failed: ${msg}`);
+    return [];
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    console.error(`[analysisBlocks] JSON parse failed, len=${raw.length}`);
+    return [];
+  }
+
+  const validated = BlocksOutputSchema.safeParse(parsed);
+  if (!validated.success) {
+    console.error(`[analysisBlocks] Zod failed: ${validated.error.issues.length} issues`);
+    return [];
+  }
+
+  return validated.data.blocks as AnalysisBlock[];
 }
 
 // ── Token budget constants ────────────────────────────────────────────────────
@@ -76,7 +133,12 @@ export async function generateAnalysis(
     styleHint,
     lengthHint,
     extraInstructions,
+    analysisEvidence,
   } = input;
+
+  const preparedEvidence = analysisEvidence
+    ? prepareEvidenceForAnalysis(analysisEvidence)
+    : undefined;
 
   const providerClient = getProvider(providerName);
 
@@ -125,6 +187,7 @@ export async function generateAnalysis(
     styleHint,
     lengthHint,
     extraInstructions,
+    preparedEvidence,
   });
 
   const result = await providerClient.generateText({

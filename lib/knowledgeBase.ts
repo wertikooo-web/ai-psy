@@ -1,5 +1,7 @@
 import path from "path";
 import fs from "fs/promises";
+import type { PreparedAnalysisEvidence } from "@/lib/analysisBlocks";
+import { evidenceToPromptSection } from "@/lib/analysisBlocks";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -12,6 +14,7 @@ export interface AnalysisPromptInput {
   styleHint?: "professional" | "simple" | "academic";
   lengthHint?: "brief" | "standard" | "detailed";
   extraInstructions?: string;
+  preparedEvidence?: PreparedAnalysisEvidence;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -133,7 +136,7 @@ export async function loadKnowledgeFiles(files: string[]): Promise<string> {
  *   6. task instruction (mode label)
  */
 export async function buildAnalysisPrompt(input: AnalysisPromptInput): Promise<string> {
-  const { mode, transcript, clientContext, styleHint, lengthHint, extraInstructions } = input;
+  const { mode, transcript, clientContext, styleHint, lengthHint, extraInstructions, preparedEvidence } = input;
 
   const files = getKnowledgeFilesForMode(mode);
   const knowledge = await loadKnowledgeFiles(files);
@@ -155,6 +158,11 @@ export async function buildAnalysisPrompt(input: AnalysisPromptInput): Promise<s
   // 4: client context
   if (clientContext?.trim()) {
     sections.push(`# Контекст клиента\n\n${clientContext.trim()}`);
+  }
+
+  // 4b: evidence context (compact, optional)
+  if (preparedEvidence) {
+    sections.push(evidenceToPromptSection(preparedEvidence));
   }
 
   // 5: transcript
