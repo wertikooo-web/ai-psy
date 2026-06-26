@@ -3,6 +3,9 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 
+// Allow up to 500 MB uploads and 5-minute timeout
+export const maxDuration = 300;
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -30,7 +33,6 @@ export async function POST(req: NextRequest) {
 
       if (error) throw new Error(`Storage upload: ${error.message}`);
 
-      // Return storage path — transcribe route will download it back via service role
       return NextResponse.json({
         fileName:   file.name,
         fileUrl:    `storage://audio/${storedName}`,
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Fallback: local filesystem
+    // Fallback: local filesystem (Railway ephemeral — fine for dev/testing)
     const uploadDir = path.join(process.cwd(), "public", "uploads");
     await mkdir(uploadDir, { recursive: true });
     await writeFile(path.join(uploadDir, storedName), buffer);
@@ -51,9 +53,11 @@ export async function POST(req: NextRequest) {
       uploadedAt: new Date().toISOString(),
     });
   } catch (err) {
-    console.error("Upload error:", err);
-    return NextResponse.json({ error: "Ошибка загрузки файла" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[upload] error:", msg);
+    return NextResponse.json(
+      { error: `Ошибка загрузки: ${msg}` },
+      { status: 500 },
+    );
   }
 }
-
-export const config = { api: { bodyParser: false } };
