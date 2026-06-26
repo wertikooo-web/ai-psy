@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { StoredConsultation, ConsultationStatus } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import {
@@ -12,6 +12,76 @@ import {
 } from "lucide-react";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
 import Link from "next/link";
+
+// ── Analysis progress indicator ───────────────────────────────────────────────
+function AnalysisProgress({ transcriptLen }: { transcriptLen: number }) {
+  const needsChunking = transcriptLen > 30_000;
+  const estimatedSec  = needsChunking ? 150 : 25; // 2.5 min vs 25 sec
+
+  const steps = needsChunking
+    ? ["Разбиваю транскрипт на фрагменты", "Сжимаю фрагменты", "Синтезирую анализ"]
+    : ["Обрабатываю транскрипт", "Формирую анализ"];
+
+  const [elapsed, setElapsed]     = useState(0);
+  const [stepIdx, setStepIdx]     = useState(0);
+  const startRef                  = useRef(Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      const s = Math.floor((Date.now() - startRef.current) / 1000);
+      setElapsed(s);
+      const idx = Math.min(
+        Math.floor((s / estimatedSec) * steps.length),
+        steps.length - 1,
+      );
+      setStepIdx(idx);
+    }, 500);
+    return () => clearInterval(t);
+  }, [estimatedSec, steps.length]);
+
+  const progress = Math.min((elapsed / estimatedSec) * 100, 94);
+  const remaining = Math.max(estimatedSec - elapsed, 0);
+  const fmt = (s: number) => s >= 60 ? `~${Math.ceil(s / 60)} мин` : `~${s} сек`;
+
+  return (
+    <div className="w-full rounded-xl border px-4 py-3.5 space-y-2.5"
+      style={{ background: "#F0ECFF", borderColor: "#C4B5FD" }}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-violet-700">Анализирую...</span>
+        <span className="text-xs text-violet-500">{fmt(remaining)} осталось</span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1.5 rounded-full bg-violet-100 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-violet-500 transition-all duration-500"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      {/* Current step */}
+      <p className="text-xs text-violet-600">{steps[stepIdx]}...</p>
+
+      {/* Steps dots */}
+      <div className="flex items-center gap-1.5">
+        {steps.map((s, i) => (
+          <div key={s} className={`flex items-center gap-1.5 ${i < steps.length - 1 ? "flex-1" : ""}`}>
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-300 ${
+              i < stepIdx ? "bg-violet-500" : i === stepIdx ? "bg-violet-400 animate-pulse" : "bg-violet-200"
+            }`} />
+            {i < steps.length - 1 && (
+              <div className={`flex-1 h-px transition-colors duration-300 ${i < stepIdx ? "bg-violet-400" : "bg-violet-200"}`} />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[10px] text-violet-400">
+        {elapsed} сек · {needsChunking ? "длинная запись — используется сжатие" : "короткая запись"}
+      </p>
+    </div>
+  );
+}
 import { TranscriptPanel } from "./TranscriptPanel";
 import { ChatPanel } from "./ChatPanel";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
@@ -640,10 +710,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               )}
 
               {analyzing ? (
-                <div className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-50 border border-brand-100 text-sm text-brand-600 font-medium">
-                  <Loader2 size={14} className="animate-spin" />
-                  Анализирую...
-                </div>
+                <AnalysisProgress transcriptLen={transcriptText?.length ?? 0} />
               ) : (
                 <button
                   onClick={runAnalysis}
