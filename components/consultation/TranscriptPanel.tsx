@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { TranscriptSegment } from "@/lib/mockData";
 import type { FormattedSegment } from "@/lib/consultationStore";
 import {
@@ -372,7 +372,32 @@ export function TranscriptPanel({
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMsg, setActionMsg]        = useState<string | null>(null);
 
-  const seekRef = useRef<((sec: number) => void) | null>(null);
+  const seekRef    = useRef<((sec: number) => void) | null>(null);
+  const menuRef    = useRef<HTMLDivElement>(null);   // wraps trigger + dropdown
+
+  // Close on outside click (mousedown) and Esc — listeners active only while open
+  useEffect(() => {
+    if (!actionsOpen) return;
+
+    function onOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActionsOpen(false);
+      }
+    }
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setActionsOpen(false);
+    }
+
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("keydown",   onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("keydown",   onEsc);
+    };
+  }, [actionsOpen]);
+
+  // Stable close helper used by menu items
+  const closeMenu = useCallback(() => setActionsOpen(false), []);
 
   const hasFormatted   = (transcriptFormatted?.length ?? 0) > 0;
   const hasBoth        = !!plainText && !!notesText;
@@ -503,7 +528,6 @@ export function TranscriptPanel({
       const segs = transcriptFormatted ?? [];
       downloadText(buildMd(segs, clientName, consultationDate), `${base}.md`, "text/markdown;charset=utf-8");
     }
-    setActionsOpen(false);
   }
 
   // ── Confirm dialog config ───────────────────────────────────────────────────
@@ -583,8 +607,8 @@ export function TranscriptPanel({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Actions button */}
-            <div className="relative">
+            {/* Actions button + dropdown — ref covers both for outside-click detection */}
+            <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setActionsOpen((o) => !o)}
                 title="Действия с транскриптом"
@@ -606,7 +630,7 @@ export function TranscriptPanel({
                         Экспорт
                       </div>
                       <button
-                        onClick={() => doExport("txt")}
+                        onClick={() => { closeMenu(); doExport("txt"); }}
                         className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-stone-100 transition-colors text-left"
                         style={{ color: "#3D3228" }}
                       >
@@ -615,7 +639,7 @@ export function TranscriptPanel({
                       </button>
                       {hasFormatted && (
                         <button
-                          onClick={() => doExport("md")}
+                          onClick={() => { closeMenu(); doExport("md"); }}
                           className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-stone-100 transition-colors text-left"
                           style={{ color: "#3D3228" }}
                         >
@@ -633,7 +657,7 @@ export function TranscriptPanel({
                   )}
                   {hasTranscriptRaw && (
                     <button
-                      onClick={() => { setActionsOpen(false); setConfirmAction("delete-raw"); }}
+                      onClick={() => { closeMenu(); setConfirmAction("delete-raw"); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-red-50 transition-colors text-left"
                       style={{ color: "#C75B3A" }}
                     >
@@ -642,7 +666,7 @@ export function TranscriptPanel({
                   )}
                   {hasFormatted && (
                     <button
-                      onClick={() => { setActionsOpen(false); setConfirmAction("delete-formatted"); }}
+                      onClick={() => { closeMenu(); setConfirmAction("delete-formatted"); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-red-50 transition-colors text-left"
                       style={{ color: "#C75B3A" }}
                     >
@@ -651,7 +675,7 @@ export function TranscriptPanel({
                   )}
                   {!audioDeleted && (
                     <button
-                      onClick={() => { setActionsOpen(false); setConfirmAction("delete-audio"); }}
+                      onClick={() => { closeMenu(); setConfirmAction("delete-audio"); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-red-50 transition-colors text-left"
                       style={{ color: "#C75B3A" }}
                     >
