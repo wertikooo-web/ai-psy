@@ -420,7 +420,6 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             collapsed={panelCollapsed.chat}
             onToggle={() => setPanelCollapsed(p => ({ ...p, chat: !p.chat }))}
             consultationId={c.id}
-            transcriptText={transcriptText ?? undefined}
           />
         </div>
       </div>

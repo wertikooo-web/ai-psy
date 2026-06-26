@@ -72,7 +72,6 @@ export function ConsultationClient({ consultation }: Props) {
           onMessageConsumed={handleMessageConsumed}
           collapsed={collapsed.chat}
           onToggle={() => toggle("chat")}
-          transcriptText={transcriptText}
         />
       </div>
 

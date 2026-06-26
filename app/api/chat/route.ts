@@ -1,24 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getConsultation } from "@/lib/data/consultations";
+import { getClientById } from "@/lib/data/clients";
+import { getMaterialsForClient } from "@/lib/data/clientMaterials";
 import { readProfile } from "@/lib/data/userProfile";
+import type { FormattedSegment } from "@/lib/consultationStore";
 
-const SYSTEM_PROMPT = `Ты — AI-ассистент для психолога. Ты помогаешь специалисту анализировать сессию, замечать паттерны, готовиться к следующей встрече.
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-Твой стиль:
-- Профессиональный, но живой — не сухой академический текст
-- Конкретный: опирайся на реальные моменты из транскрипта
-- Уважительный к работе психолога — ты поддерживаешь, не критикуешь
-- Краткий по умолчанию: 2-4 предложения если не просят развернуть
-- На русском языке
+function fmtTime(sec: number): string {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  if (h > 0)
+    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
 
-Если транскрипт предоставлен — всегда опирайся на конкретные фразы и моменты из него.
-Если спрашивают о рисках — говори осторожно, без алармизма.
-Если спрашивают про следующую сессию — предлагай конкретные темы или техники.`;
+function segmentsToText(segs: FormattedSegment[]): string {
+  return segs
+    .map((s) => {
+      const who = s.speaker === "therapist" ? "Психолог" : s.speaker === "client" ? "Клиент" : "Другой";
+      const ts  = s.start_seconds > 0 ? `[${fmtTime(s.start_seconds)}] ` : "";
+      return `${ts}${who}: ${s.text}`;
+    })
+    .join("\n");
+}
+
+// ── Route ─────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, consultationId, transcriptText } = await req.json();
+    const body = await req.json();
+    const { messages, consultationId } = body as {
+      messages:       Array<{ role: string; content: string }>;
+      consultationId?: string;
+    };
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: "messages обязательны" }, { status: 400 });
@@ -29,19 +46,118 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "OPENAI_API_KEY не задан" }, { status: 500 });
     }
 
-    // Load transcript context
-    let transcript = transcriptText ?? "";
-    if (!transcript && consultationId) {
-      const consultation = await getConsultation(consultationId);
-      transcript = consultation?.transcript?.text ?? "";
+    // ── Load context from DB ──────────────────────────────────────────────────
+    let clientName       = "";
+    let clientAge        = "";
+    let clientConcern    = "";
+    let clientMaterials  = "";
+    let transcriptBlock  = "";
+    let analysisBlock    = "";
+    let consultationMeta = "";
+    let analysisStatus   = "";
+
+    if (consultationId) {
+      const [consultation] = await Promise.all([getConsultation(consultationId)]);
+
+      if (consultation) {
+        // Consultation meta
+        const dateStr = consultation.createdAt
+          ? new Date(consultation.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+          : "";
+        consultationMeta = `Консультация: ${consultation.title || "Без названия"}${dateStr ? ` — ${dateStr}` : ""}`;
+
+        clientName = consultation.clientName || "";
+
+        // Client card from DB (name, age, concern)
+        if (consultation.clientId) {
+          const [client, materials] = await Promise.all([
+            getClientById(consultation.clientId),
+            getMaterialsForClient(consultation.clientId).catch(() => []),
+          ]);
+
+          if (client) {
+            clientName    = client.name || clientName;
+            clientAge     = client.age ? `${client.age} лет` : "";
+            clientConcern = client.concern || "";
+          }
+
+          // Client materials (exclude therapist_notes — private)
+          const publicMaterials = materials.filter(m => m.type !== "therapist_notes");
+          if (publicMaterials.length > 0) {
+            clientMaterials = publicMaterials
+              .map(m => `[${m.title || m.type}]\n${m.content.slice(0, 600)}`)
+              .join("\n\n")
+              .slice(0, 3000);
+          }
+        }
+
+        // Transcript: prefer formatted segments (with speakers), fall back to raw text
+        if (consultation.transcriptFormatted?.length) {
+          const text = segmentsToText(consultation.transcriptFormatted);
+          // Limit: 14 000 chars ≈ 3 500 tokens
+          transcriptBlock = text.length > 14_000 ? text.slice(0, 14_000) + "\n[...транскрипт обрезан...]" : text;
+        } else if (consultation.transcript?.text) {
+          const raw = consultation.transcript.text;
+          transcriptBlock = raw.length > 14_000 ? raw.slice(0, 14_000) + "\n[...транскрипт обрезан...]" : raw;
+        }
+
+        // AI analysis — use the most recent entry
+        const lastAnalysis = consultation.analyses?.length
+          ? consultation.analyses[consultation.analyses.length - 1]
+          : null;
+
+        if (lastAnalysis?.result) {
+          // Check if analysis is stale (transcript was created after analysis)
+          const analysisAt  = lastAnalysis.createdAt ? new Date(lastAnalysis.createdAt).getTime() : 0;
+          const transcriptAt = consultation.transcript?.createdAt
+            ? new Date(consultation.transcript.createdAt).getTime()
+            : 0;
+          const isStale = transcriptAt > 0 && analysisAt > 0 && transcriptAt > analysisAt;
+
+          analysisStatus  = isStale ? "устаревший (транскрипт обновлён после анализа)" : "актуальный";
+          const aText = lastAnalysis.result;
+          analysisBlock = aText.length > 6_000 ? aText.slice(0, 6_000) + "\n[...анализ обрезан...]" : aText;
+        }
+      }
     }
 
-    const contextBlock = transcript
-      ? `\n\n---\nТРАНСКРИПТ СЕССИИ:\n${transcript.slice(0, 12000)}\n---`
-      : "\n\n(Транскрипт недоступен — отвечай на основе вопроса психолога)";
+    // ── System prompt ─────────────────────────────────────────────────────────
+    const clientInfo = [
+      clientName    ? `Клиент: ${clientName}` : null,
+      clientAge     ? `Возраст: ${clientAge}` : null,
+      clientConcern ? `Запрос: ${clientConcern}` : null,
+    ].filter(Boolean).join("\n");
 
+    const systemPrompt = `Ты — AI-ассистент внутри психологической консультации. Ты помогаешь психологу анализировать сессию, замечать паттерны, готовиться к следующей встрече.
+
+${clientInfo ? `ТЕКУЩИЙ КЛИЕНТ:\n${clientInfo}` : ""}
+${consultationMeta ? `\n${consultationMeta}` : ""}
+
+Правила работы:
+- Опирайся на данные, которые тебе переданы ниже — транскрипт, анализ, карточку клиента.
+- Если информация о клиенте присутствует в контексте — используй её. Не говори, что у тебя нет информации о клиенте.
+- Отделяй факты из транскрипта от выводов AI-анализа.
+- Не придумывай диагнозы и факты, которых нет в материалах.
+- Если информации действительно недостаточно — укажи чего именно не хватает.
+- Отвечай на русском языке.
+- По умолчанию краткий ответ (2–4 предложения), если не просят развернуть.
+- Профессиональный, но живой тон — поддерживаешь, не критикуешь.`
+
+    + (transcriptBlock
+      ? `\n\n---\nТРАНСКРИПТ СЕССИИ${transcriptBlock.includes("Психолог:") || transcriptBlock.includes("Клиент:") ? " (с разметкой по репликам)" : ""}:\n${transcriptBlock}\n---`
+      : "\n\n(Транскрипт этой сессии недоступен)")
+
+    + (analysisBlock
+      ? `\n\n---\nAI-АНАЛИЗ СЕССИИ (${analysisStatus}):\n${analysisBlock}\n---`
+      : "")
+
+    + (clientMaterials
+      ? `\n\n---\nМАТЕРИАЛЫ ПО КЛИЕНТУ:\n${clientMaterials}\n---`
+      : "");
+
+    // ── Call model ────────────────────────────────────────────────────────────
     const profile = await readProfile();
-    const model = profile.aiModel ?? "gpt-4o";
+    const model   = profile.aiModel ?? "gpt-4o";
 
     const openai = new OpenAI({ apiKey });
 
@@ -50,13 +166,13 @@ export async function POST(req: NextRequest) {
       model,
       ...(isOModel ? {} : { temperature: 0.7 }),
       messages: [
-        { role: "system", content: SYSTEM_PROMPT + contextBlock },
-        ...messages.map((m: { role: string; content: string }) => ({
+        { role: "system", content: systemPrompt },
+        ...messages.map((m) => ({
           role:    m.role as "user" | "assistant",
           content: m.content,
         })),
       ],
-      max_tokens: 600,
+      max_tokens: 800,
     });
 
     const reply = completion.choices[0]?.message?.content ?? "Не удалось получить ответ.";

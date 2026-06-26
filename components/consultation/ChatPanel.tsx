@@ -13,7 +13,7 @@ interface ChatPanelProps {
   collapsed:            boolean;
   onToggle:             () => void;
   consultationId?:      string;
-  transcriptText?:      string;
+  // transcriptText removed — server loads context from DB by consultationId
 }
 
 const QUICK_PROMPTS = [
@@ -30,7 +30,6 @@ export function ChatPanel({
   collapsed,
   onToggle,
   consultationId,
-  transcriptText,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   const [input, setInput]       = useState("");
@@ -121,7 +120,6 @@ export function ChatPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           consultationId,
-          transcriptText,
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
         }),
       });
@@ -180,7 +178,7 @@ export function ChatPanel({
             <div>
               <h2 className="text-lg font-bold text-white">Чат по консультации</h2>
               <p className="text-xs text-emerald-100">
-                {transcriptText || consultationId ? "AI анализирует транскрипт сессии" : "Задавайте вопросы по этой сессии"}
+                {consultationId ? "AI анализирует транскрипт сессии" : "Задавайте вопросы по этой сессии"}
               </p>
             </div>
           </div>
