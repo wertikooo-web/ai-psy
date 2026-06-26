@@ -413,6 +413,7 @@ export default function SettingsPage() {
           saveStatus={animSaveStatus}
           onChange={updateAnim}
           onReset={resetAnimSettings}
+          onSave={() => saveAnimSettings(cityAnim)}
         />
 
         {/* ── Block 6: Data ────────────────────────────────────────────────── */}
@@ -536,12 +537,13 @@ function AnimRow({ label, desc, children }: { label: string; desc?: string; chil
 }
 
 function CityAnimBlock({
-  settings, saveStatus, onChange, onReset,
+  settings, saveStatus, onChange, onReset, onSave,
 }: {
   settings: CityAnimationSettings;
   saveStatus: "idle" | "saved";
   onChange: <K extends keyof CityAnimationSettings>(k: K, v: CityAnimationSettings[K]) => void;
   onReset: () => void;
+  onSave: () => void;
 }) {
   const [charOpen, setCharOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -652,8 +654,8 @@ function CityAnimBlock({
         )}
       </div>
 
-      {/* Reset */}
-      <div style={{ borderTop: "1px solid #EDE7DA", padding: "12px 24px", display: "flex", justifyContent: "flex-end" }}>
+      {/* Footer: Reset + Save */}
+      <div style={{ borderTop: "1px solid #EDE7DA", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         {confirmReset ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 13, color: "#A8997F" }}>Вернуть стандартные настройки?</span>
@@ -669,6 +671,23 @@ function CityAnimBlock({
             Вернуть стандартные настройки
           </button>
         )}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {saveStatus === "saved" && (
+            <span style={{ fontSize: 12, color: "#6B5D4F", display: "flex", alignItems: "center", gap: 4 }}>
+              <CheckCircle2 size={13} /> Сохранено
+            </span>
+          )}
+          <button
+            onClick={onSave}
+            style={{
+              fontSize: 13, padding: "6px 18px", borderRadius: 8,
+              border: "none", background: "#6B5D4F", color: "#fff", cursor: "pointer",
+              fontWeight: 500,
+            }}
+          >
+            Сохранить
+          </button>
+        </div>
       </div>
     </div>
   );

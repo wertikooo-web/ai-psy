@@ -1541,19 +1541,26 @@ export function AnimatedCityScene() {
   useEffect(() => {
     if (!animEnabled) return;
     const [lo, hi] = INTENSITY_GROUND_INTERVAL[settingsRef.current.intensity];
-    scheduleGround(rnd(Math.min(lo, 2_000), Math.min(hi, 4_000)));
-    scheduleCrow(rnd(12_500, 25_000));
+    // Stagger initial spawns so characters don't all appear simultaneously.
+    // Ground actors start first (2-6 s apart), birds later, rare events much later.
+    scheduleGround(rnd(1_500, 3_000));
+    scheduleBird(rnd(6_000, 14_000));    // birds: 6-14 s after ground
+    scheduleCrow(rnd(15_000, 30_000));
     scheduleEscaper(rnd(60_000, 90_000));
-    schedulePlane(rnd(20_000, 40_000));
-    scheduleIcat(rnd(60_000, 120_000));
+    schedulePlane(rnd(25_000, 50_000));
+    scheduleIbird(rnd(80_000, 150_000));
+    scheduleIcat(rnd(70_000, 130_000));
+    void lo; void hi; // INTENSITY used at each rescheduling call
     return () => {
       if (groundTimer.current)  clearTimeout(groundTimer.current);
+      if (birdTimer.current)    clearTimeout(birdTimer.current);
       if (crowTimer.current)    clearTimeout(crowTimer.current);
       if (escaperTimer.current) clearTimeout(escaperTimer.current);
       if (planeTimer.current)   clearTimeout(planeTimer.current);
+      if (ibirdTimer.current)   clearTimeout(ibirdTimer.current);
       if (icatTimer.current)    clearTimeout(icatTimer.current);
     };
-  }, [animEnabled, scheduleGround, scheduleCrow, scheduleEscaper, schedulePlane, scheduleIcat]);
+  }, [animEnabled, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane, scheduleIbird, scheduleIcat]);
 
   const cityOpacity = 0.55; // fixed opacity — no dark modes since window lighting was removed
 
