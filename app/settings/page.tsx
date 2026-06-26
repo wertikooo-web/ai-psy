@@ -1,13 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Save, Trash2, User, CheckCircle2, AlertCircle,
   Key, BrainCircuit, Database, Loader2, Camera, X, ArrowLeft, Sparkles,
+  Building2, ChevronDown,
 } from "lucide-react";
 import type { UserProfile } from "@/lib/userProfile";
 import { AI_MODELS } from "@/lib/userProfile";
+import {
+  type CityAnimationSettings,
+  type CityIntensity,
+  type CharacterFrequency,
+  type EasterEggFrequency,
+  DEFAULT_CITY_ANIMATION_SETTINGS,
+  CITY_ANIM_STORAGE_KEY,
+} from "@/lib/city-animation/types";
 
 const EMPTY: UserProfile = {
   firstName:           "",
@@ -36,6 +45,9 @@ export default function SettingsPage() {
   const [status, setStatus]     = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [deleting, setDeleting] = useState(false);
   const [animEnabled, setAnimEnabled] = useState(true);
+  const [cityAnim, setCityAnim] = useState<CityAnimationSettings>(DEFAULT_CITY_ANIMATION_SETTINGS);
+  const [animSaveStatus, setAnimSaveStatus] = useState<"idle" | "saved">("idle");
+  const saveAnimTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // AI block
   const [apiConfigured, setApiConfigured] = useState<boolean | null>(null);
@@ -44,16 +56,42 @@ export default function SettingsPage() {
   const [checkResult, setCheckResult]     = useState<string>("");
 
   useEffect(() => {
-    const stored = localStorage.getItem("cityAnimation");
-    if (stored !== null) setAnimEnabled(stored !== "false");
+    try {
+      const raw = localStorage.getItem(CITY_ANIM_STORAGE_KEY);
+      if (raw) {
+        const parsed = { ...DEFAULT_CITY_ANIMATION_SETTINGS, ...JSON.parse(raw) };
+        setCityAnim(parsed);
+        setAnimEnabled(parsed.animationEnabled);
+      } else {
+        const legacy = localStorage.getItem("cityAnimation");
+        if (legacy !== null) setAnimEnabled(legacy !== "false");
+      }
+    } catch {}
   }, []);
 
-  function toggleAnim(val: boolean) {
-    setAnimEnabled(val);
-    localStorage.setItem("cityAnimation", val ? "true" : "false");
-    // notify same-tab AnimatedCityScene (storage event only fires in other tabs)
-    window.dispatchEvent(new StorageEvent("storage", { key: "cityAnimation", newValue: val ? "true" : "false" }));
+  const saveAnimSettings = useCallback((next: CityAnimationSettings) => {
+    const json = JSON.stringify(next);
+    localStorage.setItem(CITY_ANIM_STORAGE_KEY, json);
+    window.dispatchEvent(new StorageEvent("storage", { key: CITY_ANIM_STORAGE_KEY, newValue: json }));
+    if (saveAnimTimer.current) clearTimeout(saveAnimTimer.current);
+    setAnimSaveStatus("saved");
+    saveAnimTimer.current = setTimeout(() => setAnimSaveStatus("idle"), 2000);
+  }, []);
+
+  function updateAnim<K extends keyof CityAnimationSettings>(key: K, val: CityAnimationSettings[K]) {
+    const next = { ...cityAnim, [key]: val };
+    setCityAnim(next);
+    if (key === "animationEnabled") setAnimEnabled(val as boolean);
+    saveAnimSettings(next);
   }
+
+  function resetAnimSettings() {
+    setCityAnim(DEFAULT_CITY_ANIMATION_SETTINGS);
+    setAnimEnabled(DEFAULT_CITY_ANIMATION_SETTINGS.animationEnabled);
+    saveAnimSettings(DEFAULT_CITY_ANIMATION_SETTINGS);
+  }
+
+  function toggleAnim(val: boolean) { updateAnim("animationEnabled", val); }
 
   useEffect(() => {
     fetch("/api/profile")
@@ -369,45 +407,13 @@ export default function SettingsPage() {
           </div>
         </Block>
 
-        {/* ── Block 5: Interface ───────────────────────────────────────────── */}
-        <Block icon={<Sparkles size={15} className="text-indigo-400" />} title="Интерфейс" sub="Визуальные эффекты и анимация">
-          <div className="px-6 py-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium" style={{ color: "#4A3C2E" }}>Анимация на главной</div>
-                <div className="text-xs mt-0.5" style={{ color: "#A8997F" }}>Персонажи, птицы и другие эффекты в городской сцене</div>
-              </div>
-              <button
-                onClick={() => toggleAnim(!animEnabled)}
-                style={{
-                  position: "relative",
-                  width: 44,
-                  height: 24,
-                  borderRadius: 12,
-                  border: "none",
-                  cursor: "pointer",
-                  background: animEnabled ? "#6B5D4F" : "#D4C9B5",
-                  transition: "background 0.2s ease",
-                  flexShrink: 0,
-                }}
-                aria-label={animEnabled ? "Выключить анимацию" : "Включить анимацию"}
-              >
-                <span style={{
-                  position: "absolute",
-                  top: 3,
-                  left: animEnabled ? 23 : 3,
-                  width: 18,
-                  height: 18,
-                  borderRadius: "50%",
-                  background: "#fff",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                  transition: "left 0.2s ease",
-                  display: "block",
-                }} />
-              </button>
-            </div>
-          </div>
-        </Block>
+        {/* ── Block 5: City animation ──────────────────────────────────────── */}
+        <CityAnimBlock
+          settings={cityAnim}
+          saveStatus={animSaveStatus}
+          onChange={updateAnim}
+          onReset={resetAnimSettings}
+        />
 
         {/* ── Block 6: Data ────────────────────────────────────────────────── */}
         <Block icon={<Database size={15} className="text-slate-400" />} title="Данные" sub="Экспорт и резервное копирование — скоро">
@@ -448,6 +454,222 @@ function Block({ icon, title, sub, children }: {
         </div>
       </div>
       {children}
+    </div>
+  );
+}
+
+// ── City Animation Settings Block ─────────────────────────────────────────────
+
+const INTENSITY_LABELS: Record<CityIntensity, string> = { quiet: "Тихо", normal: "Обычно", lively: "Оживлённо" };
+const FREQ_LABELS: Record<CharacterFrequency, string> = { off: "Скрыть", rare: "Редко", normal: "Обычно", frequent: "Часто" };
+const EGG_LABELS: Record<EasterEggFrequency, string> = { very_rare: "Очень редко", rare: "Редко", sometimes: "Иногда" };
+
+const CHARACTERS: { key: keyof CityAnimationSettings; label: string }[] = [
+  { key: "catsFrequency",      label: "Кошки" },
+  { key: "dogsFrequency",      label: "Собаки" },
+  { key: "birdsFrequency",     label: "Птицы" },
+  { key: "peopleFrequency",    label: "Люди" },
+  { key: "carsFrequency",      label: "Машины" },
+  { key: "cyclistsFrequency",  label: "Велосипедисты" },
+  { key: "busesFrequency",     label: "Автобусы" },
+];
+
+function AnimToggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={() => onChange(!on)}
+      style={{
+        position: "relative", width: 44, height: 24, borderRadius: 12,
+        border: "none", cursor: "pointer", flexShrink: 0,
+        background: on ? "#6B5D4F" : "#D4C9B5", transition: "background 0.2s",
+      }}
+    >
+      <span style={{
+        position: "absolute", top: 3, left: on ? 23 : 3, width: 18, height: 18,
+        borderRadius: "50%", background: "#fff",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: "left 0.2s",
+      }} />
+    </button>
+  );
+}
+
+function SegControl<T extends string>({
+  options, value, onChange,
+}: { options: Record<T, string>; value: T; onChange: (v: T) => void }) {
+  const entries = Object.entries(options) as [T, string][];
+  return (
+    <div style={{ display: "flex", border: "1px solid #D4C9B5", borderRadius: 8, overflow: "hidden" }}>
+      {entries.map(([k, label]) => (
+        <button
+          key={k}
+          onClick={() => onChange(k)}
+          style={{
+            padding: "5px 10px", fontSize: 12, border: "none", cursor: "pointer",
+            background: value === k ? "#6B5D4F" : "#F7F4EF",
+            color: value === k ? "#fff" : "#6B5D4F",
+            borderRight: "1px solid #D4C9B5",
+          }}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AnimRow({ label, desc, children }: { label: string; desc?: string; children: React.ReactNode }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "13px 24px", gap: 16, borderBottom: "1px solid #EDE7DA",
+    }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: "#4A3C2E" }}>{label}</div>
+        {desc && <div style={{ fontSize: 12, color: "#A8997F", marginTop: 2 }}>{desc}</div>}
+      </div>
+      <div style={{ flexShrink: 0 }}>{children}</div>
+    </div>
+  );
+}
+
+function CityAnimBlock({
+  settings, saveStatus, onChange, onReset,
+}: {
+  settings: CityAnimationSettings;
+  saveStatus: "idle" | "saved";
+  onChange: <K extends keyof CityAnimationSettings>(k: K, v: CityAnimationSettings[K]) => void;
+  onReset: () => void;
+}) {
+  const [charOpen, setCharOpen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  return (
+    <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F7F4EF", borderColor: "#E5DDD2" }}>
+      {/* Header */}
+      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ background: "#F0EBE3", borderColor: "#E5DDD2" }}>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#E5DDD2" }}>
+            <Building2 size={15} style={{ color: "#6B5D4F" }} />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold" style={{ color: "#4A3C2E" }}>Анимация города</h2>
+            <p className="text-xs" style={{ color: "#A8997F" }}>Настройте, насколько оживлённым будет город на главной странице</p>
+          </div>
+        </div>
+        {saveStatus === "saved" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#6B5D4F" }}>
+            <CheckCircle2 size={13} />
+            Сохранено
+          </div>
+        )}
+      </div>
+
+      {/* Section: основные */}
+      <div style={{ borderBottom: "1px solid #EDE7DA" }}>
+        <AnimRow label="Анимация города" desc="Персонажи и события в иллюстрации на главной странице">
+          <AnimToggle on={settings.animationEnabled} onChange={v => onChange("animationEnabled", v)} label="Включить анимацию" />
+        </AnimRow>
+        <AnimRow label="Интенсивность жизни города" desc="Как часто в городе происходят обычные события">
+          <SegControl<CityIntensity>
+            options={INTENSITY_LABELS}
+            value={settings.intensity}
+            onChange={v => onChange("intensity", v)}
+          />
+        </AnimRow>
+      </div>
+
+      {/* Section: интерактивность */}
+      <div style={{ borderBottom: "1px solid #EDE7DA" }}>
+        <AnimRow label="Интерактивные пасхалки" desc="Птицы, кошки и другие персонажи, на которых можно нажать">
+          <AnimToggle on={settings.interactiveEasterEggsEnabled} onChange={v => onChange("interactiveEasterEggsEnabled", v)} label="Интерактивные пасхалки" />
+        </AnimRow>
+        <AnimRow label="Редкие сюрпризы" desc="Самолётик из окна, человек машет, ворона и другие">
+          <AnimToggle on={settings.rareSurprisesEnabled} onChange={v => onChange("rareSurprisesEnabled", v)} label="Редкие сюрпризы" />
+        </AnimRow>
+        <AnimRow label="Звуки при взаимодействии" desc="Тихий звук появляется только после нажатия на персонажа">
+          <AnimToggle on={settings.interactionSoundsEnabled} onChange={v => onChange("interactionSoundsEnabled", v)} label="Звуки" />
+        </AnimRow>
+        <AnimRow label="Меньше движения во время консультации" desc="Во время работы с консультацией город становится спокойнее">
+          <AnimToggle on={settings.reduceMotionDuringConsultation} onChange={v => onChange("reduceMotionDuringConsultation", v)} label="Тихий режим" />
+        </AnimRow>
+      </div>
+
+      {/* Section: персонажи (коллапс) */}
+      <div>
+        <button
+          onClick={() => setCharOpen(o => !o)}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "13px 24px", background: "transparent", border: "none", cursor: "pointer",
+            borderBottom: charOpen ? "1px solid #EDE7DA" : "none",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#4A3C2E" }}>Тонкая настройка персонажей</span>
+            {!charOpen && (
+              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "#E5DDD2", color: "#6B5D4F" }}>свёрнуто</span>
+            )}
+          </div>
+          <ChevronDown size={16} style={{ color: "#A8997F", transform: charOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+        </button>
+
+        {charOpen && (
+          <div style={{ background: "#F0EBE3" }}>
+            <div style={{ padding: "4px 0 4px" }}>
+              {CHARACTERS.map(({ key, label }) => (
+                <div key={key} style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "10px 24px", gap: 12,
+                }}>
+                  <span style={{ fontSize: 13, color: "#4A3C2E", minWidth: 140 }}>{label}</span>
+                  <SegControl<CharacterFrequency>
+                    options={FREQ_LABELS}
+                    value={settings[key] as CharacterFrequency}
+                    onChange={v => onChange(key, v)}
+                  />
+                </div>
+              ))}
+              <div style={{ height: 1, background: "#D8CFBE", margin: "8px 24px" }} />
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "10px 24px", gap: 12,
+              }}>
+                <div>
+                  <div style={{ fontSize: 13, color: "#4A3C2E", fontWeight: 500 }}>Частота пасхалок</div>
+                  <div style={{ fontSize: 12, color: "#A8997F", marginTop: 2 }}>Как часто появляются интерактивные события</div>
+                </div>
+                <SegControl<EasterEggFrequency>
+                  options={EGG_LABELS}
+                  value={settings.easterEggFrequency}
+                  onChange={v => onChange("easterEggFrequency", v)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Reset */}
+      <div style={{ borderTop: "1px solid #EDE7DA", padding: "12px 24px", display: "flex", justifyContent: "flex-end" }}>
+        {confirmReset ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 13, color: "#A8997F" }}>Вернуть стандартные настройки?</span>
+            <button onClick={() => setConfirmReset(false)} style={{ fontSize: 13, padding: "5px 12px", borderRadius: 8, border: "1px solid #D4C9B5", background: "#F7F4EF", color: "#6B5D4F", cursor: "pointer" }}>
+              Отмена
+            </button>
+            <button onClick={() => { onReset(); setConfirmReset(false); }} style={{ fontSize: 13, padding: "5px 12px", borderRadius: 8, border: "none", background: "#6B5D4F", color: "#fff", cursor: "pointer" }}>
+              Вернуть
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmReset(true)} style={{ fontSize: 13, padding: "5px 14px", borderRadius: 8, border: "1px solid #D4C9B5", background: "#F7F4EF", color: "#6B5D4F", cursor: "pointer" }}>
+            Вернуть стандартные настройки
+          </button>
+        )}
+      </div>
     </div>
   );
 }

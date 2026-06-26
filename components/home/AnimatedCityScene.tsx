@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { createPortal } from "react-dom";
+import {
+  type CityAnimationSettings,
+  type CharacterFrequency,
+  DEFAULT_CITY_ANIMATION_SETTINGS,
+  CITY_ANIM_STORAGE_KEY,
+  FREQUENCY_MULTIPLIERS,
+  INTENSITY_GROUND_INTERVAL,
+  EASTER_EGG_INTERVAL,
+} from "@/lib/city-animation/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ActorType    = "cat" | "human" | "car" | "dog" | "bike" | "bird" | "bus";
@@ -28,6 +37,18 @@ interface ActiveActor {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const rnd = (lo: number, hi: number) => Math.random() * (hi - lo) + lo;
+
+function readCitySettings(): CityAnimationSettings {
+  if (typeof window === "undefined") return DEFAULT_CITY_ANIMATION_SETTINGS;
+  try {
+    const raw = localStorage.getItem(CITY_ANIM_STORAGE_KEY);
+    if (raw) return { ...DEFAULT_CITY_ANIMATION_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  // Legacy: read old simple toggle key
+  const legacy = localStorage.getItem("cityAnimation");
+  if (legacy !== null) return { ...DEFAULT_CITY_ANIMATION_SETTINGS, animationEnabled: legacy !== "false" };
+  return DEFAULT_CITY_ANIMATION_SETTINGS;
+}
 
 function getTimeMode(): TimeMode {
   const h = new Date().getHours();
@@ -1254,15 +1275,34 @@ function CityTint({ mode }: { mode:TimeMode }) {
 }
 
 // ─── Spawn helpers (run inside setActors functional update) ───────────────────
-function makeGroundActor(prev: ActiveActor[]): ActiveActor | null {
+function makeGroundActor(prev: ActiveActor[], settings: CityAnimationSettings): ActiveActor | null {
   const occupied = new Set(
     prev.filter(a => a.level !== "sky").map(a => a.level as GroundLevel)
   );
   const free = ([0, 1, 2] as GroundLevel[]).filter(l => !occupied.has(l));
   if (free.length === 0) return null;
-  const level        = free[Math.floor(Math.random() * free.length)];
-  const mode         = getTimeMode();
-  const type         = weightedPick(WEIGHTS[mode]);
+  const level = free[Math.floor(Math.random() * free.length)];
+  const mode  = getTimeMode();
+
+  // Apply frequency multipliers to base weights
+  const freqMap: Partial<Record<ActorType, CharacterFrequency>> = {
+    cat:   settings.catsFrequency,
+    dog:   settings.dogsFrequency,
+    bird:  settings.birdsFrequency,
+    human: settings.peopleFrequency,
+    car:   settings.carsFrequency,
+    bike:  settings.cyclistsFrequency,
+    bus:   settings.busesFrequency,
+  };
+  const effectiveWeights: Partial<Record<ActorType, number>> = {};
+  for (const [t, w] of Object.entries(WEIGHTS[mode]) as [ActorType, number][]) {
+    const freq: CharacterFrequency = freqMap[t] ?? "normal";
+    const mult = FREQUENCY_MULTIPLIERS[freq];
+    if (mult > 0) effectiveWeights[t] = Math.max(1, Math.round(w * mult));
+  }
+  if (Object.keys(effectiveWeights).length === 0) return null;
+
+  const type         = weightedPick(effectiveWeights);
   const direction: Direction = Math.random() > 0.5 ? "ltr" : "rtl";
   const durationS    = parseFloat(rnd(28, 42).toFixed(1));
   const isCatStop = type === "cat";
@@ -1312,13 +1352,17 @@ export function AnimatedCityScene() {
   const [planeActive,    setPlaneActive]   = useState(false);
   const [ibirdSpot,      setIbirdSpot]     = useState<BirdPerch | null>(null);
   const [icatSpot,       setIcatSpot]      = useState<CatSpot  | null>(null);
+  // City animation settings — read synchronously to avoid race
+  const [citySettings, setCitySettings] = useState<CityAnimationSettings>(() => readCitySettings());
+  const settingsRef = useRef<CityAnimationSettings>(citySettings);
+  useEffect(() => { settingsRef.current = citySettings; }, [citySettings]);
+
   // Compute initial value synchronously to avoid race condition:
   // if spawning effect sees the wrong initial value it clears its own timers.
   const [animEnabled,    setAnimEnabled]   = useState<boolean>(() => {
-    if (typeof window === "undefined") return true; // SSR: always true, no timers run
-    const stored = localStorage.getItem("cityAnimation");
-    if (stored !== null) return stored !== "false";
-    return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (typeof window === "undefined") return true;
+    return readCitySettings().animationEnabled &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   });
   // Mounted flag for createPortal (SSR guard)
   const [mounted,        setMounted]       = useState(false);
@@ -1337,10 +1381,18 @@ export function AnimatedCityScene() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Sync toggle changes from Settings page (cross-tab via storage event,
-  // same-tab via dispatchEvent in settings/page.tsx)
+  // Sync settings changes from Settings page (storage events)
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
+      if (e.key === CITY_ANIM_STORAGE_KEY && e.newValue) {
+        try {
+          const parsed: CityAnimationSettings = { ...DEFAULT_CITY_ANIMATION_SETTINGS, ...JSON.parse(e.newValue) };
+          setCitySettings(parsed);
+          setAnimEnabled(parsed.animationEnabled &&
+            !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+        } catch {}
+      }
+      // Legacy key compat
       if (e.key === "cityAnimation") setAnimEnabled(e.newValue !== "false");
     };
     window.addEventListener("storage", onStorage);
@@ -1383,88 +1435,98 @@ export function AnimatedCityScene() {
     interactiveActive.current = false;
   }, []);
 
-  // Crow spawn: once per ~60s, not at night
+  // Crow spawn: rare surprise, checks rareSurprisesEnabled
   const scheduleCrow = useCallback((delay: number) => {
     crowTimer.current = setTimeout(() => {
-      if (getTimeMode() !== "night") {
+      const s = settingsRef.current;
+      if (getTimeMode() !== "night" && s.rareSurprisesEnabled) {
         crowActive.current = true;
         const p = CROW_PERCHES[Math.floor(Math.random() * CROW_PERCHES.length)];
         setCrowInfo({ id: crypto.randomUUID(), fromLeft: Math.random() > 0.5, perchX: p.x, perchY: p.y });
       }
       scheduleCrow(rnd(68_000, 94_000));
     }, delay);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Window escaper: once per 5-10 min, not at night, not while crow is active
+  // Window escaper: rare surprise
   const scheduleEscaper = useCallback((delay: number) => {
     escaperTimer.current = setTimeout(() => {
-      if (getTimeMode() !== "night" && !crowActive.current && !escaperRunning.current) {
+      const s = settingsRef.current;
+      if (getTimeMode() !== "night" && !crowActive.current && !escaperRunning.current && s.rareSurprisesEnabled) {
         escaperRunning.current = true;
         setEscaperActive(true);
       }
       scheduleEscaper(rnd(300_000, 600_000));
     }, delay);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Paper airplane: once per 2-4 min, not at night
+  // Paper airplane: rare surprise
   const schedulePlane = useCallback((delay: number) => {
     planeTimer.current = setTimeout(() => {
-      if (getTimeMode() !== "night" && !planeRunning.current) {
+      const s = settingsRef.current;
+      if (getTimeMode() !== "night" && !planeRunning.current && s.rareSurprisesEnabled) {
         planeRunning.current = true;
         setPlaneActive(true);
       }
       schedulePlane(rnd(120_000, 240_000));
     }, delay);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Interactive bird: sits on roof, can be clicked, 2-3 min intervals
+  // Interactive bird: checks interactiveEasterEggsEnabled + birdsFrequency
   const scheduleIbird = useCallback((delay: number) => {
     ibirdTimer.current = setTimeout(() => {
-      if (getTimeMode() !== "night" && !interactiveActive.current) {
+      const s = settingsRef.current;
+      if (getTimeMode() !== "night" && !interactiveActive.current
+          && s.interactiveEasterEggsEnabled && s.birdsFrequency !== "off") {
         interactiveActive.current = true;
         const spot = BIRD_PERCH_SPOTS[Math.floor(Math.random() * BIRD_PERCH_SPOTS.length)];
         setIbirdSpot(spot);
       }
-      scheduleIbird(rnd(120_000, 180_000));
+      const [lo, hi] = EASTER_EGG_INTERVAL[settingsRef.current.easterEggFrequency];
+      scheduleIbird(rnd(lo, hi));
     }, delay);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Interactive cat: comes out from behind building, 2-3 min intervals
+  // Interactive cat: checks interactiveEasterEggsEnabled + catsFrequency
   const scheduleIcat = useCallback((delay: number) => {
     icatTimer.current = setTimeout(() => {
-      if (getTimeMode() !== "night" && !interactiveActive.current) {
+      const s = settingsRef.current;
+      if (getTimeMode() !== "night" && !interactiveActive.current
+          && s.interactiveEasterEggsEnabled && s.catsFrequency !== "off") {
         interactiveActive.current = true;
         const spot = CAT_SPOT_POSITIONS[Math.floor(Math.random() * CAT_SPOT_POSITIONS.length)];
         setIcatSpot(spot);
       }
-      scheduleIcat(rnd(120_000, 180_000));
+      const [lo, hi] = EASTER_EGG_INTERVAL[settingsRef.current.easterEggFrequency];
+      scheduleIcat(rnd(lo, hi));
     }, delay);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scheduleGround = useCallback((delay: number) => {
     groundTimer.current = setTimeout(() => {
+      const s = settingsRef.current;
       setActors(prev => {
-        const a1 = makeGroundActor(prev);
+        const a1 = makeGroundActor(prev, s);
         if (!a1) return prev;
-        // 30% chance: spawn a second actor on a different level slightly later
         if (Math.random() < 0.30) {
           setTimeout(() => {
             setActors(p2 => {
-              const a2 = makeGroundActor(p2);
+              const a2 = makeGroundActor(p2, settingsRef.current);
               return a2 ? [...p2, a2] : p2;
             });
           }, rnd(600, 2200));
         }
         return [...prev, a1];
       });
-      scheduleGround(rnd(5_000, 12_000));
+      const [lo, hi] = INTENSITY_GROUND_INTERVAL[settingsRef.current.intensity];
+      scheduleGround(rnd(lo, hi));
     }, delay);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Bird spawn loop (no birds at night)
+  // Bird spawn loop (no birds at night, respects birdsFrequency)
   const scheduleBird = useCallback((delay: number) => {
     birdTimer.current = setTimeout(() => {
-      if (getTimeMode() !== "night") {
+      if (getTimeMode() !== "night" && settingsRef.current.birdsFrequency !== "off") {
         setActors(prev => [...prev, makeBirdActor()]);
         if (Math.random() < 0.30) {
           setTimeout(() => {
@@ -1474,11 +1536,12 @@ export function AnimatedCityScene() {
       }
       scheduleBird(rnd(12_000, 26_000));
     }, delay);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!animEnabled) return;
-    scheduleGround(rnd(1_000, 3_000));
+    const [lo, hi] = INTENSITY_GROUND_INTERVAL[settingsRef.current.intensity];
+    scheduleGround(rnd(Math.min(lo, 2_000), Math.min(hi, 4_000)));
     scheduleCrow(rnd(12_500, 25_000));
     scheduleEscaper(rnd(60_000, 90_000));
     schedulePlane(rnd(20_000, 40_000));
