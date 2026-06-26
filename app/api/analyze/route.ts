@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getConsultation, updateConsultation } from "@/lib/data/consultations";
 import { buildEvidence, transcriptHash, canonicalTranscriptText } from "@/lib/evidenceService";
-import { generateAnalysis, extractBlocks } from "@/lib/analysisService";
+import {
+  generateAnalysis,
+  extractBlocks,
+  buildCompressedTranscript,
+  TOKEN_BUDGET_PER_REQUEST,
+  CHARS_PER_TOKEN,
+} from "@/lib/analysisService";
 import type { AnalysisMode } from "@/lib/knowledgeBase";
 import { getClientById } from "@/lib/data/clients";
 import { getHistoryForClient as getHistory } from "@/lib/data/clientHistory";
@@ -89,24 +95,58 @@ export async function POST(req: NextRequest) {
     const profile = await readProfile();
     const model = profile.aiModel ?? "gpt-4o";
 
-    // Build canonical text and check evidence staleness
+    // Build canonical text and compute hash (single source of truth for staleness)
     const canonicalText = canonicalTranscriptText(
       consultation.transcriptFormatted,
       consultation.transcript?.text,
     );
-    const currentHash    = transcriptHash(canonicalText);
-    const storedEvidence = consultation.analysisEvidence;
-    const evidenceIsStale =
-      !storedEvidence || storedEvidence.source.sourceHash !== currentHash;
+    const currentHash = transcriptHash(canonicalText);
+
+    // ── Evidence staleness ────────────────────────────────────────────────────
+    const storedEvidence  = consultation.analysisEvidence;
+    const evidenceIsStale = !storedEvidence || storedEvidence.source.sourceHash !== currentHash;
+
+    // ── Compressed transcript cache ───────────────────────────────────────────
+    // If the transcript needs chunking, check whether we already have a fresh
+    // compressed version. If yes, skip all compressChunk LLM calls entirely.
+    const needsChunking = Math.round(canonicalText.length / CHARS_PER_TOKEN) > TOKEN_BUDGET_PER_REQUEST;
+    const storedCompressed = consultation.compressedTranscript;
+    const compressedIsStale =
+      needsChunking &&
+      (!storedCompressed || storedCompressed.sourceHash !== currentHash);
+
+    let effectiveTranscript = transcript; // default: use the formatted dialogue transcript
+
+    if (needsChunking) {
+      if (!compressedIsStale && storedCompressed) {
+        // Cache hit — no LLM calls for chunking
+        effectiveTranscript = storedCompressed.text;
+        console.log(`[analyze] compressedTranscript cache HIT (hash=${currentHash.slice(0, 8)})`);
+      } else {
+        // Cache miss — build fresh compression, then persist non-blocking
+        console.log(`[analyze] compressedTranscript cache MISS — building (hash=${currentHash.slice(0, 8)})`);
+        const built = await buildCompressedTranscript({
+          transcriptText: canonicalText,
+          sourceHash:     currentHash,
+          model,
+          provider:       "openai",
+        });
+        effectiveTranscript = built.text;
+        // Save to DB (non-blocking — if it fails, next request rebuilds it)
+        updateConsultation(consultationId, {
+          compressedTranscript: { version: "1.0", ...built },
+        }).catch((err) => console.error("[analyze] compressedTranscript save failed:", err));
+      }
+    }
 
     // Run analysis and evidence build in parallel.
-    // If evidence is fresh we skip rebuilding it.
+    // effectiveTranscript is already compressed (or short) — no chunking inside generateAnalysis.
     const [output, freshEvidence] = await Promise.all([
       generateAnalysis({
         mode: mode as AnalysisMode,
-        transcript,
-        clientContext: clientContext || undefined,
-        provider: "openai",
+        transcript:        effectiveTranscript,
+        clientContext:     clientContext || undefined,
+        provider:          "openai",
         model,
         styleHint:         profile.analysisStyle     ?? "professional",
         lengthHint:        profile.analysisLength    ?? "standard",

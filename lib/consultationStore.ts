@@ -56,6 +56,15 @@ export type MarkerEvidence = {
   examples: EvidenceItem[];
 };
 
+export type CompressedTranscript = {
+  version:     "1.0";
+  text:        string;
+  sourceHash:  string;
+  chunksCount: number;
+  createdAt:   string;
+  model?:      string;
+};
+
 export type AnalysisEvidence = {
   version:     "1.0";
   generatedAt: string;
@@ -135,6 +144,9 @@ export interface StoredConsultation {
 
   // Hidden evidence layer — extracted from transcript text, never re-runs Whisper
   analysisEvidence?: AnalysisEvidence;
+
+  // Cached map-reduce compression of long transcripts (rebuilt only when transcript changes)
+  compressedTranscript?: CompressedTranscript;
 
   // Legacy fields — kept for records created before this model change
   fileName?: string;

@@ -88,11 +88,11 @@ export async function extractBlocks(
 // System prompt (knowledge base) + clientContext + evidence take ~8 000–12 000 tokens.
 // Deep analysis output is 6 000 tokens.
 // That leaves ~12 000 tokens for the transcript → ~18 000 chars (Russian Cyrillic).
-const TOKEN_BUDGET_PER_REQUEST     = 10_000; // trigger chunking when transcript alone > 10k tokens
-const CHARS_PER_TOKEN              = 1.5;    // Russian Cyrillic: ~1.5 chars per token (not 4 like English)
-const CHUNK_CHARS                  = Math.floor(10_000 * CHARS_PER_TOKEN); // ~15 000 chars per chunk
-// Hard cap applied AFTER chunking — final transcript fed to analysis call
-const TRANSCRIPT_FINAL_CAP_CHARS   = 18_000; // ~12 000 tokens, leaves room for prompt + output
+export const TOKEN_BUDGET_PER_REQUEST   = 10_000; // exported so route.ts can check without importing service logic
+export const CHARS_PER_TOKEN            = 1.5;    // Russian Cyrillic: ~1.5 chars per token (not 4 like English)
+const CHUNK_CHARS                       = Math.floor(10_000 * CHARS_PER_TOKEN); // ~15 000 chars per chunk
+// Hard cap applied before final LLM analysis call
+const TRANSCRIPT_FINAL_CAP_CHARS        = 18_000; // ~12 000 tokens, leaves room for prompt + output
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -121,6 +121,61 @@ async function compressChunk(
     maxTokens:    700,
   });
   return result.text;
+}
+
+// ── Public: build compressed transcript (map-reduce) ─────────────────────────
+// Called from route.ts when compressedTranscript is stale or absent.
+// Returns the compressed text + metadata for DB storage.
+
+export interface BuildCompressedTranscriptInput {
+  transcriptText: string;   // canonical raw text (already formatted for analysis)
+  sourceHash:     string;   // transcriptHash(canonicalText) — caller computes this
+  model?:         string;
+  provider?:      LLMProvider;
+}
+
+export interface BuildCompressedTranscriptOutput {
+  text:        string;
+  sourceHash:  string;
+  chunksCount: number;
+  createdAt:   string;
+  model:       string;
+}
+
+export async function buildCompressedTranscript(
+  input: BuildCompressedTranscriptInput,
+): Promise<BuildCompressedTranscriptOutput> {
+  const { transcriptText, sourceHash, model, provider: providerName = DEFAULT_PROVIDER } = input;
+  const providerClient = getProvider(providerName);
+
+  const chunks: string[] = [];
+  for (let i = 0; i < transcriptText.length; i += CHUNK_CHARS) {
+    chunks.push(transcriptText.slice(i, i + CHUNK_CHARS));
+  }
+
+  console.log(`[compress] ${Math.round(transcriptText.length / CHARS_PER_TOKEN)} tokens → ${chunks.length} chunks`);
+
+  // Sequential: each chunk takes ~8s, replenishing ~4k TPM — enough for the next chunk.
+  const compressions: string[] = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const compressed = await compressChunk(chunks[i], i, chunks.length, providerClient, model);
+    compressions.push(`=== Часть ${i + 1} из ${chunks.length} ===\n${compressed}`);
+  }
+
+  // Sleep before the caller makes the main analysis LLM call
+  await sleep(12_000);
+
+  const text =
+    `[Транскрипт сжат из-за длины: ${chunks.length} частей → конспекты]\n\n` +
+    compressions.join("\n\n");
+
+  return {
+    text,
+    sourceHash,
+    chunksCount: chunks.length,
+    createdAt:   new Date().toISOString(),
+    model:       model ?? "gpt-4o",
+  };
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -157,35 +212,9 @@ export async function generateAnalysis(
   };
   const maxTokens = maxTokensByMode[mode] ?? 3000;
 
-  // Decide whether chunking is needed
-  const estimatedTokens = Math.round(transcript.length / CHARS_PER_TOKEN);
+  // transcript is already effective (compressed or short) — route.ts handles chunking/cache.
+  // Apply hard cap to guarantee we stay within TPM regardless of source.
   let effectiveTranscript = transcript;
-
-  if (estimatedTokens > TOKEN_BUDGET_PER_REQUEST) {
-    // ── Map-reduce: compress each chunk, then analyze the compressed text ──
-    const chunks: string[] = [];
-    for (let i = 0; i < transcript.length; i += CHUNK_CHARS) {
-      chunks.push(transcript.slice(i, i + CHUNK_CHARS));
-    }
-
-    console.log(`[analysis] transcript ${estimatedTokens} tokens → chunking into ${chunks.length} parts`);
-
-    // Chunks are processed sequentially. Each takes ~8s, during which the TPM window
-    // replenishes ~4k tokens — enough capacity for the next chunk without sleeping.
-    const compressions: string[] = [];
-    for (let i = 0; i < chunks.length; i++) {
-      const compressed = await compressChunk(chunks[i], i, chunks.length, providerClient, model);
-      compressions.push(`=== Часть ${i + 1} из ${chunks.length} ===\n${compressed}`);
-    }
-
-    effectiveTranscript =
-      `[Транскрипт сжат из-за длины: ${chunks.length} частей → конспекты]\n\n` +
-      compressions.join("\n\n");
-
-    await sleep(12_000); // pause before final analysis call
-  }
-
-  // Hard cap: ensure transcript fits within TPM budget regardless of chunking result
   if (effectiveTranscript.length > TRANSCRIPT_FINAL_CAP_CHARS) {
     effectiveTranscript =
       effectiveTranscript.slice(0, TRANSCRIPT_FINAL_CAP_CHARS) +
