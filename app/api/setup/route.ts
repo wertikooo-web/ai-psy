@@ -26,13 +26,13 @@ export async function GET() {
       // Update file size limit on existing bucket
       const { error } = await supabaseServer!.storage.updateBucket(bucket.name, {
         public: bucket.public,
-        fileSizeLimit: 524_288_000, // 500 MB
+        fileSizeLimit: 52_428_800, // 50 MB (Supabase free tier limit)
       });
       results[bucket.name] = error ? `update error: ${error.message}` : "updated";
     } else {
       const { error } = await supabaseServer!.storage.createBucket(bucket.name, {
         public: bucket.public,
-        fileSizeLimit: 524_288_000, // 500 MB
+        fileSizeLimit: 52_428_800, // 50 MB (Supabase free tier limit)
       });
       results[bucket.name] = error ? `create error: ${error.message}` : "created";
     }

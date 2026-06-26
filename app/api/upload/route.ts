@@ -20,6 +20,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Неподдерживаемый формат файла" }, { status: 400 });
     }
 
+    const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json(
+        { error: `Файл слишком большой (${(file.size / 1024 / 1024).toFixed(0)} МБ). Максимум — 50 МБ.` },
+        { status: 413 },
+      );
+    }
+
     const bytes  = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const safeName   = file.name.replace(/[^a-zA-Z0-9._\-а-яА-Я]/g, "_");
