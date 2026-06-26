@@ -84,10 +84,15 @@ export async function extractBlocks(
 
 // ── Token budget constants ────────────────────────────────────────────────────
 
-// OpenAI free/low-tier TPM limit is ~30 000. We leave room for output tokens.
-const TOKEN_BUDGET_PER_REQUEST = 20_000; // safe input token budget per single request
-const CHARS_PER_TOKEN          = 1.5;    // Russian Cyrillic: ~1.5 chars per token (not 4 like English)
-const CHUNK_CHARS              = Math.floor(15_000 * CHARS_PER_TOKEN); // ~22 500 chars per chunk
+// OpenAI free/low-tier TPM limit is ~30 000.
+// System prompt (knowledge base) + clientContext + evidence take ~8 000–12 000 tokens.
+// Deep analysis output is 6 000 tokens.
+// That leaves ~12 000 tokens for the transcript → ~18 000 chars (Russian Cyrillic).
+const TOKEN_BUDGET_PER_REQUEST     = 10_000; // trigger chunking when transcript alone > 10k tokens
+const CHARS_PER_TOKEN              = 1.5;    // Russian Cyrillic: ~1.5 chars per token (not 4 like English)
+const CHUNK_CHARS                  = Math.floor(10_000 * CHARS_PER_TOKEN); // ~15 000 chars per chunk
+// Hard cap applied AFTER chunking — final transcript fed to analysis call
+const TRANSCRIPT_FINAL_CAP_CHARS   = 18_000; // ~12 000 tokens, leaves room for prompt + output
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -177,6 +182,14 @@ export async function generateAnalysis(
       compressions.join("\n\n");
 
     await sleep(12_000); // pause before final analysis call
+  }
+
+  // Hard cap: ensure transcript fits within TPM budget regardless of chunking result
+  if (effectiveTranscript.length > TRANSCRIPT_FINAL_CAP_CHARS) {
+    effectiveTranscript =
+      effectiveTranscript.slice(0, TRANSCRIPT_FINAL_CAP_CHARS) +
+      "\n\n[...транскрипт обрезан из-за ограничений токенов...]";
+    console.log(`[analysis] transcript capped to ${TRANSCRIPT_FINAL_CAP_CHARS} chars`);
   }
 
   // ── Final analysis call ───────────────────────────────────────────────────
