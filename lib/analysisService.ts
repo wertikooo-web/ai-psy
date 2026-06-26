@@ -22,6 +22,42 @@ export interface GenerateAnalysisOutput {
   promptTokensEstimate: number;
 }
 
+// ── Token budget constants ────────────────────────────────────────────────────
+
+// OpenAI free/low-tier TPM limit is ~30 000. We leave room for output tokens.
+const TOKEN_BUDGET_PER_REQUEST = 22_000; // safe input token budget per single request
+const CHARS_PER_TOKEN          = 3.5;    // conservative estimate for Russian text
+const CHUNK_CHARS              = Math.floor(TOKEN_BUDGET_PER_REQUEST * CHARS_PER_TOKEN * 0.7); // ~53 000 chars
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// ── Compression pass ─────────────────────────────────────────────────────────
+
+async function compressChunk(
+  chunk: string,
+  chunkIndex: number,
+  totalChunks: number,
+  providerClient: ReturnType<typeof getProvider>,
+  model: string | undefined,
+): Promise<string> {
+  const system = `Ты ассистент-конспектор. Получаешь фрагмент ${chunkIndex + 1} из ${totalChunks} психотерапевтической сессии.
+Задача: сжать до 350–450 слов, сохранив ВСЕ клинически значимые моменты:
+- Темы и проблемы, поднятые клиентом
+- Эмоциональные реакции, защиты, паттерны
+- Интервенции терапевта и реакция клиента
+- Инсайты, сдвиги, тупики
+Пиши связным текстом, без заголовков, на русском.`;
+
+  const result = await providerClient.generateText({
+    systemPrompt: system,
+    userPrompt:   chunk,
+    model,
+    temperature:  0.2,
+    maxTokens:    700,
+  });
+  return result.text;
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 export async function generateAnalysis(
@@ -36,10 +72,6 @@ export async function generateAnalysis(
     temperature,
   } = input;
 
-  // 1. Build prompt from knowledge base
-  const systemPrompt = await buildAnalysisPrompt({ mode, transcript, clientContext });
-
-  // 2. Select provider
   const providerClient = getProvider(providerName);
 
   const maxTokensByMode: Record<string, number> = {
@@ -52,10 +84,43 @@ export async function generateAnalysis(
   };
   const maxTokens = maxTokensByMode[mode] ?? 3000;
 
-  // 3. Call LLM
+  // Decide whether chunking is needed
+  const estimatedTokens = Math.round(transcript.length / CHARS_PER_TOKEN);
+  let effectiveTranscript = transcript;
+
+  if (estimatedTokens > TOKEN_BUDGET_PER_REQUEST) {
+    // ── Map-reduce: compress each chunk, then analyze the compressed text ──
+    const chunks: string[] = [];
+    for (let i = 0; i < transcript.length; i += CHUNK_CHARS) {
+      chunks.push(transcript.slice(i, i + CHUNK_CHARS));
+    }
+
+    console.log(`[analysis] transcript ${estimatedTokens} tokens → chunking into ${chunks.length} parts`);
+
+    const compressions: string[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      if (i > 0) await sleep(12_000); // stay within TPM window
+      const compressed = await compressChunk(chunks[i], i, chunks.length, providerClient, model);
+      compressions.push(`=== Часть ${i + 1} из ${chunks.length} ===\n${compressed}`);
+    }
+
+    effectiveTranscript =
+      `[Транскрипт сжат из-за длины: ${chunks.length} частей → конспекты]\n\n` +
+      compressions.join("\n\n");
+
+    await sleep(12_000); // pause before final analysis call
+  }
+
+  // ── Final analysis call ───────────────────────────────────────────────────
+  const systemPrompt = await buildAnalysisPrompt({
+    mode,
+    transcript: effectiveTranscript,
+    clientContext,
+  });
+
   const result = await providerClient.generateText({
     systemPrompt,
-    userPrompt: "Выполни анализ согласно инструкциям выше.",
+    userPrompt:  "Выполни анализ согласно инструкциям выше.",
     model,
     temperature,
     maxTokens,

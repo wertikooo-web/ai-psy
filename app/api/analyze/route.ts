@@ -9,6 +9,8 @@ import { getMaterialsForClient as getMaterials } from "@/lib/data/clientMaterial
 import { getConsultations as readAllConsultations } from "@/lib/data/consultations";
 import { readProfile } from "@/lib/data/userProfile";
 
+export const maxDuration = 300;
+
 export async function POST(req: NextRequest) {
   try {
     const { consultationId, mode } = await req.json();
