@@ -1507,7 +1507,7 @@ export function AnimatedCityScene() {
       />
       {/* Road boundary line — same color/weight as actor strokes */}
       <div aria-hidden style={{
-        position:"absolute", bottom:"5mm", left:0, right:0,
+        position:"absolute", bottom:"2mm", left:0, right:0,
         height:`${SW}px`, background:"#8C7E72",
         opacity: cityOpacity, pointerEvents:"none",
       }}/>
