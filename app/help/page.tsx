@@ -129,11 +129,14 @@ export default function HelpPage() {
 
         {/* Data storage */}
         <Section icon={<Database size={15} className="text-slate-400" />} title="Где хранятся данные">
-          <div className="text-sm space-y-2 leading-relaxed" style={{ color: "#6B5D4F" }}>
-            <p>Сейчас данные хранятся в JSON-файлах: <code className="font-mono px-1 rounded text-xs" style={{ background: "#E8E0D0", color: "#4A3C2E" }}>data/clients.json</code>, <code className="font-mono px-1 rounded text-xs" style={{ background: "#E8E0D0", color: "#4A3C2E" }}>data/consultations.json</code> и др.</p>
-            <p>Аудиофайлы загружаются в <code className="font-mono px-1 rounded text-xs" style={{ background: "#E8E0D0", color: "#4A3C2E" }}>public/uploads/</code>.</p>
-            <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-amber-700">
-              ⚠️ На Railway файловая система временная — данные и аудио могут быть потеряны при перезапуске сервера. В следующей версии планируется переход на Supabase.
+          <div className="text-sm space-y-3 leading-relaxed" style={{ color: "#6B5D4F" }}>
+            <p>Данные клиентов, консультаций, транскриптов, анализов и настроек хранятся в <strong>Supabase</strong>.</p>
+            <p>Аудиозаписи и загруженные материалы хранятся в <strong>Supabase Storage</strong>.</p>
+            <p>Railway используется для работы серверной части приложения. Постоянные данные не зависят от файловой системы Railway.</p>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 pt-1 text-xs" style={{ color: "#A8997F" }}>
+              <span>База данных: Supabase</span>
+              <span>Файлы: Supabase Storage</span>
+              <span>Сервер: Railway</span>
             </div>
           </div>
         </Section>
