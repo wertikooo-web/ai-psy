@@ -161,6 +161,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
       const { text } = await res.json();
       setTranscript(text);
       setStatus("ready");
+      // Mark analysis stale if one already exists
+      if (lastAnalysis) setAnalysisStale(true);
     } catch (err) {
       setTranscribeErr(err instanceof Error ? err.message : "Неизвестная ошибка");
       setStatus("created");
