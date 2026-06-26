@@ -408,11 +408,12 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               </div>
 
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                {/* Refresh current analysis */}
-                {displayedMode && analysesByMode.has(displayedMode) && (
+                {/* Refresh current analysis — visible only when stale */}
+                {displayedMode && analysesByMode.has(displayedMode) && analysisStale && (
                   <button
                     onClick={() => runAnalysis(displayedMode, true)}
                     disabled={!!generatingMode}
+                    title="Данные изменились — нажмите чтобы пересчитать анализ"
                     className="text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap"
                     style={{ background: "rgba(255,255,255,0.10)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.30)" }}
                   >
@@ -487,7 +488,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             {/* Stale banner */}
             {analysisStale && selectedAnalysis && (
               <div className="flex items-center justify-between gap-3 px-4 py-2 flex-shrink-0" style={{ background: "#FEF3DC", borderBottom: "1px solid #E8C97A" }}>
-                <p className="text-xs" style={{ color: "#7A5420" }}>Транскрипт изменён — этот анализ может быть неактуален.</p>
+                <p className="text-xs" style={{ color: "#7A5420" }}>Данные консультации изменились — анализ может быть неактуален.</p>
                 <button
                   onClick={() => displayedMode && runAnalysis(displayedMode, true)}
                   className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg whitespace-nowrap"
