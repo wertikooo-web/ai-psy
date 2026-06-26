@@ -15,6 +15,24 @@ interface ChatPanelProps {
   // transcriptText removed — server loads context from DB by consultationId
 }
 
+// Split a long single-block AI response into paragraphs of 2–3 sentences.
+// Applied only when the text has no blank lines and contains many sentences.
+function formatAIResponse(text: string): string {
+  // Already has paragraph breaks — leave it alone
+  if (text.includes("\n\n")) return text;
+
+  // Split into sentences (Russian/English punctuation)
+  const sentences = text.match(/[^.!?]+[.!?]+["»]?\s*/g);
+  if (!sentences || sentences.length <= 4) return text;
+
+  const SENTENCES_PER_PARA = 2;
+  const paragraphs: string[] = [];
+  for (let i = 0; i < sentences.length; i += SENTENCES_PER_PARA) {
+    paragraphs.push(sentences.slice(i, i + SENTENCES_PER_PARA).join("").trim());
+  }
+  return paragraphs.join("\n\n");
+}
+
 const QUICK_PROMPTS = [
   "Что важно на следующей сессии?",
   "Ключевой инсайт?",
@@ -129,7 +147,7 @@ export function ChatPanel({
       const aiMsg: ChatMessage = {
         id:        `a${Date.now()}`,
         role:      "assistant",
-        content:   data.reply,
+        content:   formatAIResponse(data.reply),
         timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages(m => [...m, aiMsg]);
