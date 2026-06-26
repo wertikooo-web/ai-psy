@@ -206,7 +206,7 @@ export function UploadModal({
             },
           }),
         });
-        if (!res.ok) throw new Error("Ошибка создания записи");
+        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error ?? "Ошибка создания записи"); }
         const { id } = await res.json();
         setStageIdx(2);
         setCreatedId(id);
@@ -228,7 +228,7 @@ export function UploadModal({
             transcriptText: transcriptText.trim(),
           }),
         });
-        if (!res.ok) throw new Error("Ошибка создания записи");
+        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error ?? "Ошибка создания записи"); }
         const { id } = await res.json();
         setStageIdx(1);
         setCreatedId(id);
