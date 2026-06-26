@@ -12,6 +12,7 @@ import {
   CheckCircle2, CircleDashed, Trash2, Plus,
 } from "lucide-react";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
+import { AnalysisBlockRenderer } from "@/components/analysis/AnalysisBlockRenderer";
 import Link from "next/link";
 
 // ── Analysis mode definitions ─────────────────────────────────────────────────
@@ -511,7 +512,10 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               {generatingMode !== null && generatingMode === displayedMode ? (
                 <AnalysisProgress transcriptLen={transcriptText?.length ?? 0} />
               ) : selectedAnalysis ? (
-                <MarkdownRenderer content={selectedAnalysis.result} />
+                <AnalysisBlockRenderer
+                  result={selectedAnalysis.result}
+                  blocks={selectedAnalysis.blocks}
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
                   <BrainCircuit size={32} style={{ color: "#C9BBAA" }} />

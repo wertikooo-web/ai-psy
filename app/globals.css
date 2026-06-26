@@ -46,6 +46,12 @@
   }
 }
 
+/* ── EvidenceTooltip focus ring ────────────────────────────────────────────── */
+.evidence-tooltip-btn:focus-visible {
+  outline: 2px solid #8B7355;
+  outline-offset: 2px;
+}
+
 /* ── Animated City Scene ─────────────────────────────────────────────────────── */
 @keyframes cityMoveLtr {
   from { transform: translateX(-160px); }
