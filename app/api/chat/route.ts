@@ -101,22 +101,37 @@ export async function POST(req: NextRequest) {
           transcriptBlock = raw.length > 14_000 ? raw.slice(0, 14_000) + "\n[...транскрипт обрезан...]" : raw;
         }
 
-        // AI analysis — use the most recent entry
-        const lastAnalysis = consultation.analyses?.length
-          ? consultation.analyses[consultation.analyses.length - 1]
-          : null;
-
-        if (lastAnalysis?.result) {
-          // Check if analysis is stale (transcript was created after analysis)
-          const analysisAt  = lastAnalysis.createdAt ? new Date(lastAnalysis.createdAt).getTime() : 0;
+        // AI analyses — group by mode, use the most recent per mode
+        const allAnalyses = consultation.analyses ?? [];
+        if (allAnalyses.length > 0) {
+          // The most recent overall analysis for the main block
+          const lastAnalysis = allAnalyses[allAnalyses.length - 1];
+          const analysisAt   = lastAnalysis.createdAt ? new Date(lastAnalysis.createdAt).getTime() : 0;
           const transcriptAt = consultation.transcript?.createdAt
             ? new Date(consultation.transcript.createdAt).getTime()
             : 0;
           const isStale = transcriptAt > 0 && analysisAt > 0 && transcriptAt > analysisAt;
+          analysisStatus = isStale ? "устаревший (транскрипт обновлён после анализа)" : "актуальный";
 
-          analysisStatus  = isStale ? "устаревший (транскрипт обновлён после анализа)" : "актуальный";
-          const aText = lastAnalysis.result;
-          analysisBlock = aText.length > 6_000 ? aText.slice(0, 6_000) + "\n[...анализ обрезан...]" : aText;
+          const MODE_LABELS: Record<string, string> = {
+            working: "Рабочий анализ", deep: "Глубокий анализ",
+            hypothesis: "Гипотезы", therapist_process: "Работа психолога",
+            gestalt: "Гештальт-анализ", next_session: "Следующая сессия",
+          };
+
+          // Build per-mode map (last wins)
+          const byMode = new Map<string, { result: string }>();
+          for (const a of allAnalyses) byMode.set(a.mode, a);
+
+          // Combine all analyses into one block (newest mode first), truncate total
+          let combined = "";
+          for (const [mode, a] of byMode) {
+            const label = MODE_LABELS[mode] ?? mode;
+            const chunk = a.result.length > 3_000 ? a.result.slice(0, 3_000) + "…" : a.result;
+            combined += `\n\n### ${label}\n${chunk}`;
+            if (combined.length > 8_000) break;
+          }
+          analysisBlock = combined.trim();
         }
       }
     }

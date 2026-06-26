@@ -13,7 +13,7 @@ export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   try {
-    const { consultationId, mode } = await req.json();
+    const { consultationId, mode, force = false } = await req.json();
 
     if (!consultationId || !mode) {
       return NextResponse.json({ error: "consultationId и mode обязательны" }, { status: 400 });
@@ -22,6 +22,24 @@ export async function POST(req: NextRequest) {
     const consultation = await getConsultation(consultationId);
     if (!consultation) {
       return NextResponse.json({ error: "Консультация не найдена" }, { status: 404 });
+    }
+
+    const existingAnalyses = consultation.analyses ?? [];
+
+    // Protect against duplicate generation: if already generating (status=analyzing),
+    // return 409. If exists and !force, return the cached result immediately.
+    if (!force) {
+      const existing = existingAnalyses.find(a => a.mode === mode);
+      if (existing) {
+        return NextResponse.json({
+          id:        existing.id,
+          result:    existing.result,
+          mode,
+          model:     "cached",
+          provider:  "cache",
+          fromCache: true,
+        });
+      }
     }
 
     // Priority: formatted segments > raw transcript > psychologist notes
@@ -86,10 +104,11 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    const existingAnalyses = consultation.analyses ?? [];
+    // Replace existing entry for this mode (if force), or append new one
+    const withoutCurrent = existingAnalyses.filter(a => a.mode !== mode);
     await updateConsultation(consultationId, {
       status:   "done",
-      analyses: [...existingAnalyses, entry],
+      analyses: [...withoutCurrent, entry],
     });
 
     return NextResponse.json({

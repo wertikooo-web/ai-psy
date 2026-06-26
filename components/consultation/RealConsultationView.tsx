@@ -9,10 +9,22 @@ import {
   Zap, Search, UserCheck, Layers, Lightbulb, CalendarClock,
   Play, NotebookPen, FileText, Loader2, AlertCircle,
   Download, ChevronDown, ChevronUp, BrainCircuit,
-  CheckCircle2, CircleDashed, Trash2,
+  CheckCircle2, CircleDashed, Trash2, Plus,
 } from "lucide-react";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
 import Link from "next/link";
+
+// ── Analysis mode definitions ─────────────────────────────────────────────────
+type ModeId = "working" | "deep" | "therapist_process" | "gestalt" | "hypothesis" | "next_session";
+
+const ANALYSIS_MODES: Array<{ id: ModeId; label: string; shortLabel: string; desc: string }> = [
+  { id: "working",          label: "Рабочий анализ",         shortLabel: "Рабочий",    desc: "Ключевые темы, гипотезы и динамика. Краткий практический разбор." },
+  { id: "deep",             label: "Глубокий анализ",        shortLabel: "Глубокий",   desc: "Паттерны, процессы, противоречия и подробный разбор консультации." },
+  { id: "hypothesis",       label: "Гипотезы",               shortLabel: "Гипотезы",   desc: "Построить и проверить рабочие психологические гипотезы." },
+  { id: "therapist_process",label: "Работа психолога (+A)",  shortLabel: "+A",         desc: "Разбор интервенций, вопросов, реакций и позиции психолога." },
+  { id: "gestalt",          label: "Гештальт-анализ (+G)",   shortLabel: "+G",         desc: "Анализ процесса через призму гештальт-подхода." },
+  { id: "next_session",     label: "Следующая сессия",       shortLabel: "Следующая",  desc: "Темы, вопросы и направления работы на следующую встречу." },
+];
 
 // ── Analysis progress indicator ───────────────────────────────────────────────
 function AnalysisProgress({ transcriptLen }: { transcriptLen: number }) {
@@ -103,25 +115,16 @@ function estimateDuration(bytes: number): string {
   return `~${minutes} мин`;
 }
 
-// ── Analysis modes ────────────────────────────────────────────────────────────
+// ── Analysis mode icons ───────────────────────────────────────────────────────
 
-type ModeId = "working" | "deep" | "therapist_process" | "gestalt" | "hypothesis" | "next_session";
-
-interface AnalysisMode {
-  id: ModeId;
-  icon: React.ReactNode;
-  label: string;
-  desc: string;
-}
-
-const MODES: AnalysisMode[] = [
-  { id: "working",          icon: <Zap size={16} />,         label: "Рабочий анализ",             desc: "Ключевые темы, гипотезы, динамика — быстро" },
-  { id: "deep",             icon: <Search size={16} />,      label: "Глубокий анализ",             desc: "Паттерны, процессы, подробный разбор" },
-  { id: "hypothesis",       icon: <Lightbulb size={16} />,   label: "Гипотезы",                   desc: "Построить и проверить рабочие гипотезы" },
-  { id: "therapist_process",icon: <UserCheck size={16} />,   label: "Работа психолога (+А)",       desc: "Фокус на ваших интервенциях и реакциях" },
-  { id: "gestalt",          icon: <Layers size={16} />,      label: "Гештальт-анализ (+G)",        desc: "Через призму гештальт-подхода" },
-  { id: "next_session",     icon: <CalendarClock size={16} />,label: "Следующая сессия",           desc: "Что продолжить и исследовать на следующей встрече" },
-];
+const MODE_ICONS: Record<ModeId, React.ReactNode> = {
+  working:          <Zap size={16} />,
+  deep:             <Search size={16} />,
+  hypothesis:       <Lightbulb size={16} />,
+  therapist_process:<UserCheck size={16} />,
+  gestalt:          <Layers size={16} />,
+  next_session:     <CalendarClock size={16} />,
+};
 
 const MODE_HINTS: Record<ModeId, string> = {
   working:          "Сжатый разбор: основные темы, гипотезы и динамика. Подходит для большинства консультаций.",
@@ -175,11 +178,13 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const [audioDeleted, setAudioDeleted]   = useState(false);
   const [deletingAudio, setDeletingAudio] = useState(false);
 
-  const [selectedMode, setSelectedMode]   = useState<ModeId>(defaultMode);
-  const [analyzing, setAnalyzing]         = useState(false);
-  const [analysisResult, setResult]       = useState<string | null>(lastAnalysis?.result ?? null);
-  const [analyzedMode, setAnalyzedMode]   = useState<ModeId | null>((lastAnalysis?.mode as ModeId) ?? null);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [selectedMode, setSelectedMode]     = useState<ModeId>(defaultMode);
+  const [analyses, setAnalyses]             = useState(c.analyses ?? []);
+  const [displayedMode, setDisplayedMode]   = useState<ModeId | null>((lastAnalysis?.mode as ModeId) ?? null);
+  const [generatingMode, setGeneratingMode] = useState<ModeId | null>(null);
+  const [addMenuOpen, setAddMenuOpen]       = useState(false);
+  const addMenuRef                          = useRef<HTMLDivElement>(null);
+  const [analysisError, setAnalysisError]   = useState<string | null>(null);
 
   // Client context: materials (full objects) + history count
   const [clientMaterials, setClientMaterials] = useState<import("@/lib/types").ClientMaterial[]>([]);
@@ -215,6 +220,18 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
     window.addEventListener("client-materials-changed", onMaterialsChanged as EventListener);
     return () => window.removeEventListener("client-materials-changed", onMaterialsChanged as EventListener);
   }, [c.clientId]);
+
+  // Close "+ АНАЛИЗ" dropdown on outside click or Esc
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    function onOutside(e: MouseEvent) {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) setAddMenuOpen(false);
+    }
+    function onEsc(e: KeyboardEvent) { if (e.key === "Escape") setAddMenuOpen(false); }
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onOutside); document.removeEventListener("keydown", onEsc); };
+  }, [addMenuOpen]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
   async function runTranscription() {
@@ -258,29 +275,37 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
     }
   }
 
-  async function runAnalysis() {
-    setAnalyzing(true);
+  async function runAnalysis(mode: ModeId = selectedMode, force = false) {
+    if (generatingMode) return; // prevent double-run
+    setAddMenuOpen(false);
+    setDisplayedMode(mode);
     setAnalysisError(null);
-    setResult(null);
+
+    // If the analysis exists and we're not forcing, just switch view
+    const already = analyses.find(a => a.mode === mode);
+    if (already && !force) return;
+
+    setGeneratingMode(mode);
     try {
       const res = await fetch("/api/analyze", {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ consultationId: c.id, mode: selectedMode }),
+        body:    JSON.stringify({ consultationId: c.id, mode, force }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error ?? "Ошибка анализа");
       }
       const data = await res.json();
-      setResult(data.result);
-      setAnalyzedMode(selectedMode);
+      const newEntry = { id: data.id, mode, result: data.result, createdAt: new Date().toISOString() };
+      setAnalyses(prev => [...prev.filter(a => a.mode !== mode), newEntry]);
       setAnalysisStale(false);
       setStatus("done");
     } catch (err) {
       setAnalysisError(err instanceof Error ? err.message : "Неизвестная ошибка");
     } finally {
-      setAnalyzing(false);
+      setGeneratingMode(null);
+      router.refresh();
     }
   }
 
@@ -289,7 +314,11 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const dateStr   = c.createdAt ?? c.uploadedAt ?? "";
   const hasAudio       = !!audioFile;
   const hasText        = !!(transcriptText ?? c.notes);
-  const hasResult      = !!analysisResult;
+  // Map: mode → most recent analysis entry
+  const analysesByMode = new Map<ModeId, typeof analyses[0]>();
+  for (const a of analyses) analysesByMode.set(a.mode as ModeId, a);
+  const selectedAnalysis = displayedMode ? (analysesByMode.get(displayedMode) ?? null) : null;
+  const hasAnyResult = analyses.length > 0;
   const isNotesOnly    = source === "notes" && !c.transcript?.text;
   const hasWhisper     = !!c.transcript?.text;
   const notesText      = c.notes ?? null;
@@ -315,7 +344,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
     "Ожидает транскрипции";
 
   // ── 3-panel view after analysis ─────────────────────────────────────────────
-  if (hasResult) {
+  if (hasAnyResult || generatingMode !== null) {
     const segments: import("@/lib/mockData").TranscriptSegment[] = [];
     const fakeChat: import("@/lib/mockData").ChatMessage[] = [];
     return (
@@ -361,57 +390,136 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
           {/* Analysis panel */}
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#FAF8F5]">
-            {/* Analysis header — fixed height to match other columns */}
+            {/* Analysis header */}
             <div
-              className="px-5 flex-shrink-0 flex items-center gap-3"
+              className="px-4 flex-shrink-0 flex items-center gap-2"
               style={{ height: 68, background: "#9C9289", borderBottom: "1px solid #8A8079" }}
             >
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(255,255,255,0.10)" }}
-              >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.10)" }}>
                 <BrainCircuit size={15} style={{ color: "#D8CFBE" }} />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
-                <p className="text-xs leading-tight mt-0.5" style={{ color: "#D8CFBE" }}>
-                  {analyzedMode ? "Анализ актуален" : "Результат анализа"}
+                <h2 className="text-base font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
+                <p className="text-xs leading-tight mt-0.5 truncate" style={{ color: "#D8CFBE" }}>
+                  {displayedMode
+                    ? (ANALYSIS_MODES.find(m => m.id === displayedMode)?.label ?? displayedMode)
+                    : "Выберите вид анализа"}
                 </p>
               </div>
-              <button
-                onClick={() => { setResult(null); setAnalyzedMode(null); setAnalysisStale(false); setStatus("ready"); }}
-                className="flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg transition-all whitespace-nowrap"
-                style={{
-                  background: "rgba(255,255,255,0.10)",
-                  color:      "#FFFFFF",
-                  border:     "1px solid rgba(255,255,255,0.30)",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.18)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; }}
-                title="Обновить анализ"
-              >
-                Обновить анализ
-              </button>
+
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {/* Refresh current analysis */}
+                {displayedMode && analysesByMode.has(displayedMode) && (
+                  <button
+                    onClick={() => runAnalysis(displayedMode, true)}
+                    disabled={!!generatingMode}
+                    className="text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap"
+                    style={{ background: "rgba(255,255,255,0.10)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.30)" }}
+                  >
+                    Обновить
+                  </button>
+                )}
+
+                {/* + АНАЛИЗ dropdown */}
+                <div className="relative" ref={addMenuRef}>
+                  <button
+                    onClick={() => setAddMenuOpen(o => !o)}
+                    disabled={!!generatingMode || !hasText}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-opacity"
+                    style={{ background: "rgba(255,255,255,0.18)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.40)" }}
+                    title={!hasText ? "Сначала создайте транскрипт консультации" : "Создать дополнительный анализ"}
+                  >
+                    <Plus size={12} /> АНАЛИЗ
+                  </button>
+
+                  {addMenuOpen && (
+                    <div className="absolute right-0 top-full mt-1 rounded-xl border shadow-xl z-50 py-1 overflow-hidden" style={{ background: "#FAF8F5", borderColor: "#D8CFBE", minWidth: 290 }}>
+                      {ANALYSIS_MODES.map(m => {
+                        const exists    = analysesByMode.has(m.id);
+                        const isGenerat = generatingMode === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            onClick={() => runAnalysis(m.id)}
+                            disabled={isGenerat}
+                            className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-stone-100 transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold" style={{ color: "#3D3228" }}>{m.label}</span>
+                                {isGenerat && <Loader2 size={11} className="animate-spin text-violet-500 flex-shrink-0" />}
+                                {exists && !isGenerat && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />}
+                              </div>
+                              <p className="text-[11px] mt-0.5 leading-snug" style={{ color: "#8A7A6A" }}>{m.desc}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Stale banner — shown below header when materials changed */}
-            {analysisStale && (
-              <div className="flex items-center justify-between gap-3 px-5 py-2 flex-shrink-0" style={{ background: "#FEF3DC", borderBottom: "1px solid #E8C97A" }}>
-                <p className="text-xs" style={{ color: "#7A5420" }}>Добавлены новые материалы — обновите анализ, чтобы учесть их.</p>
+            {/* Mode tabs — shown when 2+ analyses exist */}
+            {(analyses.length > 1 || (analyses.length === 1 && generatingMode !== null && generatingMode !== analyses[0]?.mode)) && (
+              <div className="flex border-b flex-shrink-0 overflow-x-auto scrollbar-none" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
+                {ANALYSIS_MODES
+                  .filter(m => analysesByMode.has(m.id) || generatingMode === m.id)
+                  .map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setDisplayedMode(m.id)}
+                      className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+                        displayedMode === m.id
+                          ? "border-stone-600 text-stone-700"
+                          : "border-transparent text-slate-400 hover:text-slate-600"
+                      }`}
+                    >
+                      {m.shortLabel}
+                      {generatingMode === m.id && <Loader2 size={10} className="animate-spin text-violet-500" />}
+                      {analysesByMode.has(m.id) && generatingMode !== m.id && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                    </button>
+                  ))}
+              </div>
+            )}
+
+            {/* Stale banner */}
+            {analysisStale && selectedAnalysis && (
+              <div className="flex items-center justify-between gap-3 px-4 py-2 flex-shrink-0" style={{ background: "#FEF3DC", borderBottom: "1px solid #E8C97A" }}>
+                <p className="text-xs" style={{ color: "#7A5420" }}>Транскрипт изменён — этот анализ может быть неактуален.</p>
                 <button
-                  onClick={() => { setResult(null); setAnalyzedMode(null); setAnalysisStale(false); setStatus("ready"); }}
-                  className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
+                  onClick={() => displayedMode && runAnalysis(displayedMode, true)}
+                  className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg whitespace-nowrap"
                   style={{ background: "#C9A96E", color: "#1A0F05" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "#B8924F"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "#C9A96E"; }}
                 >
                   Обновить
                 </button>
               </div>
             )}
 
+            {/* Error banner */}
+            {analysisError && (
+              <div className="flex items-start gap-2 px-4 py-2.5 flex-shrink-0" style={{ background: "#FEF2F2", borderBottom: "1px solid #FCA5A5" }}>
+                <AlertCircle size={13} className="text-red-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-red-600">{analysisError}</p>
+              </div>
+            )}
+
+            {/* Content */}
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5">
-              <MarkdownRenderer content={analysisResult ?? ""} />
+              {generatingMode !== null && generatingMode === displayedMode ? (
+                <AnalysisProgress transcriptLen={transcriptText?.length ?? 0} />
+              ) : selectedAnalysis ? (
+                <MarkdownRenderer content={selectedAnalysis.result} />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full gap-3">
+                  <BrainCircuit size={32} style={{ color: "#C9BBAA" }} />
+                  <p className="text-sm text-center" style={{ color: "#9C8E80" }}>
+                    {generatingMode ? "Создаём анализ..." : "Нажмите «+ АНАЛИЗ» для запуска"}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -584,25 +692,16 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
             {/* Row 3: AI Analysis */}
             <div className="flex items-center gap-3 px-5 py-4">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasResult ? "bg-brand-50" : "bg-[#EDE7DA]"}`}>
-                <BrainCircuit size={15} className={hasResult ? "text-brand-500" : "text-slate-300"} />
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${hasAnyResult ? "bg-brand-50" : "bg-[#EDE7DA]"}`}>
+                <BrainCircuit size={15} className={hasAnyResult ? "text-brand-500" : "text-slate-300"} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-700">AI-анализ</p>
                 <p className="text-xs text-slate-400">
-                  {hasResult ? (analyzedMode ? MODES.find(m => m.id === analyzedMode)?.label ?? analyzedMode : "Готов") : "Не создан"}
+                  {hasAnyResult ? `${analyses.length} ${analyses.length === 1 ? "анализ" : "анализов"}` : "Не создан"}
                 </p>
               </div>
-              <StatusPill ok={hasResult} label={hasResult ? "Готов" : "Нет"} />
-              {hasResult && analysisResult && (
-                <button
-                  onClick={() => downloadBlob(analysisResult, `анализ-${c.id.slice(0,8)}.md`, "text/markdown;charset=utf-8")}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-50 border border-slate-200 transition-colors"
-                >
-                  <Download size={12} />
-                  .md
-                </button>
-              )}
+              <StatusPill ok={hasAnyResult} label={hasAnyResult ? "Готов" : "Нет"} />
             </div>
           </div>
 
@@ -668,7 +767,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               </p>
 
               <div className="grid grid-cols-3 gap-2 mb-4">
-                {MODES.map((mode) => {
+                {ANALYSIS_MODES.map((mode) => {
                   const active = selectedMode === mode.id;
                   return (
                     <button
@@ -678,7 +777,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                         active ? "border-brand-300 bg-brand-50" : "border-[#D8CFBE] hover:border-[#C9BBAA] hover:bg-[#F0EAE0]"
                       }`}
                     >
-                      <span className={active ? "text-brand-500" : "text-slate-400"}>{mode.icon}</span>
+                      <span className={active ? "text-brand-500" : "text-slate-400"}>{MODE_ICONS[mode.id]}</span>
                       <span className={`text-xs font-semibold leading-snug ${active ? "text-brand-700" : "text-slate-700"}`}>{mode.label}</span>
                       <span className="text-xs text-slate-400 leading-snug">{mode.desc}</span>
                     </button>
@@ -688,7 +787,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
               <div className="px-3.5 py-2.5 rounded-xl mb-4" style={{ background: "#F5F0E8", border: "1px solid #E0D8CA" }}>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  <span className="font-medium text-slate-700">{MODES.find((m) => m.id === selectedMode)?.label}</span>
+                  <span className="font-medium text-slate-700">{ANALYSIS_MODES.find((m) => m.id === selectedMode)?.label}</span>
                   {" — "}
                   {MODE_HINTS[selectedMode]}
                 </p>
@@ -720,17 +819,14 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                 </div>
               )}
 
-              {analyzing ? (
-                <AnalysisProgress transcriptLen={transcriptText?.length ?? 0} />
-              ) : (
-                <button
-                  onClick={runAnalysis}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm"
-                >
-                  <Play size={14} />
-                  Запустить анализ
-                </button>
-              )}
+              <button
+                onClick={() => runAnalysis(selectedMode)}
+                disabled={!hasText}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-sm"
+              >
+                <Play size={14} />
+                Запустить анализ
+              </button>
 
               {analysisError && (
                 <div className="mt-3 flex items-start gap-2 px-3.5 py-3 rounded-xl bg-red-50 border border-red-100">
@@ -741,14 +837,6 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             </div>
           )}
 
-          {/* ── Analysis result ───────────────────────────────────────────── */}
-          {analysisResult && analyzedMode && (
-            <AnalysisResultCard
-              text={analysisResult}
-              mode={analyzedMode}
-              onExport={() => downloadBlob(analysisResult, `анализ-${c.id.slice(0,8)}.md`, "text/markdown;charset=utf-8")}
-            />
-          )}
 
         </div>
       </div>
@@ -781,7 +869,7 @@ function AnalysisResultCard({
   mode: ModeId;
   onExport: () => void;
 }) {
-  const modeLabel = MODES.find((m) => m.id === mode)?.label ?? mode;
+  const modeLabel = ANALYSIS_MODES.find((m) => m.id === mode)?.label ?? mode;
 
   return (
     <div className="rounded-2xl border border-brand-100 shadow-sm overflow-hidden" style={{ background: "#FAF8F5" }}>
