@@ -95,10 +95,11 @@ export async function POST(req: NextRequest) {
     const storedName = `${Date.now()}-${safeName}${storedExt}`;
 
     if (isSupabaseConfigured()) {
-      const storagePath = `audio/${storedName}`;
+      // storagePath = filename only (no subfolder) so storage://audio/{storedName}
+      // correctly maps to bucket "audio", path "{storedName}" when downloading
       const { error } = await supabaseServer!.storage
         .from("audio")
-        .upload(storagePath, buffer, { contentType, upsert: false });
+        .upload(storedName, buffer, { contentType, upsert: false });
 
       if (error) throw new Error(`Storage upload: ${error.message}`);
 

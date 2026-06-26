@@ -537,7 +537,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
           {audioFile?.fileUrl && (
             <div className="rounded-2xl border shadow-sm px-5 py-4" style={{ background: "#FBF8F2", borderColor: "#D8CFBE" }}>
               <p className="text-xs font-medium text-slate-500 mb-3">Прослушать запись</p>
-              <audio controls src={audioFile.fileUrl} className="w-full h-10" style={{ accentColor: "#3a5ff8" }}>
+              <audio controls src={audioFile.fileUrl.startsWith("storage://") ? `/api/consultations/${c.id}/audio` : audioFile.fileUrl} className="w-full h-10" style={{ accentColor: "#3a5ff8" }}>
                 Ваш браузер не поддерживает аудиоплеер.
               </audio>
             </div>
