@@ -43,7 +43,8 @@ export async function POST(
     await addMaterial(material);
     return NextResponse.json(material, { status: 201 });
   } catch (err) {
-    console.error("[client-materials POST]", err);
-    return NextResponse.json({ error: "Ошибка сохранения" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[client-materials POST]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
