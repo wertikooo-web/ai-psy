@@ -170,9 +170,10 @@ export async function generateAnalysis(
 
     console.log(`[analysis] transcript ${estimatedTokens} tokens → chunking into ${chunks.length} parts`);
 
+    // Chunks are processed sequentially. Each takes ~8s, during which the TPM window
+    // replenishes ~4k tokens — enough capacity for the next chunk without sleeping.
     const compressions: string[] = [];
     for (let i = 0; i < chunks.length; i++) {
-      if (i > 0) await sleep(12_000); // stay within TPM window
       const compressed = await compressChunk(chunks[i], i, chunks.length, providerClient, model);
       compressions.push(`=== Часть ${i + 1} из ${chunks.length} ===\n${compressed}`);
     }
