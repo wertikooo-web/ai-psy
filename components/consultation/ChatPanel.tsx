@@ -177,7 +177,7 @@ export function ChatPanel({
             <div>
               <h2 className="text-lg font-bold text-white">Чат по консультации</h2>
               <p className="text-xs text-emerald-100">
-                {consultationId ? "AI анализирует транскрипт сессии" : "Задавайте вопросы по этой сессии"}
+                {consultationId ? "AI анализирует транскрипт сессии + материалы" : "Задавайте вопросы по этой сессии"}
               </p>
             </div>
           </div>

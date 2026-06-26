@@ -32,8 +32,8 @@ function AnalysisProgress({ transcriptLen }: { transcriptLen: number }) {
   const estimatedSec  = needsChunking ? 150 : 25; // 2.5 min vs 25 sec
 
   const steps = needsChunking
-    ? ["Разбиваю транскрипт на фрагменты", "Сжимаю фрагменты", "Синтезирую анализ"]
-    : ["Обрабатываю транскрипт", "Формирую анализ"];
+    ? ["Подготавливаю текст для анализа", "Обрабатываю разделы транскрипта", "Формирую анализ"]
+    : ["Анализирую транскрипт", "Формирую результат"];
 
   const [elapsed, setElapsed]     = useState(0);
   const [stepIdx, setStepIdx]     = useState(0);
