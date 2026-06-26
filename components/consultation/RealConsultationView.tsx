@@ -298,7 +298,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
         throw new Error(err.error ?? "Ошибка анализа");
       }
       const data = await res.json();
-      const newEntry = { id: data.id, mode, result: data.result, createdAt: new Date().toISOString() };
+      const newEntry = { id: data.id, mode, result: data.result, blocks: data.blocks, createdAt: new Date().toISOString() };
       setAnalyses(prev => [...prev.filter(a => a.mode !== mode), newEntry]);
       setAnalysisStale(false);
       setStatus("done");

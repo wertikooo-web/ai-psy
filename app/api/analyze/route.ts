@@ -89,78 +89,73 @@ export async function POST(req: NextRequest) {
     const profile = await readProfile();
     const model = profile.aiModel ?? "gpt-4o";
 
-    const currentEvidence = consultation.analysisEvidence;
+    // Build canonical text and check evidence staleness
+    const canonicalText = canonicalTranscriptText(
+      consultation.transcriptFormatted,
+      consultation.transcript?.text,
+    );
+    const currentHash    = transcriptHash(canonicalText);
+    const storedEvidence = consultation.analysisEvidence;
+    const evidenceIsStale =
+      !storedEvidence || storedEvidence.source.sourceHash !== currentHash;
 
-    const output = await generateAnalysis({
-      mode: mode as AnalysisMode,
-      transcript,
-      clientContext: clientContext || undefined,
-      provider: "openai",
-      model,
-      styleHint:         profile.analysisStyle     ?? "professional",
-      lengthHint:        profile.analysisLength    ?? "standard",
-      extraInstructions: profile.aiInstructions    ?? "",
-      analysisEvidence:  currentEvidence,
-    });
+    // Run analysis and evidence build in parallel.
+    // If evidence is fresh we skip rebuilding it.
+    const [output, freshEvidence] = await Promise.all([
+      generateAnalysis({
+        mode: mode as AnalysisMode,
+        transcript,
+        clientContext: clientContext || undefined,
+        provider: "openai",
+        model,
+        styleHint:         profile.analysisStyle     ?? "professional",
+        lengthHint:        profile.analysisLength    ?? "standard",
+        extraInstructions: profile.aiInstructions    ?? "",
+        analysisEvidence:  storedEvidence ?? undefined,
+      }),
+      evidenceIsStale
+        ? buildEvidence({
+            consultationId,
+            transcriptText:      canonicalText,
+            transcriptFormatted: consultation.transcriptFormatted?.length
+              ? consultation.transcriptFormatted
+              : undefined,
+            model,
+          })
+        : Promise.resolve(storedEvidence!),
+    ]);
 
-    // Persist result
+    // Save fresh evidence if it was (re)built
+    if (evidenceIsStale) {
+      updateConsultation(consultationId, { analysisEvidence: freshEvidence }).catch(
+        (err) => console.error("[analyze] evidence save failed:", err),
+      );
+    }
+
+    // Extract blocks synchronously so lupa icons appear immediately in UI
+    const blocks = await extractBlocks(output.text, freshEvidence, model, "openai");
+
+    // Persist result + blocks
     const entry = {
       id:        randomUUID(),
       mode,
       result:    output.text,
+      blocks:    blocks.length > 0 ? blocks : undefined,
       createdAt: new Date().toISOString(),
     };
 
-    // Replace existing entry for this mode (if force), or append new one
     const withoutCurrent = existingAnalyses.filter(a => a.mode !== mode);
     await updateConsultation(consultationId, {
       status:   "done",
       analyses: [...withoutCurrent, entry],
     });
 
-    // Extract analysis blocks in background if evidence is available
-    if (currentEvidence) {
-      extractBlocks(output.text, currentEvidence, model, "openai")
-        .then(async (blocks) => {
-          if (blocks.length === 0) return;
-          // Re-read to get latest analyses array, then patch the entry we just saved
-          const fresh = await getConsultation(consultationId);
-          if (!fresh) return;
-          const updatedAnalyses = (fresh.analyses ?? []).map((a) =>
-            a.id === entry.id ? { ...a, blocks } : a,
-          );
-          await updateConsultation(consultationId, { analyses: updatedAnalyses });
-          console.log(`[analysisBlocks] consultationId=${consultationId} blocks=${blocks.length} ok=true`);
-        })
-        .catch((err) => {
-          const msg = err instanceof Error ? err.message : "unknown";
-          console.error(`[analysisBlocks] consultationId=${consultationId} background failed: ${msg}`);
-        });
-    }
-
-    // Build evidence in background if missing or stale — never blocks the response
-    const canonicalText = canonicalTranscriptText(
-      consultation.transcriptFormatted,
-      consultation.transcript?.text,
-    );
-    const currentHash = transcriptHash(canonicalText);
-    const evidenceIsStale = !currentEvidence || currentEvidence.source.sourceHash !== currentHash;
-    if (evidenceIsStale) {
-      buildEvidence({
-        consultationId,
-        transcriptText:      canonicalText,
-        transcriptFormatted: consultation.transcriptFormatted?.length
-          ? consultation.transcriptFormatted
-          : undefined,
-        model,
-      })
-        .then((evidence) => updateConsultation(consultationId, { analysisEvidence: evidence }))
-        .catch((err) => console.error("[analyze] evidence background build failed:", err));
-    }
+    console.log(`[analyze] consultationId=${consultationId} mode=${mode} blocks=${blocks.length}`);
 
     return NextResponse.json({
       id:       entry.id,
       result:   output.text,
+      blocks:   entry.blocks,
       mode,
       model:    output.model,
       provider: output.provider,
