@@ -29,6 +29,23 @@ export function transcriptHash(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex").slice(0, 16);
 }
 
+/**
+ * Canonical text used as hash source — must be identical in every place
+ * that computes or compares sourceHash.
+ *
+ * Rule: join segment .text values with "\n" if segments exist,
+ * otherwise fall back to raw transcript_text.
+ */
+export function canonicalTranscriptText(
+  transcriptFormatted: { text: string }[] | undefined | null,
+  transcriptText: string | undefined | null,
+): string {
+  if (transcriptFormatted?.length) {
+    return transcriptFormatted.map((s) => s.text).join("\n");
+  }
+  return transcriptText ?? "";
+}
+
 // ── Safe empty evidence (returned on any hard failure) ────────────────────────
 
 function emptyEvidence(
@@ -259,7 +276,8 @@ export async function buildEvidence(
   } = input;
 
   const startTime = Date.now();
-  const hash = transcriptHash(transcriptText);
+  const canonicalText = canonicalTranscriptText(transcriptFormatted, transcriptText);
+  const hash = transcriptHash(canonicalText);
 
   const { lines, hasSpeakers, hasTimestamps } =
     buildIndexedLines(transcriptFormatted, transcriptText);

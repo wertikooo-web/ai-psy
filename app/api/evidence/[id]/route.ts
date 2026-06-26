@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getConsultation, updateConsultation } from "@/lib/data/consultations";
-import { buildEvidence, transcriptHash } from "@/lib/evidenceService";
+import { buildEvidence, transcriptHash, canonicalTranscriptText } from "@/lib/evidenceService";
 import { readProfile } from "@/lib/data/userProfile";
 
 export const maxDuration = 120;
@@ -25,9 +25,10 @@ export async function GET(
     return NextResponse.json({ error: "Консультация не найдена" }, { status: 404 });
   }
 
-  const currentText = consultation.transcriptFormatted?.length
-    ? consultation.transcriptFormatted.map((s) => s.text).join(" ")
-    : consultation.transcript?.text ?? "";
+  const currentText = canonicalTranscriptText(
+    consultation.transcriptFormatted,
+    consultation.transcript?.text,
+  );
 
   const evidence = consultation.analysisEvidence ?? null;
   const currentHash = currentText ? transcriptHash(currentText) : null;

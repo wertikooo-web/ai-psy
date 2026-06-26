@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getConsultation, updateConsultation } from "@/lib/data/consultations";
-import { buildEvidence, transcriptHash } from "@/lib/evidenceService";
+import { buildEvidence, transcriptHash, canonicalTranscriptText } from "@/lib/evidenceService";
 import { generateAnalysis } from "@/lib/analysisService";
 import type { AnalysisMode } from "@/lib/knowledgeBase";
 import { getClients as readAllClients } from "@/lib/data/clients";
@@ -117,12 +117,16 @@ export async function POST(req: NextRequest) {
 
     // Build evidence in background if missing or stale — never blocks the response
     const existingEvidence = consultation.analysisEvidence;
-    const currentHash = transcriptHash(transcript);
+    const canonicalText = canonicalTranscriptText(
+      consultation.transcriptFormatted,
+      consultation.transcript?.text,
+    );
+    const currentHash = transcriptHash(canonicalText);
     const evidenceIsStale = !existingEvidence || existingEvidence.source.sourceHash !== currentHash;
     if (evidenceIsStale) {
       buildEvidence({
         consultationId,
-        transcriptText:      transcript,
+        transcriptText:      canonicalText,
         transcriptFormatted: consultation.transcriptFormatted?.length
           ? consultation.transcriptFormatted
           : undefined,
