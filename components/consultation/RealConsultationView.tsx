@@ -408,12 +408,12 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               </div>
 
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                {/* Refresh current analysis — visible only when stale */}
-                {displayedMode && analysesByMode.has(displayedMode) && analysisStale && (
+                {/* Refresh current analysis — always visible when analysis exists */}
+                {displayedMode && analysesByMode.has(displayedMode) && (
                   <button
                     onClick={() => runAnalysis(displayedMode, true)}
                     disabled={!!generatingMode}
-                    title="Данные изменились — нажмите чтобы пересчитать анализ"
+                    title="Повторно выполнить AI-анализ с текущими настройками."
                     className="text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap"
                     style={{ background: "rgba(255,255,255,0.10)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.30)" }}
                   >
