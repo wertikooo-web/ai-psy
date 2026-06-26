@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
+import { File as NodeFile } from "node:buffer";
 import { getConsultation, updateConsultation } from "@/lib/data/consultations";
 import { downloadFromStorage, isStorageUrl } from "@/lib/supabase/storage";
 import { toFile } from "openai";
+
+// Polyfill File global for Node < 20
+if (!globalThis.File) {
+  globalThis.File = NodeFile as unknown as typeof File;
+}
 
 function getOpenAI(): OpenAI {
   const apiKey = process.env.OPENAI_API_KEY;
