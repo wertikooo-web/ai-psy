@@ -60,8 +60,15 @@ export async function DELETE(
       }
     }
 
-    // Clear audio fields, keep transcript
-    await updateConsultation(id, { audio: undefined });
+    // Clear audio URL/size but keep fileName for history; mark deleted
+    await updateConsultation(id, {
+      audio: {
+        fileName: consultation.audio?.fileName ?? "",
+        fileUrl:  "",
+        fileSize: 0,
+      },
+      audioDeletedAt: new Date().toISOString(),
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -70,10 +70,24 @@ export async function POST(req: NextRequest) {
     }
 
     const transcription = await openai.audio.transcriptions.create({
-      file:     audioInput,
-      model:    "whisper-1",
-      language: "ru",
+      file:                    audioInput,
+      model:                   "whisper-1",
+      language:                "ru",
+      response_format:         "verbose_json",
+      timestamp_granularities: ["segment"],
     });
+
+    // Extract segments (typed as any because verbose_json adds fields not in the basic type)
+    const rawSegments = (transcription as unknown as {
+      segments?: Array<{ id: number; start: number; end: number; text: string }>;
+    }).segments ?? [];
+
+    const whisperSegments = rawSegments.map((s) => ({
+      id:    s.id,
+      start: s.start,
+      end:   s.end,
+      text:  s.text.trim(),
+    }));
 
     // Preserve existing notes if consultation was notes-based
     const updates: Parameters<typeof updateConsultation>[1] = {
@@ -83,6 +97,7 @@ export async function POST(req: NextRequest) {
         origin:    "whisper",
         createdAt: new Date().toISOString(),
       },
+      transcriptSegments: whisperSegments.length > 0 ? whisperSegments : undefined,
     };
     // Migrate old-style notes stored in transcript.text → notes field
     if (consultation.source === "notes" && consultation.transcript?.text && !consultation.notes) {
@@ -91,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     await updateConsultation(consultationId, updates);
 
-    return NextResponse.json({ text: transcription.text });
+    return NextResponse.json({ text: transcription.text, segmentsCount: whisperSegments.length });
 
   } catch (err) {
     console.error("[transcribe]", err);

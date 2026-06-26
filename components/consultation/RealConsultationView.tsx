@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { StoredConsultation, ConsultationStatus } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import {
@@ -153,6 +154,8 @@ function cleanTitle(title: string, idx = 1): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function RealConsultationView({ consultation: c, defaultMode = "working" }: Props) {
+  const router = useRouter();
+
   // ── Derived initial state ─────────────────────────────────────────────────
   const audioFile = c.audio ?? (c.fileUrl
     ? { fileName: c.fileName ?? "", fileUrl: c.fileUrl, fileSize: c.fileSize ?? 0 }
@@ -338,13 +341,21 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
         <div className="flex-1 min-h-0 flex overflow-hidden divide-x divide-[#D8CFBE]">
           <TranscriptPanel
+            consultationId={c.id}
             segments={segments}
             plainText={whisperText ?? undefined}
             notesText={notesText ?? undefined}
             isNotes={isNotesOnly}
             materials={clientMaterials}
+            transcriptFormatted={c.transcriptFormatted}
+            hasTranscriptRaw={!!c.transcript?.text}
+            audioDeletedAt={c.audioDeletedAt}
+            clientName={c.clientName}
+            consultationDate={c.createdAt}
             collapsed={panelCollapsed.transcript}
             onToggle={() => setPanelCollapsed(p => ({ ...p, transcript: !p.transcript }))}
+            onRefresh={() => router.refresh()}
+            onFormattedCreated={() => setAnalysisStale(true)}
           />
 
           {/* Analysis panel */}

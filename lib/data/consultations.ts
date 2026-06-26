@@ -5,7 +5,7 @@
 
 import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 import * as jsonStore from "@/lib/consultationStore";
-import type { StoredConsultation } from "@/lib/consultationStore";
+import type { StoredConsultation, WhisperSegment, FormattedSegment } from "@/lib/consultationStore";
 
 function rowToConsultation(row: Record<string, unknown>): StoredConsultation {
   return {
@@ -30,6 +30,11 @@ function rowToConsultation(row: Record<string, unknown>): StoredConsultation {
       fileName:  row.transcript_file_name as string | undefined,
       createdAt: (row.transcript_created_at as string) ?? (row.created_at as string),
     } : undefined,
+    transcriptSegments:  (row.transcript_segments as WhisperSegment[] | null) ?? undefined,
+    transcriptFormatted: (row.transcript_formatted as FormattedSegment[] | null) ?? undefined,
+    audioDeletedAt:                row.audio_deleted_at as string | undefined,
+    transcriptRawDeletedAt:        row.transcript_raw_deleted_at as string | undefined,
+    transcriptFormattedDeletedAt:  row.transcript_formatted_deleted_at as string | undefined,
     analyses: (row.analyses as StoredConsultation["analyses"]) ?? [],
   };
 }
@@ -129,6 +134,11 @@ export async function updateConsultation(id: string, updates: Partial<StoredCons
       patch.transcript_file_name  = updates.transcript?.fileName   ?? null;
       patch.transcript_created_at = updates.transcript?.createdAt  ?? null;
     }
+    if (updates.transcriptSegments  !== undefined) patch.transcript_segments  = updates.transcriptSegments  ?? null;
+    if (updates.transcriptFormatted !== undefined) patch.transcript_formatted = updates.transcriptFormatted ?? null;
+    if (updates.audioDeletedAt               !== undefined) patch.audio_deleted_at                = updates.audioDeletedAt               ?? null;
+    if (updates.transcriptRawDeletedAt       !== undefined) patch.transcript_raw_deleted_at       = updates.transcriptRawDeletedAt       ?? null;
+    if (updates.transcriptFormattedDeletedAt !== undefined) patch.transcript_formatted_deleted_at = updates.transcriptFormattedDeletedAt ?? null;
     const { error } = await supabaseServer!
       .from("consultations")
       .update(patch)

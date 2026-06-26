@@ -24,19 +24,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Консультация не найдена" }, { status: 404 });
     }
 
-    // Priority: Whisper/uploaded transcript > psychologist notes
+    // Priority: formatted segments > raw transcript > psychologist notes
+    const hasFormatted  = (consultation.transcriptFormatted?.length ?? 0) > 0;
     const hasTranscript = !!consultation.transcript?.text;
     const hasNotes      = !!consultation.notes;
-    const rawText       = consultation.transcript?.text ?? consultation.notes ?? null;
 
-    if (!rawText) {
+    if (!hasFormatted && !hasTranscript && !hasNotes) {
       return NextResponse.json({ error: "Нет текста для анализа. Добавьте транскрипт или заметки." }, { status: 400 });
     }
 
-    // Tell AI what kind of text it's dealing with
-    const transcript = hasTranscript
-      ? rawText
-      : `[КОНТЕКСТ: Это заметки психолога о сессии, а не дословная стенограмма. Психолог описывает своими словами что происходило.]\n\n${rawText}`;
+    // Build transcript string for AI
+    let transcript: string;
+
+    if (hasFormatted) {
+      // Format segments as readable dialogue with timecodes
+      const speakerLabel = (s: string) => s === "therapist" ? "Психолог" : s === "client" ? "Клиент" : "Неизвестно";
+      const fmtTime = (sec: number) => {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = Math.floor(sec % 60);
+        return h > 0
+          ? `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`
+          : `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+      };
+      transcript = consultation.transcriptFormatted!
+        .map((seg) => `[${fmtTime(seg.start_seconds)}] ${speakerLabel(seg.speaker)}:\n${seg.text}`)
+        .join("\n\n");
+    } else if (hasTranscript) {
+      transcript = consultation.transcript!.text;
+    } else {
+      transcript = `[КОНТЕКСТ: Это заметки психолога о сессии, а не дословная стенограмма. Психолог описывает своими словами что происходило.]\n\n${consultation.notes!}`;
+    }
 
     // Build clientContext from stored data
     const clientContext = await assembleClientContext(

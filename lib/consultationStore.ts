@@ -8,6 +8,23 @@ export type ConsultationSource = "audio" | "transcript" | "notes";
 export type ConsultationStatus = "created" | "transcribing" | "ready" | "analyzing" | "done" | "error";
 export type TranscriptOrigin   = "whisper" | "file" | "manual";
 
+/** Raw segment from Whisper verbose_json */
+export interface WhisperSegment {
+  id:    number;
+  start: number;   // seconds
+  end:   number;   // seconds
+  text:  string;
+}
+
+/** Speaker-assigned segment stored in DB after formatting */
+export interface FormattedSegment {
+  order_index:   number;
+  speaker:       "therapist" | "client" | "unknown";
+  start_seconds: number;
+  end_seconds:   number;
+  text:          string;
+}
+
 export interface StoredConsultation {
   id: string;
   clientId: string;
@@ -37,6 +54,17 @@ export interface StoredConsultation {
     fileName?: string;
     createdAt: string;
   };
+
+  // Raw Whisper segments (from verbose_json, with timestamps)
+  transcriptSegments?: WhisperSegment[];
+
+  // Speaker-split segments (saved after GPT formatting)
+  transcriptFormatted?: FormattedSegment[];
+
+  // Soft-deletion timestamps for individual parts
+  audioDeletedAt?: string;
+  transcriptRawDeletedAt?: string;
+  transcriptFormattedDeletedAt?: string;
 
   // One entry per analysis run
   analyses?: Array<{
