@@ -9,7 +9,7 @@ import type { StoredConsultation } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { AddClientModal } from "@/components/client/AddClientModal";
-import { UserPlus, Mic, ArrowRight, CheckCircle2, Clock } from "lucide-react";
+import { UserPlus, Mic, ArrowRight, CheckCircle2, Clock, Users } from "lucide-react";
 import { AnimatedCityScene } from "@/components/home/AnimatedCityScene";
 
 type AnyClient       = StoredClient       & { isMock?: boolean };
@@ -19,6 +19,122 @@ type AnyConsultation = StoredConsultation & {
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+}
+
+// ── Design tokens (same as clients page) ─────────────────────────────────────
+const TAB_BG  = "#D4C5B1";
+const TAB_HOV = "#C8B89F";
+
+// ── Compact client card ───────────────────────────────────────────────────────
+function DashClientCard({ client, onClick }: { client: AnyClient; onClick: () => void }) {
+  const [tabHov, setTabHov] = useState(false);
+  return (
+    <div className="client-card flex flex-col">
+      <div className="px-4 pt-4 pb-3 flex items-center gap-3">
+        <Avatar initials={client.initials} color={client.color} size="sm" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold truncate" style={{ color: "#3D3228" }}>
+            {client.name}
+          </div>
+          <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "#A8997F" }}>
+            <span className="flex items-center gap-1">
+              <Users size={10} />
+              {client.totalConsultations} встреч
+            </span>
+            {client.lastConsultation && (
+              <span>{formatDate(client.lastConsultation)}</span>
+            )}
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={onClick}
+        onMouseEnter={() => setTabHov(true)}
+        onMouseLeave={() => setTabHov(false)}
+        className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium"
+        style={{
+          background:  tabHov ? TAB_HOV : TAB_BG,
+          color:       "#3D3228",
+          borderTop:   "1px solid #C4B49E",
+          boxShadow:   "inset 0 1px 0 rgba(255,255,255,0.22)",
+          transition:  "background 0.18s ease",
+          borderRadius: "0 0 14px 14px",
+        }}
+      >
+        <span>Открыть карточку</span>
+        <ArrowRight
+          size={13}
+          style={{
+            color:     "#78716C",
+            transform: tabHov ? "translateX(3px)" : "translateX(0)",
+            transition: "transform 0.15s ease",
+          }}
+        />
+      </button>
+    </div>
+  );
+}
+
+// ── Compact consultation card ─────────────────────────────────────────────────
+function DashConsultCard({ c, index, onClick }: {
+  c: AnyConsultation; index: number; onClick: () => void;
+}) {
+  const [tabHov, setTabHov] = useState(false);
+  const hasAnalysis   = !!((c as StoredConsultation).analyses?.length) || c.isMock;
+  const hasTranscript = !!(c as StoredConsultation).transcript?.text   || c.isMock;
+  const label = c.title || c.topic || `Консультация #${c.sessionNumber ?? (index + 1)}`;
+
+  return (
+    <div className="client-card flex flex-col">
+      <div className="px-4 pt-4 pb-3 flex items-center gap-3">
+        <Avatar initials={c.clientInitials ?? "?"} color={c.clientColor ?? "#94a3b8"} size="sm" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold truncate" style={{ color: "#3D3228" }}>
+            {c.clientName}
+          </div>
+          <div className="text-xs truncate mt-0.5" style={{ color: "#A8997F" }}>
+            {label}
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <span className="text-xs" style={{ color: "#C9BBAA" }}>{formatDate(c.createdAt)}</span>
+          {hasAnalysis ? (
+            <span className="flex items-center gap-0.5 text-xs text-emerald-600">
+              <CheckCircle2 size={10} /> анализ
+            </span>
+          ) : hasTranscript ? (
+            <span className="flex items-center gap-0.5 text-xs" style={{ color: "#A8997F" }}>
+              <Clock size={10} /> транскрипт
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <button
+        onClick={onClick}
+        onMouseEnter={() => setTabHov(true)}
+        onMouseLeave={() => setTabHov(false)}
+        className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium"
+        style={{
+          background:  tabHov ? TAB_HOV : TAB_BG,
+          color:       "#3D3228",
+          borderTop:   "1px solid #C4B49E",
+          boxShadow:   "inset 0 1px 0 rgba(255,255,255,0.22)",
+          transition:  "background 0.18s ease",
+          borderRadius: "0 0 14px 14px",
+        }}
+      >
+        <span>Открыть</span>
+        <ArrowRight
+          size={13}
+          style={{
+            color:     "#78716C",
+            transform: tabHov ? "translateX(3px)" : "translateX(0)",
+            transition: "transform 0.15s ease",
+          }}
+        />
+      </button>
+    </div>
+  );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -94,13 +210,9 @@ export default function HomePage() {
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
 
       {/* ── Single hero section — fills all available space ── */}
-      <section
-        className="flex-1 min-h-0 relative overflow-hidden"
-      >
-        {/* Animated city — characters, windows, time-of-day */}
+      <section className="flex-1 min-h-0 relative overflow-hidden">
         <AnimatedCityScene />
 
-        {/* All content above z-0 background */}
         <div className="relative z-10 flex flex-col h-full">
 
           {/* Welcome */}
@@ -144,13 +256,13 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Cards grid — flex-1 to fill remaining space, no pb-72 overflow */}
+          {/* Cards grid */}
           <div className="max-w-4xl mx-auto px-6 pb-6 flex-1 min-h-0 w-full">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
               {/* Recent clients */}
-              <section className="flex flex-col">
-                <div className="flex items-center justify-between mb-3">
+              <section className="flex flex-col gap-2">
+                <div className="flex items-center justify-between mb-1">
                   <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>
                     Последние клиенты
                   </h2>
@@ -164,37 +276,27 @@ export default function HomePage() {
                     Все клиенты <ArrowRight size={12} />
                   </button>
                 </div>
-                <div className="rounded-2xl border overflow-hidden flex-1" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
-                  {recentClients.length === 0 ? (
-                    <div className="py-8 text-center text-sm" style={{ color: "#C9BBAA" }}>Клиентов пока нет</div>
-                  ) : (
-                    recentClients.map((client, i) => (
-                      <button
-                        key={client.id}
-                        onClick={() => router.push(`/client/${client.id}`)}
-                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors"
-                        style={{ borderTop: i > 0 ? "1px solid #E4DDD0" : undefined }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "#EAE3D6"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                      >
-                        <Avatar initials={client.initials} color={client.color} size="sm" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold truncate" style={{ color: "#3D3228" }}>{client.name}</div>
-                          <div className="text-xs mt-0.5" style={{ color: "#A8997F" }}>
-                            {client.totalConsultations} встреч
-                            {client.lastConsultation && ` · ${formatDate(client.lastConsultation)}`}
-                          </div>
-                        </div>
-                        <ArrowRight size={13} style={{ color: "#C9BBAA", flexShrink: 0 }} />
-                      </button>
-                    ))
-                  )}
-                </div>
+                {recentClients.length === 0 ? (
+                  <div
+                    className="flex-1 rounded-2xl border flex items-center justify-center py-8"
+                    style={{ background: "#F3EBDD", borderColor: "#CFC0A9", color: "#C9BBAA", fontSize: 13 }}
+                  >
+                    Клиентов пока нет
+                  </div>
+                ) : (
+                  recentClients.map((client) => (
+                    <DashClientCard
+                      key={client.id}
+                      client={client}
+                      onClick={() => router.push(`/client/${client.id}`)}
+                    />
+                  ))
+                )}
               </section>
 
               {/* Recent consultations */}
-              <section className="flex flex-col">
-                <div className="flex items-center justify-between mb-3">
+              <section className="flex flex-col gap-2">
+                <div className="flex items-center justify-between mb-1">
                   <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>
                     Последние консультации
                   </h2>
@@ -208,51 +310,29 @@ export default function HomePage() {
                     Все консультации <ArrowRight size={12} />
                   </button>
                 </div>
-                <div className="rounded-2xl border overflow-hidden flex-1" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
-                  {recentConsultations.length === 0 ? (
-                    <div className="py-8 text-center text-sm" style={{ color: "#C9BBAA" }}>Консультаций пока нет</div>
-                  ) : (
-                    recentConsultations.map((c, i) => {
-                      const hasAnalysis   = !!((c as StoredConsultation).analyses?.length) || c.isMock;
-                      const hasTranscript = !!(c as StoredConsultation).transcript?.text   || c.isMock;
-                      const label = c.title || c.topic || `Консультация #${c.sessionNumber ?? (i + 1)}`;
-                      return (
-                        <button
-                          key={c.id}
-                          onClick={() => router.push(`/consultation/${c.id}`)}
-                          className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors"
-                          style={{ borderTop: i > 0 ? "1px solid #E4DDD0" : undefined }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "#EAE3D6"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                        >
-                          <Avatar initials={c.clientInitials ?? "?"} color={c.clientColor ?? "#94a3b8"} size="sm" />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold truncate" style={{ color: "#3D3228" }}>{c.clientName}</div>
-                            <div className="text-xs truncate mt-0.5" style={{ color: "#A8997F" }}>{label}</div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                            <span className="text-xs" style={{ color: "#C9BBAA" }}>{formatDate(c.createdAt)}</span>
-                            {hasAnalysis ? (
-                              <span className="flex items-center gap-0.5 text-xs text-emerald-600">
-                                <CheckCircle2 size={10} /> анализ
-                              </span>
-                            ) : hasTranscript ? (
-                              <span className="flex items-center gap-0.5 text-xs" style={{ color: "#A8997F" }}>
-                                <Clock size={10} /> транскрипт
-                              </span>
-                            ) : null}
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
+                {recentConsultations.length === 0 ? (
+                  <div
+                    className="flex-1 rounded-2xl border flex items-center justify-center py-8"
+                    style={{ background: "#F3EBDD", borderColor: "#CFC0A9", color: "#C9BBAA", fontSize: 13 }}
+                  >
+                    Консультаций пока нет
+                  </div>
+                ) : (
+                  recentConsultations.map((c, i) => (
+                    <DashConsultCard
+                      key={c.id}
+                      c={c}
+                      index={i}
+                      onClick={() => router.push(`/consultation/${c.id}`)}
+                    />
+                  ))
+                )}
               </section>
 
             </div>
           </div>
 
-        </div>{/* /relative z-10 */}
+        </div>
       </section>
 
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
