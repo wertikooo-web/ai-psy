@@ -25,9 +25,9 @@ export interface GenerateAnalysisOutput {
 // ── Token budget constants ────────────────────────────────────────────────────
 
 // OpenAI free/low-tier TPM limit is ~30 000. We leave room for output tokens.
-const TOKEN_BUDGET_PER_REQUEST = 22_000; // safe input token budget per single request
-const CHARS_PER_TOKEN          = 3.5;    // conservative estimate for Russian text
-const CHUNK_CHARS              = Math.floor(TOKEN_BUDGET_PER_REQUEST * CHARS_PER_TOKEN * 0.7); // ~53 000 chars
+const TOKEN_BUDGET_PER_REQUEST = 20_000; // safe input token budget per single request
+const CHARS_PER_TOKEN          = 1.5;    // Russian Cyrillic: ~1.5 chars per token (not 4 like English)
+const CHUNK_CHARS              = Math.floor(15_000 * CHARS_PER_TOKEN); // ~22 500 chars per chunk
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
