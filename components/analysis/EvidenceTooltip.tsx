@@ -193,7 +193,7 @@ export function EvidenceTooltip({ tooltip, confidence }: Props) {
             marginTop:   10,
             marginBottom: 0,
           }}>
-            Основано на данных сессии и речевых паттернах (JSON)
+            Основано на данных сессии и речевых паттернах
           </p>
         </div>
       )}
