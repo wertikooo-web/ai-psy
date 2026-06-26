@@ -20,19 +20,22 @@ export async function GET() {
   const results: Record<string, string> = {};
 
   for (const bucket of BUCKETS) {
-    // Check if bucket exists first
     const { data: existing } = await supabaseServer!.storage.getBucket(bucket.name);
+
     if (existing) {
-      results[bucket.name] = "already exists";
-      continue;
+      // Update file size limit on existing bucket
+      const { error } = await supabaseServer!.storage.updateBucket(bucket.name, {
+        public: bucket.public,
+        fileSizeLimit: 524_288_000, // 500 MB
+      });
+      results[bucket.name] = error ? `update error: ${error.message}` : "updated";
+    } else {
+      const { error } = await supabaseServer!.storage.createBucket(bucket.name, {
+        public: bucket.public,
+        fileSizeLimit: 524_288_000, // 500 MB
+      });
+      results[bucket.name] = error ? `create error: ${error.message}` : "created";
     }
-
-    const { error } = await supabaseServer!.storage.createBucket(bucket.name, {
-      public: bucket.public,
-      fileSizeLimit: 524_288_000, // 500 MB
-    });
-
-    results[bucket.name] = error ? `error: ${error.message}` : "created";
   }
 
   return NextResponse.json({ ok: true, buckets: results });
