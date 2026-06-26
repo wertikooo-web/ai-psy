@@ -2,29 +2,24 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "@/lib/mockData";
-import { Send, BrainCircuit, User, ChevronsLeft, ChevronsRight, MessagesSquare, AlertCircle, Mic, MicOff } from "lucide-react";
+import {
+  Send, BrainCircuit, User, ChevronsLeft, ChevronsRight,
+  MessagesSquare, AlertCircle, Mic, MicOff, Trash2,
+} from "lucide-react";
 import clsx from "clsx";
 
 interface ChatPanelProps {
-  messages:             ChatMessage[];
-  pendingMessage?:      string | null;
-  onMessageConsumed?:   () => void;
-  collapsed:            boolean;
-  onToggle:             () => void;
-  consultationId?:      string;
-  // transcriptText removed — server loads context from DB by consultationId
+  collapsed:           boolean;
+  onToggle:            () => void;
+  consultationId?:     string;
+  pendingMessage?:     string | null;
+  onMessageConsumed?:  () => void;
 }
 
-// Split a long single-block AI response into paragraphs of 2–3 sentences.
-// Applied only when the text has no blank lines and contains many sentences.
 function formatAIResponse(text: string): string {
-  // Already has paragraph breaks — leave it alone
   if (text.includes("\n\n")) return text;
-
-  // Split into sentences (Russian/English punctuation)
   const sentences = text.match(/[^.!?]+[.!?]+["»]?\s*/g);
   if (!sentences || sentences.length <= 4) return text;
-
   const SENTENCES_PER_PARA = 2;
   const paragraphs: string[] = [];
   for (let i = 0; i < sentences.length; i += SENTENCES_PER_PARA) {
@@ -41,44 +36,77 @@ const QUICK_PROMPTS = [
 ];
 
 export function ChatPanel({
-  messages: initial,
-  pendingMessage,
-  onMessageConsumed,
   collapsed,
   onToggle,
   consultationId,
+  pendingMessage,
+  onMessageConsumed,
 }: ChatPanelProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>(initial);
-  const [input, setInput]       = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
-  const [listening, setListening] = useState(false);
-  const bottomRef               = useRef<HTMLDivElement>(null);
-  const textareaRef             = useRef<HTMLTextAreaElement>(null);
+  const [messages, setMessages]           = useState<ChatMessage[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [input, setInput]                 = useState("");
+  const [loading, setLoading]             = useState(false);
+  const [error, setError]                 = useState<string | null>(null);
+  const [listening, setListening]         = useState(false);
+  const [clearPending, setClearPending]   = useState(false);
+  const [clearLoading, setClearLoading]   = useState(false);
+  const bottomRef    = useRef<HTMLDivElement>(null);
+  const textareaRef  = useRef<HTMLTextAreaElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+
+  // ── Load history on mount ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!consultationId) { setHistoryLoaded(true); return; }
+    (async () => {
+      try {
+        const res = await fetch(`/api/consultations/${consultationId}/chat`);
+        if (res.ok) {
+          const data = await res.json();
+          setMessages(data.messages ?? []);
+        }
+      } catch {
+        // Non-critical: start with empty chat if fetch fails
+      } finally {
+        setHistoryLoaded(true);
+      }
+    })();
+  }, [consultationId]);
+
+  // ── Pending message from parent ───────────────────────────────────────────
+  useEffect(() => {
+    if (!pendingMessage) return;
+    setInput(pendingMessage);
+    onMessageConsumed?.();
+    textareaRef.current?.focus();
+  }, [pendingMessage, onMessageConsumed]);
+
+  // ── Auto-scroll ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!historyLoaded) return;
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading, historyLoaded]);
+
+  function handleInputChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setInput(e.target.value);
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+  }
 
   function toggleListening() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
     const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-
     if (!SR) {
       setError("Ваш браузер не поддерживает распознавание речи. Используйте Chrome или Edge.");
       return;
     }
-
-    if (listening) {
-      recognitionRef.current?.stop();
-      setListening(false);
-      return;
-    }
-
+    if (listening) { recognitionRef.current?.stop(); setListening(false); return; }
     const rec = new SR();
     rec.lang = "ru-RU";
     rec.continuous = false;
     rec.interimResults = false;
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onresult = (e: any) => {
       const transcript = e.results[0]?.[0]?.transcript ?? "";
@@ -90,28 +118,9 @@ export function ChatPanel({
     };
     rec.onerror = () => setListening(false);
     rec.onend   = () => setListening(false);
-
     recognitionRef.current = rec;
     rec.start();
     setListening(true);
-  }
-
-  useEffect(() => {
-    if (!pendingMessage) return;
-    setInput(pendingMessage);
-    onMessageConsumed?.();
-    textareaRef.current?.focus();
-  }, [pendingMessage, onMessageConsumed]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
-  function handleInputChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setInput(e.target.value);
-    const el = e.target;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 120) + "px";
   }
 
   async function send() {
@@ -151,6 +160,20 @@ export function ChatPanel({
         timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages(m => [...m, aiMsg]);
+
+      // Persist both messages in background
+      if (consultationId) {
+        fetch(`/api/consultations/${consultationId}/chat`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [
+              { role: "user",      content: userMsg.content },
+              { role: "assistant", content: aiMsg.content },
+            ],
+          }),
+        }).catch(() => {});
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось получить ответ");
     } finally {
@@ -158,7 +181,21 @@ export function ChatPanel({
     }
   }
 
-  // ── Collapsed ────────────────────────────────────────────────────────────────
+  async function handleClearConfirmed() {
+    if (!consultationId) { setMessages([]); setClearPending(false); return; }
+    setClearLoading(true);
+    try {
+      await fetch(`/api/consultations/${consultationId}/chat`, { method: "DELETE" });
+      setMessages([]);
+    } catch {
+      setMessages([]);
+    } finally {
+      setClearLoading(false);
+      setClearPending(false);
+    }
+  }
+
+  // ── Collapsed ─────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
       <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-[#FAF8F5] border-l border-[#D8CFBE]">
@@ -181,7 +218,7 @@ export function ChatPanel({
     );
   }
 
-  // ── Expanded ─────────────────────────────────────────────────────────────────
+  // ── Expanded ──────────────────────────────────────────────────────────────
   return (
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#FAF8F5]">
 
@@ -199,18 +236,59 @@ export function ChatPanel({
               </p>
             </div>
           </div>
-          <button
-            onClick={onToggle}
-            title="Свернуть"
-            className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors flex-shrink-0"
-          >
-            <ChevronsLeft size={14} className="text-white" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {messages.length > 0 && !clearPending && (
+              <button
+                onClick={() => setClearPending(true)}
+                title="Очистить историю чата"
+                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/25 flex items-center justify-center transition-colors"
+              >
+                <Trash2 size={13} className="text-white/80" />
+              </button>
+            )}
+            {clearPending && (
+              <div className="flex items-center gap-1.5 bg-white/10 rounded-lg px-2 py-1">
+                <span className="text-xs text-white/90">Удалить чат?</span>
+                <button
+                  onClick={handleClearConfirmed}
+                  disabled={clearLoading}
+                  className="text-xs font-semibold text-white bg-red-500/80 hover:bg-red-500 rounded px-1.5 py-0.5 transition-colors disabled:opacity-60"
+                >
+                  {clearLoading ? "…" : "Да"}
+                </button>
+                <button
+                  onClick={() => setClearPending(false)}
+                  className="text-xs text-white/70 hover:text-white transition-colors"
+                >
+                  Отмена
+                </button>
+              </div>
+            )}
+            <button
+              onClick={onToggle}
+              title="Свернуть"
+              className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors flex-shrink-0"
+            >
+              <ChevronsLeft size={14} className="text-white" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Messages */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
+        {!historyLoaded && (
+          <div className="flex justify-center py-4">
+            <span className="text-xs text-slate-300">Загрузка истории…</span>
+          </div>
+        )}
+
+        {historyLoaded && messages.length === 0 && !loading && (
+          <div className="flex justify-center py-8">
+            <span className="text-xs text-slate-300">История чата пуста</span>
+          </div>
+        )}
+
         {messages.map((msg) => {
           const isAI = msg.role === "assistant";
           return (
@@ -283,7 +361,7 @@ export function ChatPanel({
         </div>
       </div>
 
-      {/* Input — right padding reserves space for the fixed FAB button (56px + 24px offset + 8px gap) */}
+      {/* Input */}
       <div className="px-4 pt-3 pb-3 border-t flex-shrink-0" style={{ borderColor: "#E0D8CA", paddingRight: "88px" }}>
         <div className="flex gap-2 items-end">
           <div className="flex-1 relative">

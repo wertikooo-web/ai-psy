@@ -67,7 +67,7 @@ export function ConsultationClient({ consultation }: Props) {
         />
 
         <ChatPanel
-          messages={consultation.chat}
+          consultationId={consultation.id ?? ""}
           pendingMessage={pendingMessage}
           onMessageConsumed={handleMessageConsumed}
           collapsed={collapsed.chat}

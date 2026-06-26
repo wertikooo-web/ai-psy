@@ -347,7 +347,6 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   // ── 3-panel view after analysis ─────────────────────────────────────────────
   if (hasAnyResult || generatingMode !== null) {
     const segments: import("@/lib/mockData").TranscriptSegment[] = [];
-    const fakeChat: import("@/lib/mockData").ChatMessage[] = [];
     return (
       <div className="flex flex-col h-screen bg-[#FAF8F5]">
         <header className="border-b px-5 py-3 flex items-center gap-4 flex-shrink-0" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
@@ -528,7 +527,6 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
           </div>
 
           <ChatPanel
-            messages={fakeChat}
             collapsed={panelCollapsed.chat}
             onToggle={() => setPanelCollapsed(p => ({ ...p, chat: !p.chat }))}
             consultationId={c.id}
