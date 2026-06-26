@@ -80,6 +80,9 @@ create table if not exists public.consultations (
   transcript_file_name text,
   transcript_created_at timestamptz,
 
+  -- Psychologist's own notes (never overwritten by Whisper)
+  notes            text,
+
   -- All analysis runs stored as JSONB array
   analyses         jsonb       not null    default '[]'::jsonb,
 
