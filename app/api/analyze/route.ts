@@ -119,12 +119,12 @@ export async function POST(req: NextRequest) {
 
     if (needsChunking) {
       if (!compressedIsStale && storedCompressed) {
-        // Cache hit — no LLM calls for chunking
+        // Cache HIT — zero compressChunk calls, zero sleep
         effectiveTranscript = storedCompressed.text;
-        console.log(`[analyze] compressedTranscript cache HIT (hash=${currentHash.slice(0, 8)})`);
+        console.log(`[analyze] mode=${mode} compressedTranscript=HIT hash=${currentHash.slice(0, 8)} chunks=${storedCompressed.chunksCount}`);
       } else {
-        // Cache miss — build fresh compression, then persist non-blocking
-        console.log(`[analyze] compressedTranscript cache MISS — building (hash=${currentHash.slice(0, 8)})`);
+        // Cache MISS — build fresh compression
+        console.log(`[analyze] mode=${mode} compressedTranscript=MISS hash=${currentHash.slice(0, 8)} reason=${!storedCompressed ? "absent" : "stale"}`);
         const built = await buildCompressedTranscript({
           transcriptText: canonicalText,
           sourceHash:     currentHash,
@@ -132,11 +132,19 @@ export async function POST(req: NextRequest) {
           provider:       "openai",
         });
         effectiveTranscript = built.text;
-        // Save to DB (non-blocking — if it fails, next request rebuilds it)
-        updateConsultation(consultationId, {
-          compressedTranscript: { version: "1.0", ...built },
-        }).catch((err) => console.error("[analyze] compressedTranscript save failed:", err));
+        // Save BEFORE generateAnalysis so the next request always finds it in DB.
+        // Wrapped in try/catch: if save fails, analysis still completes; next request rebuilds.
+        try {
+          await updateConsultation(consultationId, {
+            compressedTranscript: { version: "1.0", ...built },
+          });
+          console.log(`[analyze] mode=${mode} compressedTranscript=SAVED chunks=${built.chunksCount}`);
+        } catch (err) {
+          console.error("[analyze] compressedTranscript save failed (analysis continues):", err);
+        }
       }
+    } else {
+      console.log(`[analyze] mode=${mode} compressedTranscript=SKIP (short transcript, ${canonicalText.length} chars)`);
     }
 
     // Run analysis and evidence build in parallel.
