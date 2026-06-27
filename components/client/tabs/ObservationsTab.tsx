@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, Trash2, ChevronDown, ChevronUp, Loader2, AlertCircle, RotateCcw } from "lucide-react";
+import { Eye, Trash2, ChevronDown, ChevronUp, Loader2, AlertCircle, RotateCcw, Plus } from "lucide-react";
 import type { ClientMaterial } from "@/lib/types";
 
 const S = {
@@ -123,12 +123,24 @@ export function ObservationsTab({ clientId, isMock }: Props) {
       >
         {/* Header */}
         <div
-          className="px-5 py-3 border-b"
+          className="flex items-center justify-between gap-3 px-5 py-3 border-b"
           style={{ background: S.header, borderColor: S.divider }}
         >
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: S.muted }}>
             Наблюдения · {sorted.length}
           </span>
+          {!isMock && (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("open-observation-modal"))}
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors flex-shrink-0"
+              style={{ background: "#D4C5B1", color: "#4A3C2E" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#C9BBAA"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#D4C5B1"; }}
+            >
+              <Plus size={11} />
+              Добавить
+            </button>
+          )}
         </div>
 
         {/* List */}

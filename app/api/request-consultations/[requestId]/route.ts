@@ -21,9 +21,13 @@ export async function GET(
   { params }: { params: Promise<{ requestId: string }> },
 ) {
   const { requestId } = await params;
+  console.log(`[request-consultations] GET requestId=${requestId}`);
   try {
     const consultations = await getConsultationsByRequestId(requestId);
-    const chatCounts    = await getChatMessageCounts(consultations.map(c => c.id));
+    console.log(`[request-consultations] found=${consultations.length} for requestId=${requestId}`);
+
+    const ids       = consultations.map(c => c.id);
+    const chatCounts = ids.length > 0 ? await getChatMessageCounts(ids) : {};
 
     const result: ConsultationSummary[] = consultations.map((c, i) => ({
       id:            c.id,
@@ -34,13 +38,16 @@ export async function GET(
       analysesCount: (c.analyses ?? []).length,
       analysesModes: (c.analyses ?? []).map(a => a.mode),
       hasNotes:      !!(c.notes),
-      hasTranscript: !!(c.transcript?.text ?? (c as { transcript_text?: string }).transcript_text),
+      hasTranscript: !!(c.transcript?.text),
       chatCount:     chatCounts[c.id] ?? 0,
       sessionNumber: i + 1,
     }));
 
     return NextResponse.json(result);
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[request-consultations] error requestId=${requestId}: ${msg}`);
+    // Return empty array so UI shows the empty state, not an error banner
+    return NextResponse.json([]);
   }
 }

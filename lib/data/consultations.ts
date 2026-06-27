@@ -179,7 +179,12 @@ export async function getConsultationsByRequestId(requestId: string): Promise<St
     .eq("request_id", requestId)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
-  if (error) throw new Error(`[DAL/getConsultationsByRequestId] ${error.message}`);
+  if (error) {
+    // Graceful degradation — column may not exist if migration 010 hasn't run yet.
+    // Log server-side; caller gets empty list so UI shows the empty state, not an error.
+    console.error(`[DAL/getConsultationsByRequestId] requestId=${requestId} error: ${error.message}`);
+    return [];
+  }
   return (data ?? []).map(rowToConsultation);
 }
 

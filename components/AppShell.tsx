@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, Eye } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
@@ -13,6 +13,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [tooltip,         setTooltip]         = useState(false);
 
   const onConsultation = pathname.startsWith("/consultation/");
+
+  useEffect(() => {
+    const handler = () => setObservationOpen(true);
+    window.addEventListener("open-observation-modal", handler);
+    return () => window.removeEventListener("open-observation-modal", handler);
+  }, []);
 
   // Auto-detect current client from URL: /client/[id]
   const clientMatch     = pathname.match(/^\/client\/([^/]+)/);
