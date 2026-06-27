@@ -35,18 +35,20 @@ export async function getMaterialsForClient(clientId: string): Promise<ClientMat
 
 export async function addMaterial(m: ClientMaterial): Promise<void> {
   if (isSupabaseConfigured()) {
+    const row: Record<string, unknown> = {
+      id:        m.id,
+      client_id: m.clientId,
+      type:      m.type,
+      title:     m.title,
+      content:   m.content,
+      file_name: m.fileName ?? null,
+      file_url:  m.fileUrl  ?? null,
+    };
+    // consultation_id column was added in migration 007 — only include if set
+    if (m.consultationId !== undefined) row.consultation_id = m.consultationId;
     const { error } = await supabaseServer!
       .from("client_materials")
-      .insert({
-        id:              m.id,
-        client_id:       m.clientId,
-        type:            m.type,
-        title:           m.title,
-        content:         m.content,
-        file_name:       m.fileName       ?? null,
-        file_url:        m.fileUrl        ?? null,
-        consultation_id: m.consultationId ?? null,
-      });
+      .insert(row);
     if (error) throw new Error(`[DAL/addMaterial] ${error.message}`);
     return;
   }
