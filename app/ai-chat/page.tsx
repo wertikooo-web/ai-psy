@@ -250,7 +250,7 @@ export default function AiChatPage() {
             Назад
           </button>
           <div className="w-px h-5" style={{ background: "#DDD4C6" }} />
-          <h1 className="text-xl font-bold" style={{ color: "#3A2E22" }}>AI Чат</h1>
+          <h1 className="text-xl font-bold" style={{ color: "#3A2E22" }}>AI сервисы</h1>
         </div>
         <p className="text-sm mb-8" style={{ color: "#A8997F" }}>Быстрый доступ к AI-сервисам</p>
 

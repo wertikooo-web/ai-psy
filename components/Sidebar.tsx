@@ -28,7 +28,7 @@ const mainNav = [
   { href: "/consultations", label: "Консультации", icon: FileText },
 ];
 const toolsNav = [
-  { href: "/ai-chat",        label: "AI Чат",      icon: MessageSquare },
+  { href: "/ai-chat",        label: "AI сервисы",      icon: MessageSquare },
   { href: "/psy-gpts",       label: "PSY-GPTs",    icon: Bot           },
   { href: "/knowledge-base", label: "База знаний", icon: BookOpen      },
 ];
