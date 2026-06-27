@@ -84,15 +84,24 @@ export async function extractBlocks(
 
 // ── Token budget constants ────────────────────────────────────────────────────
 
-// OpenAI free/low-tier TPM limit is ~30 000.
-// Working mode KB = 9 files ≈ 100k chars ≈ 17 000–22 000 tokens (Cyrillic tokenizes at ~4–6 chars/token).
-// clientContext + evidence ≈ 3 000 tokens. Output ≈ 3 000–6 000 tokens.
-// That leaves ~4 000–7 000 tokens for the transcript → ~8 000–12 000 chars.
-export const TOKEN_BUDGET_PER_REQUEST   = 8_000;  // trigger chunking when transcript alone > 8k tokens
-export const CHARS_PER_TOKEN            = 1.5;    // conservative lower-bound (real Cyrillic rate is ~4–6 chars/token)
+// OpenAI free/low-tier TPM limit: 30 000 TPM.
+// Calibrated from real overflow: 31 429 tokens for ~114 000-char prompt → ~3.6 chars/token.
+// We use 4 chars/token as conservative estimate (overestimates tokens → trims earlier → safer).
+
+const TPM_LIMIT                 = 30_000;
+const TPM_SAFE_LIMIT            = 27_000;  // 3k buffer for burst variance + tokenization error
+const PROMPT_CHARS_PER_TOKEN    = 4;       // calibrated: ~4 chars/token for mixed Cyrillic KB + dialogue
+
+// Chunking threshold: trigger compression when canonical transcript alone risks overflow.
+// KB + context + evidence ≈ 20 000–24 000 tokens. Output ≈ 3 000–6 000.
+// Remaining budget for transcript ≈ 27 000 − 24 000 − 6 000 = 0 at worst → compress anything > 1 500 tokens.
+export const TOKEN_BUDGET_PER_REQUEST   = 8_000;  // trigger chunking when transcript > 8k tokens (~12k chars)
+export const CHARS_PER_TOKEN            = 1.5;    // used only for chunking threshold (transcripts tokenize denser)
 const CHUNK_CHARS                       = Math.floor(8_000 * CHARS_PER_TOKEN); // ~12 000 chars per chunk
-// Hard cap applied before final LLM analysis call — keeps total prompt under 30k TPM
-const TRANSCRIPT_FINAL_CAP_CHARS        = 12_000; // ~8 000 tokens at 1.5 c/t; comfortably within budget
+
+// Static pre-cap: rough first pass before we can measure the assembled prompt.
+// The dynamic guard below is the real safety net.
+const TRANSCRIPT_STATIC_CAP_CHARS      = 12_000;
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -212,18 +221,18 @@ export async function generateAnalysis(
   };
   const maxTokens = maxTokensByMode[mode] ?? 3000;
 
-  // transcript is already effective (compressed or short) — route.ts handles chunking/cache.
-  // Apply hard cap to guarantee we stay within TPM regardless of source.
+  // ── Step 1: static pre-cap (fast, no KB read) ───────────────────────────
+  // Rough guard before we can measure the assembled prompt.
   let effectiveTranscript = transcript;
-  if (effectiveTranscript.length > TRANSCRIPT_FINAL_CAP_CHARS) {
+  if (effectiveTranscript.length > TRANSCRIPT_STATIC_CAP_CHARS) {
     effectiveTranscript =
-      effectiveTranscript.slice(0, TRANSCRIPT_FINAL_CAP_CHARS) +
+      effectiveTranscript.slice(0, TRANSCRIPT_STATIC_CAP_CHARS) +
       "\n\n[...транскрипт обрезан из-за ограничений токенов...]";
-    console.log(`[analysis] transcript capped to ${TRANSCRIPT_FINAL_CAP_CHARS} chars`);
+    console.log(`[analysis] mode=${mode} static pre-cap applied: ${transcript.length} → ${TRANSCRIPT_STATIC_CAP_CHARS} chars`);
   }
 
-  // ── Final analysis call ───────────────────────────────────────────────────
-  const systemPrompt = await buildAnalysisPrompt({
+  // ── Step 2: build prompt and measure actual size ─────────────────────────
+  let systemPrompt = await buildAnalysisPrompt({
     mode,
     transcript: effectiveTranscript,
     clientContext,
@@ -232,6 +241,44 @@ export async function generateAnalysis(
     extraInstructions,
     preparedEvidence,
   });
+
+  // ── Step 3: dynamic overflow guard ───────────────────────────────────────
+  // Measure assembled prompt, trim transcript if total would exceed TPM_SAFE_LIMIT.
+  // This fires regardless of how KB size, context, or evidence grows in the future.
+  const estimatedInput  = Math.ceil(systemPrompt.length / PROMPT_CHARS_PER_TOKEN);
+  const estimatedTotal  = estimatedInput + maxTokens;
+
+  if (estimatedTotal > TPM_SAFE_LIMIT) {
+    const allowedInputChars  = (TPM_SAFE_LIMIT - maxTokens) * PROMPT_CHARS_PER_TOKEN;
+    // Non-transcript overhead = prompt chars minus the transcript portion
+    const nonTranscriptChars = systemPrompt.length - effectiveTranscript.length;
+    const transcriptBudget   = Math.max(1_000, allowedInputChars - nonTranscriptChars);
+
+    console.warn(
+      `[analysis] mode=${mode} TPM guard: estimated ${estimatedTotal} tokens > safe ${TPM_SAFE_LIMIT} ` +
+      `— trimming transcript ${effectiveTranscript.length} → ${transcriptBudget} chars`,
+    );
+
+    effectiveTranscript =
+      effectiveTranscript.slice(0, transcriptBudget) +
+      "\n\n[...транскрипт обрезан из-за ограничений токенов...]";
+
+    // Rebuild prompt with trimmed transcript
+    systemPrompt = await buildAnalysisPrompt({
+      mode,
+      transcript: effectiveTranscript,
+      clientContext,
+      styleHint,
+      lengthHint,
+      extraInstructions,
+      preparedEvidence,
+    });
+  } else {
+    console.log(
+      `[analysis] mode=${mode} tokens OK: ~${estimatedTotal} ` +
+      `(input ~${estimatedInput} + output ≤${maxTokens}, safe limit ${TPM_SAFE_LIMIT})`,
+    );
+  }
 
   const result = await providerClient.generateText({
     systemPrompt,
