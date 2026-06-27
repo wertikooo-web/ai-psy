@@ -192,6 +192,13 @@ export function RequestHistoryDrawer({ request, onClose }: Props) {
       .finally(() => setLoading(false));
   }, [request?.id]);
 
+  useEffect(() => {
+    if (!request) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [request, onClose]);
+
   if (!request) return null;
 
   const totalAnalyses = consultations.reduce((s, c) => s + c.analysesCount, 0);
