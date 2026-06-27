@@ -652,7 +652,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-700">Транскрипт</p>
                 <p className="text-xs text-slate-400">
-                  {hasText ? `${transcriptText!.length.toLocaleString("ru-RU")} символов` : "Не создан"}
+                  {hasText ? `${(transcriptText ?? c.notes ?? "").length.toLocaleString("ru-RU")} символов` : "Не создан"}
                 </p>
               </div>
               <StatusPill ok={hasText} label={hasText ? "Готов" : "Нет"} />
@@ -672,7 +672,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                     {transcriptOpen ? "Скрыть" : "Открыть"}
                   </button>
                   <button
-                    onClick={() => downloadBlob(transcriptText!, `транскрипт-${c.id.slice(0,8)}.txt`)}
+                    onClick={() => downloadBlob(transcriptText ?? c.notes ?? "", `транскрипт-${c.id.slice(0,8)}.txt`)}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-50 border border-slate-200 transition-colors"
                   >
                     <Download size={12} />
