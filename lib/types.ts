@@ -93,6 +93,24 @@ export interface ClientMaterial {
   status?: "transcribing" | "error" | "done"; // client-side only, not persisted
 }
 
+// ─── client_requests ─────────────────────────────────────────────────────────
+
+export type ClientRequestSource = "initial" | "edit" | "new_request";
+
+export interface ClientRequest {
+  id:                   string;
+  clientId:             string;
+  text:                 string;
+  isCurrent:            boolean;
+  source:               ClientRequestSource;
+  originConsultationId?: string;   // on which consultation the new request appeared
+  comment?:             string;    // psychologist's note about the context of change
+  previousText?:        string;    // previous formulation, filled when source='edit'
+  createdAt:            string;    // ISO
+  updatedAt?:           string;    // ISO, filled when source='edit'
+  deletedAt?:           string;    // ISO, soft delete
+}
+
 // ─── UI helpers ──────────────────────────────────────────────────────────────
 
 export const HISTORY_SECTION_LABELS: Record<HistorySection, string> = {
