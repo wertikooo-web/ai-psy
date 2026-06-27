@@ -9,7 +9,7 @@ import {
   Zap, Search, UserCheck, Layers, Lightbulb, CalendarClock,
   Play, NotebookPen, FileText, Loader2, AlertCircle,
   Download, ChevronDown, ChevronUp, BrainCircuit,
-  CheckCircle2, CircleDashed, Trash2, Plus,
+  CheckCircle2, CircleDashed, Trash2, Plus, ScanSearch,
 } from "lucide-react";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
 import { AnalysisBlockRenderer } from "@/components/analysis/AnalysisBlockRenderer";
@@ -98,6 +98,7 @@ function AnalysisProgress({ transcriptLen }: { transcriptLen: number }) {
 }
 import { TranscriptPanel } from "./TranscriptPanel";
 import { ChatPanel } from "./ChatPanel";
+import { EvidenceLens } from "./EvidenceLens";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 
 interface Props {
@@ -181,7 +182,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
   const [selectedMode, setSelectedMode]     = useState<ModeId>(defaultMode);
   const [analyses, setAnalyses]             = useState(c.analyses ?? []);
-  const [displayedMode, setDisplayedMode]   = useState<ModeId | null>((lastAnalysis?.mode as ModeId) ?? null);
+  const [displayedMode, setDisplayedMode]   = useState<ModeId | "lens" | null>((lastAnalysis?.mode as ModeId) ?? null);
   const [generatingMode, setGeneratingMode] = useState<ModeId | null>(null);
   const [addMenuOpen, setAddMenuOpen]       = useState(false);
   const addMenuRef                          = useRef<HTMLDivElement>(null);
@@ -318,7 +319,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   // Map: mode → most recent analysis entry
   const analysesByMode = new Map<ModeId, typeof analyses[0]>();
   for (const a of analyses) analysesByMode.set(a.mode as ModeId, a);
-  const selectedAnalysis = displayedMode ? (analysesByMode.get(displayedMode) ?? null) : null;
+  const selectedAnalysis = displayedMode && displayedMode !== "lens" ? (analysesByMode.get(displayedMode) ?? null) : null;
   const hasAnyResult = analyses.length > 0;
   const isNotesOnly    = source === "notes" && !c.transcript?.text;
   const hasWhisper     = !!c.transcript?.text;
@@ -409,9 +410,9 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {/* Refresh current analysis — always visible when analysis exists */}
-                {displayedMode && analysesByMode.has(displayedMode) && (
+                {displayedMode && displayedMode !== "lens" && analysesByMode.has(displayedMode) && (
                   <button
-                    onClick={() => runAnalysis(displayedMode, true)}
+                    onClick={() => runAnalysis(displayedMode as ModeId, true)}
                     disabled={!!generatingMode}
                     title="Повторно выполнить AI-анализ с текущими настройками."
                     className="text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap"
@@ -462,8 +463,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               </div>
             </div>
 
-            {/* Mode tabs — shown when 2+ analyses exist */}
-            {(analyses.length > 1 || (analyses.length === 1 && generatingMode !== null && generatingMode !== analyses[0]?.mode)) && (
+            {/* Mode tabs — shown when 2+ analyses exist, OR when there's a transcript (for Лупа tab) */}
+            {(analyses.length > 1 || (analyses.length === 1 && generatingMode !== null && generatingMode !== analyses[0]?.mode) || hasText) && (
               <div className="flex border-b flex-shrink-0 overflow-x-auto scrollbar-none" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
                 {ANALYSIS_MODES
                   .filter(m => analysesByMode.has(m.id) || generatingMode === m.id)
@@ -482,6 +483,21 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                       {analysesByMode.has(m.id) && generatingMode !== m.id && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
                     </button>
                   ))}
+
+                {/* Лупа tab — always visible when transcript exists */}
+                {hasText && (
+                  <button
+                    onClick={() => setDisplayedMode("lens")}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+                      displayedMode === "lens"
+                        ? "border-stone-600 text-stone-700"
+                        : "border-transparent text-slate-400 hover:text-slate-600"
+                    }`}
+                  >
+                    <ScanSearch size={11} />
+                    Лупа
+                  </button>
+                )}
               </div>
             )}
 
@@ -490,7 +506,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               <div className="flex items-center justify-between gap-3 px-4 py-2 flex-shrink-0 min-w-0 overflow-hidden" style={{ background: "#FEF3DC", borderBottom: "1px solid #E8C97A" }}>
                 <p className="text-xs min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" style={{ color: "#7A5420" }}>Данные изменились — обновите анализ</p>
                 <button
-                  onClick={() => displayedMode && runAnalysis(displayedMode, true)}
+                  onClick={() => displayedMode && displayedMode !== "lens" && runAnalysis(displayedMode as ModeId, true)}
                   className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-lg whitespace-nowrap"
                   style={{ background: "#C9A96E", color: "#1A0F05" }}
                 >
@@ -509,7 +525,9 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
             {/* Content */}
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5">
-              {generatingMode !== null && generatingMode === displayedMode ? (
+              {displayedMode === "lens" ? (
+                <EvidenceLens consultationId={c.id} />
+              ) : generatingMode !== null && generatingMode === displayedMode ? (
                 <AnalysisProgress transcriptLen={transcriptText?.length ?? 0} />
               ) : selectedAnalysis ? (
                 <AnalysisBlockRenderer
