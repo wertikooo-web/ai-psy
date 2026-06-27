@@ -547,9 +547,11 @@ export function TranscriptPanel({
     if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => {
+        setCopied(false);
+        closeMenu();
+      }, 1500);
     }).catch(() => {});
-    closeMenu();
   }
 
   function doExport(fmt: "txt" | "md") {
