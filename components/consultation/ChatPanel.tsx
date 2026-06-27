@@ -310,6 +310,23 @@ export function ChatPanel({
         </div>
       </div>
 
+      {/* Sub-panel: quick links */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-[#D8CFBE] bg-[#F5F2EC] flex-shrink-0">
+        <a
+          href="https://chatgpt.com/g/g-6a39895c066481919568675af786bde7-transcript-ai-psy"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Открыть персональный GPTS психолога"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+          style={{ background: "#E8E3DA", color: "#6B5E4E", border: "1px solid #D0C7BA" }}
+          onMouseEnter={e => (e.currentTarget.style.background = "#DDD7CE")}
+          onMouseLeave={e => (e.currentTarget.style.background = "#E8E3DA")}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Перейти в GPTS
+        </a>
+      </div>
+
       {/* Messages */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
         {!historyLoaded && (

@@ -637,7 +637,7 @@ export function TranscriptPanel({
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-colors"
                 style={{ background: "rgba(255,255,255,0.12)", color: "#E8E3DA", border: "1px solid rgba(255,255,255,0.18)" }}
               >
-                <MoreHorizontal size={13} />
+                <ChevronDown size={13} />
                 <span className="hidden sm:inline">Действия</span>
               </button>
               {actionsOpen && (
