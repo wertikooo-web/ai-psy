@@ -204,9 +204,10 @@ function ConsultationCard({
       >
         <span>Открыть консультацию</span>
         <ArrowRight
-          size={14}
+          size={20}
+          strokeWidth={2.5}
           className="text-stone-500 transition-transform duration-150"
-          style={{ transform: hovered ? "translateX(3px)" : "translateX(0)" }}
+          style={{ transform: hovered ? "translateX(4px)" : "translateX(0)" }}
         />
       </button>
     </div>
