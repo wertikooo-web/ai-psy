@@ -171,30 +171,6 @@ export function EvidenceTooltip({ tooltip, confidence }: Props) {
             ))}
           </div>
 
-          {/* Confidence badge */}
-          {confidenceLabel && (
-            <p style={{
-              marginTop:   10,
-              marginBottom: 0,
-              paddingTop:  8,
-              borderTop:   "1px solid #F0EBE3",
-              fontSize:    11,
-              fontWeight:  600,
-              color:       confidenceColor,
-            }}>
-              {confidenceLabel}
-            </p>
-          )}
-
-          {/* Attribution */}
-          <p style={{
-            fontSize:    10,
-            color:       "#B8A898",
-            marginTop:   10,
-            marginBottom: 0,
-          }}>
-            Основано на данных сессии и речевых паттернах
-          </p>
         </div>
       )}
     </div>
