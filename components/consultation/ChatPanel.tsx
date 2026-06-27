@@ -310,14 +310,14 @@ export function ChatPanel({
         </div>
       </div>
 
-      {/* Sub-panel: quick links */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-[#D8CFBE] bg-[#F5F2EC] flex-shrink-0">
+      {/* Sub-panel: quick links — height: 36 matches transcript legend strip and analysis tabs bar */}
+      <div className="flex items-center gap-2 px-4 flex-shrink-0" style={{ height: 36, background: "#F5F0E8", borderBottom: "1px solid #D8CFBE" }}>
         <a
           href="https://chatgpt.com/g/g-6a39895c066481919568675af786bde7-transcript-ai-psy"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Открыть персональный GPTS психолога"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
           style={{ background: "#E8E3DA", color: "#6B5E4E", border: "1px solid #D0C7BA" }}
           onMouseEnter={e => (e.currentTarget.style.background = "#DDD7CE")}
           onMouseLeave={e => (e.currentTarget.style.background = "#E8E3DA")}
