@@ -45,6 +45,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   const [historyItems, setHistoryItems]   = useState<ClientHistoryItem[]>([]);
   const [materials, setMaterials]         = useState<ClientMaterial[]>([]);
   const [currentRequestText, setCurrentRequestText] = useState<string | null>(null);
+  const [requestsMap, setRequestsMap]               = useState<Record<string, string>>({});
   const [deletingClient, setDeletingClient]   = useState(false);
   const [statusChanging, setStatusChanging]   = useState(false);
   const [dataLoading, setDataLoading]         = useState(true);
@@ -83,6 +84,11 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
       setMaterials(mats as ClientMaterial[]);
       const cur = Array.isArray(reqs) ? reqs.find((r: { isCurrent: boolean }) => r.isCurrent) : null;
       setCurrentRequestText(cur?.text ?? null);
+      if (Array.isArray(reqs)) {
+        const map: Record<string, string> = {};
+        for (const r of reqs as { id: string; text: string }[]) map[r.id] = r.text;
+        setRequestsMap(map);
+      }
     }).catch(() => {}).finally(() => setDataLoading(false));
   }, [id, isMock]);
 
@@ -299,6 +305,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
             onUpload={() => setUploadOpen(true)}
             uploadBtnLabel={uploadBtnLabel}
             onDeleteSession={handleDeleteSession}
+            requestsMap={requestsMap}
           />
         )}
 

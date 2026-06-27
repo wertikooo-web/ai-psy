@@ -43,6 +43,23 @@ export async function saveChatMessages(
   if (error) throw new Error(`[DAL/saveChatMessages] ${error.message}`);
 }
 
+export async function getChatMessageCounts(
+  consultationIds: string[],
+): Promise<Record<string, number>> {
+  if (!isSupabaseConfigured() || consultationIds.length === 0) return {};
+  const { data, error } = await supabaseServer!
+    .from("consultation_chat_messages")
+    .select("consultation_id")
+    .in("consultation_id", consultationIds);
+  if (error) return {};
+  const counts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    const id = (row as Record<string, string>).consultation_id;
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export async function clearChatMessages(consultationId: string): Promise<void> {
   if (!isSupabaseConfigured()) return;
   const { error } = await supabaseServer!

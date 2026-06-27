@@ -50,12 +50,13 @@ const sessionStatus: Record<string, { label: string; cls: string }> = {
 };
 
 interface Props {
-  isMock:          boolean;
-  mockSessions?:   MockSession[];
-  realSessions?:   StoredConsultation[];
-  onUpload:        () => void;
-  uploadBtnLabel?: string;
+  isMock:           boolean;
+  mockSessions?:    MockSession[];
+  realSessions?:    StoredConsultation[];
+  onUpload:         () => void;
+  uploadBtnLabel?:  string;
   onDeleteSession?: (id: string) => void;
+  requestsMap?:     Record<string, string>;
 }
 
 export function ConsultationsTab({
@@ -65,6 +66,7 @@ export function ConsultationsTab({
   onUpload,
   uploadBtnLabel = "Загрузить запись",
   onDeleteSession,
+  requestsMap   = {},
 }: Props) {
   const [openCompare, setOpenCompare] = useState<string | null>(null);
   const [deletingId, setDeletingId]   = useState<string | null>(null);
@@ -145,6 +147,15 @@ export function ConsultationsTab({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate" style={{ color: S.title }}>{displayTitle}</p>
                 <p className="text-xs text-stone-400 mt-0.5">{formatDate(c.createdAt ?? c.uploadedAt ?? "")}</p>
+                {c.requestId && requestsMap[c.requestId] && (
+                  <p
+                    className="text-xs mt-0.5 truncate"
+                    style={{ color: "#9C8E80" }}
+                    title={requestsMap[c.requestId]}
+                  >
+                    Запрос: {requestsMap[c.requestId].slice(0, 50)}{requestsMap[c.requestId].length > 50 ? "…" : ""}
+                  </p>
+                )}
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <MiniStatus ok={hasAudio}       label="Аудио" />
                   <MiniStatus ok={hasTranscript}  label="Транскрипт" />

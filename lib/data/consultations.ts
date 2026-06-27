@@ -38,6 +38,7 @@ function rowToConsultation(row: Record<string, unknown>): StoredConsultation {
     analyses: (row.analyses as StoredConsultation["analyses"]) ?? [],
     analysisEvidence:      (row.analysis_evidence       as AnalysisEvidence       | null) ?? undefined,
     compressedTranscript:  (row.compressed_transcript   as CompressedTranscript   | null) ?? undefined,
+    requestId:             (row.request_id as string)   ?? undefined,
   };
 }
 
@@ -62,6 +63,7 @@ function consultationToRow(c: StoredConsultation) {
     analyses:              c.analyses ?? [],
     analysis_evidence:     c.analysisEvidence     ?? null,
     compressed_transcript: c.compressedTranscript ?? null,
+    request_id:            c.requestId            ?? null,
   };
 }
 
@@ -166,6 +168,18 @@ export async function softDeleteConsultation(id: string): Promise<void> {
   }
   const all = await jsonStore.readAll();
   await jsonStore.writeAll(all.filter(c => c.id !== id));
+}
+
+export async function getConsultationsByRequestId(requestId: string): Promise<StoredConsultation[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { data, error } = await supabaseServer!
+    .from("consultations")
+    .select("id, client_id, title, created_at, source, status, notes, transcript_text, analyses, request_id")
+    .eq("request_id", requestId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`[DAL/getConsultationsByRequestId] ${error.message}`);
+  return (data ?? []).map(rowToConsultation);
 }
 
 export async function softDeleteConsultationsForClient(clientId: string): Promise<void> {

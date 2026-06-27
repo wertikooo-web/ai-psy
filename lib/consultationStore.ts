@@ -148,6 +148,9 @@ export interface StoredConsultation {
   // Cached map-reduce compression of long transcripts (rebuilt only when transcript changes)
   compressedTranscript?: CompressedTranscript;
 
+  // Link to the client_request that was active when this consultation was created
+  requestId?: string;
+
   // Legacy fields — kept for records created before this model change
   fileName?: string;
   fileUrl?: string;

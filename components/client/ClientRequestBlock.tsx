@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, Pencil, Plus, X, Loader2 } from "lucide-react";
+import { ChevronDown, Pencil, Plus, X, Loader2, History } from "lucide-react";
 import { ModalPortal } from "@/components/ui/ModalPortal";
+import { RequestHistoryDrawer } from "@/components/client/RequestHistoryDrawer";
 import type { ClientRequest } from "@/lib/types";
 
 const S = {
@@ -219,8 +220,9 @@ interface Props {
 export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props) {
   const [requests, setRequests]       = useState<ClientRequest[]>([]);
   const [loading, setLoading]         = useState(true);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [showAll, setShowAll]         = useState(false);
+  const [historyOpen, setHistoryOpen]   = useState(false);
+  const [showAll, setShowAll]           = useState(false);
+  const [historyRequest, setHistoryRequest] = useState<ClientRequest | null>(null);
   const [editOpen, setEditOpen]       = useState(false);
   const [newOpen, setNewOpen]         = useState(false);
 
@@ -404,14 +406,27 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
                             >
                               {req.text}
                             </p>
-                            {req.isCurrent && (
-                              <span
-                                className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
-                                style={{ background: "#D4C5B1", color: "#4A3C2E" }}
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              {req.isCurrent && (
+                                <span
+                                  className="text-xs px-2 py-0.5 rounded-full"
+                                  style={{ background: "#D4C5B1", color: "#4A3C2E" }}
+                                >
+                                  текущий
+                                </span>
+                              )}
+                              <button
+                                onClick={() => setHistoryRequest(req)}
+                                className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-lg transition-colors"
+                                style={{ background: "#E9DCC7", color: "#6B5D4F" }}
+                                onMouseEnter={e => { e.currentTarget.style.background = "#D8CFBE"; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = "#E9DCC7"; }}
+                                title="Открыть историю консультаций по этому запросу"
                               >
-                                текущий
-                              </span>
-                            )}
+                                <History size={11} />
+                                История
+                              </button>
+                            </div>
                           </div>
                           <div className="mt-1.5 flex flex-wrap gap-x-2 text-xs" style={{ color: S.muted }}>
                             <span>{fmtDate(req.createdAt)}</span>
@@ -471,6 +486,11 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
           onClose={() => setNewOpen(false)}
         />
       )}
+
+      <RequestHistoryDrawer
+        request={historyRequest}
+        onClose={() => setHistoryRequest(null)}
+      />
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addConsultation, getConsultations } from "@/lib/data/consultations";
+import { getCurrentClientRequest } from "@/lib/data/clientRequests";
 import type { StoredConsultation } from "@/lib/consultationStore";
 import { randomUUID } from "crypto";
 
@@ -37,6 +38,14 @@ export async function POST(req: NextRequest) {
         fileUrl:  body.audio.fileUrl,
         fileSize: body.audio.fileSize,
       };
+    }
+
+    // Auto-attach current client request (non-fatal if unavailable)
+    if (record.clientId) {
+      try {
+        const currentReq = await getCurrentClientRequest(record.clientId);
+        if (currentReq) record.requestId = currentReq.id;
+      } catch { /* proceed without requestId */ }
     }
 
     if (source === "notes" && body.transcriptText) {
