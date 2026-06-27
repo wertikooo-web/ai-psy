@@ -85,14 +85,14 @@ export async function extractBlocks(
 // ── Token budget constants ────────────────────────────────────────────────────
 
 // OpenAI free/low-tier TPM limit is ~30 000.
-// System prompt (knowledge base) + clientContext + evidence take ~8 000–12 000 tokens.
-// Deep analysis output is 6 000 tokens.
-// That leaves ~12 000 tokens for the transcript → ~18 000 chars (Russian Cyrillic).
-export const TOKEN_BUDGET_PER_REQUEST   = 10_000; // exported so route.ts can check without importing service logic
-export const CHARS_PER_TOKEN            = 1.5;    // Russian Cyrillic: ~1.5 chars per token (not 4 like English)
-const CHUNK_CHARS                       = Math.floor(10_000 * CHARS_PER_TOKEN); // ~15 000 chars per chunk
-// Hard cap applied before final LLM analysis call
-const TRANSCRIPT_FINAL_CAP_CHARS        = 18_000; // ~12 000 tokens, leaves room for prompt + output
+// Working mode KB = 9 files ≈ 100k chars ≈ 17 000–22 000 tokens (Cyrillic tokenizes at ~4–6 chars/token).
+// clientContext + evidence ≈ 3 000 tokens. Output ≈ 3 000–6 000 tokens.
+// That leaves ~4 000–7 000 tokens for the transcript → ~8 000–12 000 chars.
+export const TOKEN_BUDGET_PER_REQUEST   = 8_000;  // trigger chunking when transcript alone > 8k tokens
+export const CHARS_PER_TOKEN            = 1.5;    // conservative lower-bound (real Cyrillic rate is ~4–6 chars/token)
+const CHUNK_CHARS                       = Math.floor(8_000 * CHARS_PER_TOKEN); // ~12 000 chars per chunk
+// Hard cap applied before final LLM analysis call — keeps total prompt under 30k TPM
+const TRANSCRIPT_FINAL_CAP_CHARS        = 12_000; // ~8 000 tokens at 1.5 c/t; comfortably within budget
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
