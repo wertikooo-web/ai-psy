@@ -857,12 +857,6 @@ export function TranscriptPanel({
       {/* Notes */}
       {showNotes && notesText && (
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
-          <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-4">
-            <div className="flex items-center gap-2 text-xs text-amber-700 font-medium">
-              <NotebookPen size={12} />
-              Заметки консультации — не дословный транскрипт
-            </div>
-          </div>
           <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{notesText}</p>
         </div>
       )}
