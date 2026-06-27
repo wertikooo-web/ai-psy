@@ -315,6 +315,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const dateStr   = c.createdAt ?? c.uploadedAt ?? "";
   const hasAudio       = !!audioFile;
   const hasText        = !!(transcriptText ?? c.notes);
+  // Лупа requires actual transcript (audio/whisper/formatted), not just psychologist notes
+  const hasActualTranscript = !!(c.transcript?.text || c.transcriptFormatted?.length);
   // Map: mode → most recent analysis entry
   const analysesByMode = new Map<ModeId, typeof analyses[0]>();
   for (const a of analyses) analysesByMode.set(a.mode as ModeId, a);
@@ -402,7 +404,9 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                 <h2 className="text-base font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
                 <p className="text-xs leading-tight mt-0.5 truncate" style={{ color: "#D8CFBE" }}>
                   {displayedMode
-                    ? (ANALYSIS_MODES.find(m => m.id === displayedMode)?.label ?? displayedMode)
+                    ? displayedMode === "lens"
+                      ? "Лупа"
+                      : (ANALYSIS_MODES.find(m => m.id === displayedMode)?.label ?? displayedMode)
                     : "Выберите вид анализа"}
                 </p>
               </div>
@@ -477,8 +481,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               </div>
             </div>
 
-            {/* Mode tabs — shown when 2+ analyses exist, OR when there's a transcript (for Лупа tab) */}
-            {(analyses.length > 1 || (analyses.length === 1 && generatingMode !== null && generatingMode !== analyses[0]?.mode) || hasText) && (
+            {/* Mode tabs — shown when 2+ analyses, or generating extra, or actual transcript (for Лупа) */}
+            {(analyses.length > 1 || (analyses.length === 1 && generatingMode !== null && generatingMode !== analyses[0]?.mode) || hasActualTranscript) && (
               <div className="flex border-b flex-shrink-0 overflow-x-auto scrollbar-none" style={{ height: 36, background: "#F5F0E8", borderColor: "#D8CFBE" }}>
                 {ANALYSIS_MODES
                   .filter(m => analysesByMode.has(m.id) || generatingMode === m.id)
@@ -498,8 +502,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                     </button>
                   ))}
 
-                {/* Лупа tab — always visible when transcript exists */}
-                {hasText && (
+                {/* Лупа tab — only when actual transcript exists (not notes-only) */}
+                {hasActualTranscript && (
                   <button
                     onClick={() => setDisplayedMode("lens")}
                     className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
