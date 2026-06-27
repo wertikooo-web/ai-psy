@@ -211,11 +211,12 @@ function NewRequestModal({
 // ── Main block ─────────────────────────────────────────────────────────────────
 
 interface Props {
-  clientId: string;
-  isMock:   boolean;
+  clientId:         string;
+  isMock:           boolean;
+  onCurrentChange?: (text: string) => void;
 }
 
-export function ClientRequestBlock({ clientId, isMock }: Props) {
+export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props) {
   const [requests, setRequests]       = useState<ClientRequest[]>([]);
   const [loading, setLoading]         = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -230,14 +231,16 @@ export function ClientRequestBlock({ clientId, isMock }: Props) {
     if (isMock) { setLoading(false); return; }
     try {
       const res  = await fetch(`/api/client-requests/${clientId}`);
-      const data = res.ok ? await res.json() : [];
+      const data: ClientRequest[] = res.ok ? await res.json() : [];
       setRequests(data);
+      const cur = data.find((r) => r.isCurrent);
+      if (cur) onCurrentChange?.(cur.text);
     } catch {
       setRequests([]);
     } finally {
       setLoading(false);
     }
-  }, [clientId, isMock]);
+  }, [clientId, isMock, onCurrentChange]);
 
   useEffect(() => { reload(); }, [reload]);
 

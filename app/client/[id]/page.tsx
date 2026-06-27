@@ -44,6 +44,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   const [realSessions, setRealSessions]   = useState<StoredConsultation[]>([]);
   const [historyItems, setHistoryItems]   = useState<ClientHistoryItem[]>([]);
   const [materials, setMaterials]         = useState<ClientMaterial[]>([]);
+  const [currentRequestText, setCurrentRequestText] = useState<string | null>(null);
   const [deletingClient, setDeletingClient]   = useState(false);
   const [statusChanging, setStatusChanging]   = useState(false);
   const [dataLoading, setDataLoading]         = useState(true);
@@ -74,11 +75,14 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
       fetch("/api/consultations").then((r) => r.json()),
       fetch(`/api/client-history/${id}`).then((r) => r.json()),
       fetch(`/api/client-materials/${id}`).then((r) => r.json()),
-    ]).then(([clients, consultations, history, mats]) => {
+      fetch(`/api/client-requests/${id}`).then((r) => r.json()),
+    ]).then(([clients, consultations, history, mats, reqs]) => {
       setRealClient((clients as StoredClient[]).find((c) => c.id === id) ?? null);
       setRealSessions((consultations as StoredConsultation[]).filter((c) => c.clientId === id));
       setHistoryItems(history as ClientHistoryItem[]);
       setMaterials(mats as ClientMaterial[]);
+      const cur = Array.isArray(reqs) ? reqs.find((r: { isCurrent: boolean }) => r.isCurrent) : null;
+      setCurrentRequestText(cur?.text ?? null);
     }).catch(() => {}).finally(() => setDataLoading(false));
   }, [id, isMock]);
 
@@ -211,12 +215,13 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
             </div>
             {(() => {
               const age = "age" in client ? (client as { age?: number }).age : undefined;
+              const concern = isMock ? client.concern : (currentRequestText ?? client.concern);
               return age ? (
                 <p className="text-sm text-slate-400 mt-0.5">
-                  {age} лет{client.concern ? ` · ${client.concern}` : ""}
+                  {age} лет{concern ? ` · ${concern}` : ""}
                 </p>
-              ) : client.concern ? (
-                <p className="text-sm text-slate-400 mt-0.5">{client.concern}</p>
+              ) : concern ? (
+                <p className="text-sm text-slate-400 mt-0.5">{concern}</p>
               ) : null;
             })()}
             <p className="text-xs text-slate-400 mt-1">
@@ -282,6 +287,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
             clientId={id}
             isMock={isMock}
             mockSessions={isMock ? mockSessionsForClient : []}
+            onCurrentRequestChange={(text) => setCurrentRequestText(text)}
           />
         )}
 

@@ -26,10 +26,11 @@ interface OverviewClient {
 }
 
 interface Props {
-  client:        OverviewClient;
-  clientId:      string;
-  isMock:        boolean;
-  mockSessions?: MockSession[];
+  client:                   OverviewClient;
+  clientId:                 string;
+  isMock:                   boolean;
+  mockSessions?:            MockSession[];
+  onCurrentRequestChange?:  (text: string) => void;
 }
 
 function SectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
@@ -43,7 +44,7 @@ function SectionBlock({ title, children }: { title: string; children: React.Reac
   );
 }
 
-export function OverviewTab({ client, clientId, isMock, mockSessions = [] }: Props) {
+export function OverviewTab({ client, clientId, isMock, mockSessions = [], onCurrentRequestChange }: Props) {
   const dynamics    = mockSessions.find((s) => s.clientMap)?.clientMap?.dynamics ?? [];
   const hasSections =
     (client.mainTopics?.length ?? 0) > 0 ||
@@ -53,7 +54,7 @@ export function OverviewTab({ client, clientId, isMock, mockSessions = [] }: Pro
   return (
     <div className="space-y-3">
       {/* Live client request block — always rendered */}
-      <ClientRequestBlock clientId={clientId} isMock={isMock} />
+      <ClientRequestBlock clientId={clientId} isMock={isMock} onCurrentChange={onCurrentRequestChange} />
 
       {/* Повторяющиеся темы */}
       {(client.mainTopics?.length ?? 0) > 0 && (
