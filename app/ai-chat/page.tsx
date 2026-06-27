@@ -219,7 +219,7 @@ function AddCard({ onClick }: { onClick: () => void }) {
       <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#E8E0D0" }}>
         <Plus size={18} style={{ color: "#6B5D4F" }} />
       </div>
-      <span className="text-sm font-medium">Добавить модель</span>
+      <span className="text-sm font-medium">Добавить сервис</span>
     </button>
   );
 }
@@ -277,7 +277,7 @@ export default function AiChatPage() {
               onMouseLeave={(e) => { e.currentTarget.style.background = "#6B5D4F"; }}
             >
               <Plus size={15} />
-              Добавить модель
+              Добавить сервис
             </button>
           </div>
         </div>
