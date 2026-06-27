@@ -207,7 +207,7 @@ export function ChatPanel({
               { role: "assistant", content: aiMsg.content },
             ],
           }),
-        }).catch(() => {});
+        }).catch((err) => console.error("[chat/save]", err));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось получить ответ");

@@ -16,6 +16,9 @@ import {
  */
 
 export async function GET(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   const mode = (req.nextUrl.searchParams.get("mode") ?? "working") as AnalysisMode;
   const files = getKnowledgeFilesForMode(mode);
 
@@ -23,6 +26,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   try {
     const body = await req.json();
 

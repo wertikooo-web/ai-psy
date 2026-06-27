@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           id:        existing.id,
           result:    existing.result,
+          blocks:    existing.blocks,
           mode,
           model:     "cached",
           provider:  "cache",

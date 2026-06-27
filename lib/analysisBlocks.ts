@@ -159,22 +159,22 @@ const EvidenceReferenceSchema = z.object({
   segmentId:    z.string().optional(),
   startSeconds: z.number().optional(),
   endSeconds:   z.number().optional(),
-  quote:        z.string().max(120).optional(),
+  quote:        z.string().max(300).optional(),
 });
 
 const AnalysisBlockSchema = z.object({
-  id:             z.string().max(50),
-  title:          z.string().max(200).optional(),
-  content:        z.string().max(4000),
-  tags:           z.array(z.string().max(50)).max(5).optional(),
+  id:             z.string().max(200),
+  title:          z.string().max(500).optional(),
+  content:        z.string().max(20000),
+  tags:           z.array(z.string().max(100)).max(10).optional(),
   isInterpretive: z.boolean(),
-  evidenceTooltip: z.array(z.string().max(300)).min(2).max(5).optional(),
-  evidenceRefs:   z.array(EvidenceReferenceSchema).max(5).optional(),
+  evidenceTooltip: z.array(z.string().max(600)).min(1).max(8).optional(),
+  evidenceRefs:   z.array(EvidenceReferenceSchema).max(10).optional(),
   confidence:     z.enum(["high", "medium", "low"]).optional(),
 });
 
 export const BlocksOutputSchema = z.object({
-  blocks: z.array(AnalysisBlockSchema).min(1).max(20),
+  blocks: z.array(AnalysisBlockSchema).min(1).max(30),
 });
 
 export type BlocksLLMOutput = z.infer<typeof BlocksOutputSchema>;

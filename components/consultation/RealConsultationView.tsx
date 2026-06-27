@@ -99,7 +99,6 @@ function AnalysisProgress({ transcriptLen }: { transcriptLen: number }) {
 import { TranscriptPanel } from "./TranscriptPanel";
 import { ChatPanel } from "./ChatPanel";
 import { EvidenceLens } from "./EvidenceLens";
-import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 
 interface Props {
   consultation: StoredConsultation;
@@ -409,6 +408,21 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               </div>
 
               <div className="flex items-center gap-1.5 flex-shrink-0">
+                {/* Download current analysis as .md */}
+                {displayedMode && displayedMode !== "lens" && selectedAnalysis && (
+                  <button
+                    onClick={() => {
+                      const modeLabel = ANALYSIS_MODES.find(m => m.id === displayedMode)?.label ?? displayedMode;
+                      const header = `# ${modeLabel}\n\n_Консультация: ${c.title}_\n_Клиент: ${c.clientName}_\n\n---\n\n`;
+                      downloadBlob(header + selectedAnalysis.result, `анализ-${displayedMode}-${c.id.slice(0,8)}.md`, "text/markdown;charset=utf-8");
+                    }}
+                    title="Скачать анализ в формате Markdown"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+                    style={{ background: "rgba(255,255,255,0.10)", color: "#FFFFFF" }}
+                  >
+                    <Download size={13} />
+                  </button>
+                )}
                 {/* Refresh current analysis — always visible when analysis exists */}
                 {displayedMode && displayedMode !== "lens" && analysesByMode.has(displayedMode) && (
                   <button
@@ -465,7 +479,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
             {/* Mode tabs — shown when 2+ analyses exist, OR when there's a transcript (for Лупа tab) */}
             {(analyses.length > 1 || (analyses.length === 1 && generatingMode !== null && generatingMode !== analyses[0]?.mode) || hasText) && (
-              <div className="flex border-b flex-shrink-0 overflow-x-auto scrollbar-none" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
+              <div className="flex border-b flex-shrink-0 overflow-x-auto scrollbar-none" style={{ height: 36, background: "#F5F0E8", borderColor: "#D8CFBE" }}>
                 {ANALYSIS_MODES
                   .filter(m => analysesByMode.has(m.id) || generatingMode === m.id)
                   .map(m => (
@@ -881,37 +895,3 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
-function AnalysisResultCard({
-  text,
-  mode,
-  onExport,
-}: {
-  text: string;
-  mode: ModeId;
-  onExport: () => void;
-}) {
-  const modeLabel = ANALYSIS_MODES.find((m) => m.id === mode)?.label ?? mode;
-
-  return (
-    <div className="rounded-2xl border border-brand-100 shadow-sm overflow-hidden" style={{ background: "#FAF8F5" }}>
-      <div className="px-6 py-3.5 border-b border-brand-50 bg-brand-50/60 flex items-center gap-2">
-        <span className="text-xs font-semibold text-brand-600 uppercase tracking-wider">
-          Результат анализа
-        </span>
-        <span className="px-2 py-0.5 rounded-full bg-white border border-brand-100 text-brand-500 text-xs font-medium">
-          {modeLabel}
-        </span>
-        <button
-          onClick={onExport}
-          className="ml-auto flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-brand-500 hover:bg-white border border-brand-100 transition-colors"
-        >
-          <Download size={12} />
-          .md
-        </button>
-      </div>
-      <div className="px-6 py-5">
-        <MarkdownRenderer content={text} />
-      </div>
-    </div>
-  );
-}

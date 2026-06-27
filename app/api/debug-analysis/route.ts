@@ -12,6 +12,9 @@ const KB_DIR = path.join(process.cwd(), "knowledge_base");
  * Pure debug — NO OpenAI call. Returns assembled prompt info only.
  */
 export async function POST(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   try {
     const body = await req.json();
 

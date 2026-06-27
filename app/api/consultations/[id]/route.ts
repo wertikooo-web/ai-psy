@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConsultation, softDeleteConsultation, updateConsultation } from "@/lib/data/consultations";
+import { getClientRequestById } from "@/lib/data/clientRequests";
 import { deleteFromStorage, isStorageUrl } from "@/lib/supabase/storage";
 import { unlink } from "fs/promises";
 import path from "path";
@@ -18,6 +19,24 @@ export async function PATCH(
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "Нет полей для обновления" }, { status: 400 });
     }
+
+    // Cross-client binding guard: requestId must belong to the same client
+    if (updates.requestId) {
+      const [consultation, clientReq] = await Promise.all([
+        getConsultation(id),
+        getClientRequestById(updates.requestId as string),
+      ]);
+      if (!consultation) {
+        return NextResponse.json({ error: "Консультация не найдена" }, { status: 404 });
+      }
+      if (!clientReq) {
+        return NextResponse.json({ error: "Запрос не найден" }, { status: 404 });
+      }
+      if (clientReq.clientId !== consultation.clientId) {
+        return NextResponse.json({ error: "Запрос не принадлежит клиенту этой консультации" }, { status: 403 });
+      }
+    }
+
     await updateConsultation(id, updates);
     return NextResponse.json({ ok: true });
   } catch (err) {
