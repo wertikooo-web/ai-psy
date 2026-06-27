@@ -57,11 +57,12 @@ function DashCard({ onClick, ariaLabel, children }: {
     >
       {children}
       <ArrowRight
-        size={14}
+        size={20}
+        strokeWidth={2.5}
         style={{
           flexShrink: 0,
           color:      hov ? "#4A3C2E" : "#A8997F",
-          transform:  hov ? "translateX(3px)" : "translateX(0)",
+          transform:  hov ? "translateX(4px)" : "translateX(0)",
           transition: "transform 0.15s ease, color 0.15s ease",
         }}
       />
