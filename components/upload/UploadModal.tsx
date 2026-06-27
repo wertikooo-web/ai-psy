@@ -165,7 +165,7 @@ export function UploadModal({
   const canSubmit =
     selectedSource === "audio"
       ? !!file
-      : transcriptText.trim().length > 10;
+      : transcriptText.trim().length > 0;
 
   // ── Processing ──────────────────────────────────────────────────────────────
   async function startProcessing() {
