@@ -309,21 +309,29 @@ export default function ClientsPage() {
 
   async function loadClients() {
     try {
-      const res  = await fetch("/api/clients");
-      const real: StoredClient[] = res.ok ? await res.json() : [];
+      const [clientsRes, requestsRes] = await Promise.all([
+        fetch("/api/clients"),
+        fetch("/api/client-requests"),
+      ]);
+      const real: StoredClient[] = clientsRes.ok ? await clientsRes.json() : [];
+      const currentRequests: Record<string, string> = requestsRes.ok ? await requestsRes.json() : {};
+
+      // Merge current request text into each real client
+      const realWithRequest = real.map((c) => ({
+        ...c,
+        concern: currentRequests[c.id] ?? c.concern,
+      }));
 
       if (DEMO_MODE) {
-        // In demo mode: show real data + mock data for any missing mock IDs
         const realIds = new Set(real.map((c) => c.id));
         setClients([
-          ...real,
+          ...realWithRequest,
           ...mockClients
             .filter((m) => !realIds.has(m.id))
             .map((m) => ({ ...m, isMock: true } as AnyClient)),
         ]);
       } else {
-        // Production: only real data, no mock fallback
-        setClients(real);
+        setClients(realWithRequest);
       }
     } catch {
       if (DEMO_MODE) {

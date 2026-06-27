@@ -63,6 +63,26 @@ export async function getClientRequests(clientId: string): Promise<ClientRequest
 }
 
 /**
+ * All current requests across all clients: { clientId → text }.
+ * Used by the clients list page to show up-to-date request text in cards.
+ */
+export async function getAllCurrentRequests(): Promise<Record<string, string>> {
+  assertSupabase();
+  const { data, error } = await supabaseServer!
+    .from("client_requests")
+    .select("client_id, text")
+    .eq("is_current", true)
+    .is("deleted_at", null);
+  if (error) throw new Error(`[DAL/getAllCurrentRequests] ${error.message}`);
+  const map: Record<string, string> = {};
+  for (const row of data ?? []) {
+    map[(row as Record<string, unknown>).client_id as string] =
+      (row as Record<string, unknown>).text as string;
+  }
+  return map;
+}
+
+/**
  * The single current request for a client, or null if none exists.
  */
 export async function getCurrentClientRequest(clientId: string): Promise<ClientRequest | null> {
