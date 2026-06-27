@@ -1,8 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getConsultation, softDeleteConsultation } from "@/lib/data/consultations";
+import { getConsultation, softDeleteConsultation, updateConsultation } from "@/lib/data/consultations";
 import { deleteFromStorage, isStorageUrl } from "@/lib/supabase/storage";
 import { unlink } from "fs/promises";
 import path from "path";
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  try {
+    const body = await req.json();
+    const updates: Record<string, unknown> = {};
+    if ("requestId" in body) updates.requestId = body.requestId ?? null;
+    if ("title"     in body) updates.title     = body.title;
+    if ("status"    in body) updates.status    = body.status;
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "Нет полей для обновления" }, { status: 400 });
+    }
+    await updateConsultation(id, updates);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
 
 export async function GET(
   _req: NextRequest,

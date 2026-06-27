@@ -147,6 +147,7 @@ export async function updateConsultation(id: string, updates: Partial<StoredCons
     if (updates.audioDeletedAt               !== undefined) patch.audio_deleted_at                = updates.audioDeletedAt               ?? null;
     if (updates.transcriptRawDeletedAt       !== undefined) patch.transcript_raw_deleted_at       = updates.transcriptRawDeletedAt       ?? null;
     if (updates.transcriptFormattedDeletedAt !== undefined) patch.transcript_formatted_deleted_at = updates.transcriptFormattedDeletedAt ?? null;
+    if (updates.requestId                    !== undefined) patch.request_id                      = updates.requestId                    ?? null;
     const { error } = await supabaseServer!
       .from("consultations")
       .update(patch)

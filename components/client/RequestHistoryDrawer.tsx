@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, ExternalLink, FileText, BrainCircuit, MessageSquare, Mic, NotebookPen, CheckCircle2, CircleDashed, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, ExternalLink, FileText, BrainCircuit, MessageSquare, Mic, NotebookPen, CheckCircle2, CircleDashed, ChevronDown, ChevronUp, PlusCircle, Link2 } from "lucide-react";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 import type { ClientRequest } from "@/lib/types";
 import Link from "next/link";
@@ -168,6 +168,111 @@ function ConsultationRow({ c }: { c: ConsultationSummary }) {
   );
 }
 
+// ── Unlinked consultation picker ───────────────────────────────────────────────
+
+interface UnlinkedItem {
+  id:        string;
+  title:     string;
+  createdAt: string;
+  source:    string;
+}
+
+function AttachPicker({
+  clientId,
+  requestId,
+  linkedIds,
+  onAttached,
+}: {
+  clientId:  string;
+  requestId: string;
+  linkedIds: Set<string>;
+  onAttached: (id: string) => void;
+}) {
+  const [items, setItems]       = useState<UnlinkedItem[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [attaching, setAttaching] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/consultations")
+      .then(r => r.ok ? r.json() : [])
+      .then((all: (UnlinkedItem & { clientId?: string; requestId?: string })[]) => {
+        setItems(
+          all.filter(c => c.clientId === clientId && !c.requestId && !linkedIds.has(c.id))
+        );
+      })
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  }, [clientId, requestId]);
+
+  async function attach(consultationId: string) {
+    setAttaching(consultationId);
+    try {
+      const res = await fetch(`/api/consultations/${consultationId}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ requestId }),
+      });
+      if (!res.ok) throw new Error();
+      onAttached(consultationId);
+      setItems(prev => prev.filter(c => c.id !== consultationId));
+    } catch {
+      // silent — user can retry
+    } finally {
+      setAttaching(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-6">
+        <div className="w-4 h-4 rounded-full border-2 border-stone-200 border-t-stone-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <p className="text-xs py-4 text-center" style={{ color: S.muted }}>
+        Все консультации уже привязаны к запросам.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.map(c => {
+        const SourceIcon = c.source === "audio" ? Mic : c.source === "notes" ? NotebookPen : FileText;
+        return (
+          <div
+            key={c.id}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl border"
+            style={{ borderColor: S.border, background: S.bg }}
+          >
+            <SourceIcon size={13} style={{ color: S.muted, flexShrink: 0 }} />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium truncate" style={{ color: S.title }}>
+                {/\.(mp3|m4a|wav|ogg|webm|flac)$/i.test(c.title) ? "Консультация" : c.title}
+              </p>
+              <p className="text-xs" style={{ color: S.muted }}>{fmtDate(c.createdAt)}</p>
+            </div>
+            <button
+              onClick={() => attach(c.id)}
+              disabled={attaching === c.id}
+              className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-colors flex-shrink-0"
+              style={{ background: "#6B5D4F", color: "#FFFFFF", opacity: attaching === c.id ? 0.6 : 1 }}
+              onMouseEnter={e => { if (attaching !== c.id) e.currentTarget.style.background = "#4A3C2E"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#6B5D4F"; }}
+            >
+              <Link2 size={11} />
+              Привязать
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Main drawer ────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -179,18 +284,24 @@ export function RequestHistoryDrawer({ request, onClose }: Props) {
   const [consultations, setConsultations] = useState<ConsultationSummary[]>([]);
   const [loading, setLoading]             = useState(false);
   const [error, setError]                 = useState("");
+  const [pickerOpen, setPickerOpen]       = useState(false);
 
-  useEffect(() => {
-    if (!request) return;
+  const reload = useCallback((requestId: string) => {
     setLoading(true);
     setError("");
-    setConsultations([]);
-    fetch(`/api/request-consultations/${request.id}`)
+    fetch(`/api/request-consultations/${requestId}`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then((data: ConsultationSummary[]) => setConsultations(data))
       .catch(() => setError("Не удалось загрузить историю"))
       .finally(() => setLoading(false));
-  }, [request?.id]);
+  }, []);
+
+  useEffect(() => {
+    if (!request) { setConsultations([]); setPickerOpen(false); return; }
+    setConsultations([]);
+    setPickerOpen(false);
+    reload(request.id);
+  }, [request?.id, reload]);
 
   useEffect(() => {
     if (!request) return;
@@ -290,6 +401,42 @@ export function RequestHistoryDrawer({ request, onClose }: Props) {
           {!loading && !error && consultations.map(c => (
             <ConsultationRow key={c.id} c={c} />
           ))}
+        </div>
+
+        {/* Footer: attach unlinked consultations */}
+        <div
+          className="flex-shrink-0 border-t"
+          style={{ borderColor: S.border }}
+        >
+          <button
+            onClick={() => setPickerOpen(v => !v)}
+            className="w-full flex items-center gap-2 px-5 py-3 text-xs font-medium transition-colors"
+            style={{ color: pickerOpen ? S.title : S.muted }}
+            onMouseEnter={e => { e.currentTarget.style.color = S.title; }}
+            onMouseLeave={e => { e.currentTarget.style.color = pickerOpen ? S.title : S.muted; }}
+          >
+            <PlusCircle size={13} />
+            Добавить консультацию из истории
+            <ChevronDown
+              size={13}
+              style={{
+                marginLeft: "auto",
+                transform:  pickerOpen ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.2s",
+              }}
+            />
+          </button>
+
+          {pickerOpen && (
+            <div className="px-5 pb-4">
+              <AttachPicker
+                clientId={request.clientId}
+                requestId={request.id}
+                linkedIds={new Set(consultations.map(c => c.id))}
+                onAttached={() => reload(request.id)}
+              />
+            </div>
+          )}
         </div>
       </div>
     </ModalPortal>
