@@ -7,7 +7,7 @@ import {
   Search, User, Stethoscope, ChevronsLeft, ChevronsRight, Mic,
   NotebookPen, FileText, Paperclip, ChevronDown, ChevronUp, Users,
   Loader2, Play, Pause, MoreHorizontal, Download, Trash2, AlertTriangle,
-  Volume2, Clock, EyeOff, Eye,
+  Volume2, Clock, EyeOff, Eye, Copy, Check,
 } from "lucide-react";
 import clsx from "clsx";
 import type { ClientMaterial } from "@/lib/types";
@@ -537,7 +537,21 @@ export function TranscriptPanel({
     }
   }
 
+  const [copied, setCopied] = useState(false);
+
   // ── Export ──────────────────────────────────────────────────────────────────
+  function doCopyAll() {
+    const text = hasFormatted
+      ? buildTxt(transcriptFormatted!, clientName, consultationDate, showTimestamps)
+      : (plainText ?? "");
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+    closeMenu();
+  }
+
   function doExport(fmt: "txt" | "md") {
     const base = safeBaseName(clientName, consultationDate);
     if (fmt === "txt") {
@@ -651,6 +665,14 @@ export function TranscriptPanel({
                       <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#A8997F" }}>
                         Экспорт
                       </div>
+                      <button
+                        onClick={doCopyAll}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-stone-100 transition-colors text-left"
+                        style={{ color: copied ? "#16A34A" : "#3D3228" }}
+                      >
+                        {copied ? <Check size={12} /> : <Copy size={12} />}
+                        {copied ? "Скопировано!" : "Скопировать всё"}
+                      </button>
                       <button
                         onClick={() => { closeMenu(); doExport("txt"); }}
                         className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-stone-100 transition-colors text-left"
