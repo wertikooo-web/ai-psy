@@ -18,9 +18,10 @@ import type { AnalysisBlock } from "@/lib/analysisBlocks";
 interface Props {
   result: string;
   blocks?: AnalysisBlock[];
+  showLupa?: boolean;
 }
 
-export function AnalysisBlockRenderer({ result, blocks }: Props) {
+export function AnalysisBlockRenderer({ result, blocks, showLupa = true }: Props) {
   // No blocks — render exactly as before (backward compat)
   if (!blocks || blocks.length === 0) {
     return <MarkdownRenderer content={result} />;
@@ -29,9 +30,9 @@ export function AnalysisBlockRenderer({ result, blocks }: Props) {
   return (
     <div>
       {blocks.map((block) => {
-        let showLupa = false;
+        let canShowLupa = false;
         try {
-          showLupa = hasValidEvidenceTooltip(block);
+          canShowLupa = showLupa && hasValidEvidenceTooltip(block);
         } catch {
           // Defensive: never crash if block data is malformed
         }
@@ -39,9 +40,9 @@ export function AnalysisBlockRenderer({ result, blocks }: Props) {
         return (
           <div
             key={block.id}
-            style={{ position: "relative", paddingRight: showLupa ? 34 : 0 }}
+            style={{ position: "relative", paddingRight: canShowLupa ? 34 : 0 }}
           >
-            {showLupa && (
+            {canShowLupa && (
               <div
                 style={{
                   position: "absolute",
