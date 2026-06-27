@@ -889,26 +889,6 @@ export function TranscriptPanel({
           {/* ── Formatted segments (saved to DB) ── */}
           {hasFormatted && (
             <>
-              {/* Legend strip — fixed height, matches analysis tabs bar */}
-              <div
-                className="flex-shrink-0 flex items-center gap-4 px-4 text-xs"
-                style={{ height: 36, background: "#F5F0E8", borderBottom: "1px solid #D8CFBE", color: "#A8997F" }}
-              >
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-brand-200 inline-block flex-shrink-0" />
-                  Психолог
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-200 inline-block flex-shrink-0" />
-                  Клиент
-                </span>
-                {showTimestamps && !audioDeleted && hasRealTimecodes && (
-                  <span className="flex items-center gap-1 ml-auto">
-                    <Clock size={10} /> нажмите на время для перехода
-                  </span>
-                )}
-              </div>
-
               {/* Scrollable transcript */}
               <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
                 {audioDeleted && (
