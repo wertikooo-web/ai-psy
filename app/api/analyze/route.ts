@@ -15,6 +15,7 @@ import { getHistoryForClient as getHistory } from "@/lib/data/clientHistory";
 import { getMaterialsForClient as getMaterials } from "@/lib/data/clientMaterials";
 import { getConsultationsForClient } from "@/lib/data/consultations";
 import { readProfile } from "@/lib/data/userProfile";
+import { getClientRequestById, getCurrentClientRequest } from "@/lib/data/clientRequests";
 
 export const maxDuration = 300;
 
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
       consultation.clientId,
       consultation.clientName,
       consultationId,
+      consultation.requestId,
     );
 
     // Mark as analyzing
@@ -239,13 +241,18 @@ async function assembleClientContext(
   clientId: string,
   fallbackName: string,
   currentConsultationId: string,
+  requestId?: string | null,
 ): Promise<string> {
-  // All four sources fetched in parallel — sequential was ~500-1400ms, parallel is ~100-300ms
-  const [client, history, materials, clientConsults] = await Promise.allSettled([
+  // All sources fetched in parallel — sequential was ~500-1400ms, parallel is ~100-300ms
+  const [client, history, materials, clientConsults, linkedRequest] = await Promise.allSettled([
     getClientById(clientId),
     getHistory(clientId),
     getMaterials(clientId),
     getConsultationsForClient(clientId),
+    // Priority: request linked to this consultation → current client request
+    requestId
+      ? getClientRequestById(requestId)
+      : getCurrentClientRequest(clientId),
   ]);
 
   const parts: string[] = [];
@@ -254,7 +261,12 @@ async function assembleClientContext(
   const clientData = client.status === "fulfilled" ? client.value : null;
   if (clientData) {
     parts.push(`Клиент: ${clientData.name}`);
-    if (clientData.concern)              parts.push(`Запрос: ${clientData.concern}`);
+
+    // Request text: linked request > current request > legacy clients.concern
+    const reqData = linkedRequest.status === "fulfilled" ? linkedRequest.value : null;
+    const requestText = reqData?.text ?? (clientData.concern || undefined);
+    if (requestText) parts.push(`Запрос: ${requestText}`);
+
     if (clientData.mainTopics?.length)   parts.push(`Темы работы: ${clientData.mainTopics.join(", ")}`);
     if (clientData.currentFocus)         parts.push(`Текущий фокус: ${clientData.currentFocus}`);
   } else {

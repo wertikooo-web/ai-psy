@@ -1,4 +1,20 @@
-# TRANSCRIPT AI · PSY — CLAUDE.md
+# TRANSCRIPT AI · PSY — AGENTS.md
+
+---
+
+## Обязательное начало новой сессии
+
+Перед любой работой с кодом:
+
+1. Прочитай `project_state.md` — он содержит актуальное состояние проекта.
+2. Прочитай `NEXT_STEPS.md` — он содержит приоритизированный список задач.
+3. Не переспрашивай об архитектуре если это уже задокументировано в project_state.md.
+4. Не проводи повторный аудит кодовой базы если project_state.md уже существует — доверяй ему и обновляй по мере изменений.
+5. Supabase уже подключён и работает в production. Фраза "Do not connect Supabase yet" в разделе Data Storage ниже — устарела.
+6. Основной компонент страницы консультации — `RealConsultationView.tsx`, не `ConsultationClient.tsx`.
+7. Анализы хранятся в `consultations.analyses` (JSONB массив), не в отдельной таблице.
+
+---
 
 ## Project Mission
 
@@ -428,3 +444,22 @@ Finish:
 Client → Consultation → Transcript → AI Analysis → Chat → Client History
 
 Before introducing major new features.
+
+
+
+## Updating Project State
+
+When the user says "обнови project state", "обнови состояние проекта",
+"актуализируй PROJECT_STATE" or similar:
+
+1. Do not trust PROJECT_STATE.md blindly.
+2. Inspect the real codebase, migrations, API routes, components, package.json and git diff.
+3. Update PROJECT_STATE.md to reflect the current real implementation.
+4. Update NEXT_STEPS.md:
+   - remove tasks that are already implemented;
+   - mark partially implemented tasks accurately;
+   - add only next steps that follow from the current MVP workflow.
+5. Do not invent features.
+6. Do not mark something as working unless it exists in code or was verified.
+7. Include date of update.
+8. Keep Client → Consultation → Transcript → Analysis → Chat → Client History as the priority.

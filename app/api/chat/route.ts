@@ -4,6 +4,7 @@ import { getConsultation } from "@/lib/data/consultations";
 import { getClientById } from "@/lib/data/clients";
 import { getMaterialsForClient } from "@/lib/data/clientMaterials";
 import { readProfile } from "@/lib/data/userProfile";
+import { getClientRequestById, getCurrentClientRequest } from "@/lib/data/clientRequests";
 import type { FormattedSegment } from "@/lib/consultationStore";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -76,9 +77,16 @@ export async function POST(req: NextRequest) {
           ]);
 
           if (client) {
-            clientName    = client.name || clientName;
-            clientAge     = client.age ? `${client.age} лет` : "";
-            clientConcern = client.concern || "";
+            clientName = client.name || clientName;
+            clientAge  = client.age ? `${client.age} лет` : "";
+
+            // Request text: linked request (by requestId) > current request > legacy clients.concern
+            const linkedReq = await (
+              consultation.requestId
+                ? getClientRequestById(consultation.requestId)
+                : getCurrentClientRequest(consultation.clientId)
+            ).catch(() => null);
+            clientConcern = linkedReq?.text ?? client.concern ?? "";
           }
 
           // Client materials (exclude therapist_notes — private)

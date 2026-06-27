@@ -348,7 +348,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   if (hasAnyResult || generatingMode !== null) {
     const segments: import("@/lib/mockData").TranscriptSegment[] = [];
     return (
-      <div className="flex flex-col h-screen bg-[#FAF8F5]">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-[#FAF8F5]">
         <header className="border-b px-5 py-3 flex items-center gap-4 flex-shrink-0" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
           <Link href={clientHref} className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
             <ArrowLeft size={15} />{c.clientName || "Назад"}
@@ -368,7 +368,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
           </div>
         </header>
 
-        <div className="flex-1 min-h-0 flex overflow-hidden divide-x divide-[#D8CFBE]">
+        <div className="flex-1 min-h-0 flex items-stretch overflow-hidden divide-x divide-[#D8CFBE]">
           <TranscriptPanel
             consultationId={c.id}
             segments={segments}
@@ -538,7 +538,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#FAF8F5]">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-[#FAF8F5]">
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <header className="border-b px-5 py-3 flex items-center gap-4 flex-shrink-0" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>

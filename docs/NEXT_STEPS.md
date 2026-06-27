@@ -1,5 +1,5 @@
 # NEXT STEPS — TRANSCRIPT AI · PSY
-> Обновлено: 2026-06-26. Актуальный список задач. Детальный контекст — в project_state.md.
+> Обновлено: 2026-06-27. Актуальный список задач. Детальный контекст — в project_state.md.
 
 ---
 
@@ -16,6 +16,14 @@
 
 - [ ] **003_user_profile_ai_settings.sql** — добавляет analysis_style, analysis_length, chat_style, ai_instructions в user_profile
 - [ ] **004_analysis_evidence.sql** — добавляет колонку `analysis_evidence jsonb` в consultations
+- [x] **005_chat_messages.sql** ✓ — создаёт таблицу `consultation_chat_messages` (нужно запустить если не запускали)
+- [x] **006_compressed_transcript.sql** ✓ — `compressed_transcript jsonb` в consultations
+- [x] **007_client_materials_consultation_id.sql** ✓ — `consultation_id` в client_materials
+- [ ] **008_client_requests.sql** — создаёт таблицу `client_requests`, мигрирует clients.concern
+- [ ] **009_rpc_client_requests.sql** — RPC функции для атомарных операций с запросами
+- [ ] **010_consultations_request_id.sql** — добавляет `request_id uuid FK` в consultations
+
+> Миграции 005-010 существуют в `supabase/migrations/` но выполнение в production нужно проверить отдельно.
 
 ---
 
@@ -47,11 +55,18 @@
   - SQL миграция: `004_analysis_evidence.sql` (нужно запустить вручную)
   - Типы: EvidenceItem, AnalysisEvidence в consultationStore.ts
 
-- [ ] **Сохранение истории чата в DB**
-  - Создать таблицу `chat_messages` (consultation_id, role, content, created_at)
-  - Загружать историю при открытии консультации
-  - Сохранять каждое сообщение после отправки
-  - Файлы: `components/consultation/ChatPanel.tsx`, `app/api/chat/route.ts`, новая migration
+- [x] **Сохранение истории чата в DB** ✓ ВЫПОЛНЕНО
+  - Таблица `consultation_chat_messages` (migration 005)
+  - `lib/data/chatMessages.ts` — getChatMessages, saveChatMessages, clearChatMessages, getChatMessageCounts
+  - `app/api/consultations/[id]/chat/route.ts` — GET/POST/DELETE
+  - ChatPanel загружает историю при открытии, сохраняет после каждого обмена
+
+- [x] **Запросы клиента (client_requests)** ✓ ВЫПОЛНЕНО
+  - Таблица `client_requests` (migration 008) + RPC функции (migration 009)
+  - `request_id` FK в consultations (migration 010)
+  - `RequestHistoryDrawer` — история консультаций по запросу
+  - `ClientRequestBlock` — управление запросами в карточке клиента
+  - Auto-attach `request_id` при создании новой консультации
 
 - [ ] **Защита от двойного запуска транскрибации**
   - При старте транскрибации: проверять `status = 'transcribing'` в DB и отклонять второй запрос
@@ -69,7 +84,7 @@
   - Единый блок: модель, стиль анализа, объём, стиль чата, инструкция
   - Применяется ко всем новым анализам через profile
 
-- [ ] **Страница архива консультаций** (отложено)
+- [ ] **Страница архива консультаций** (отложено — сначала нужна миграция для колонки `archived_at`, которая отсутствует в DB)
 
 - [ ] **Редактирование транскрипта вручную**
   - Inline-редактирование реплик в TranscriptPanel
@@ -90,4 +105,3 @@
 - [ ] Уведомления об ошибках транскрибации без перезагрузки (polling или SSE)
 - [ ] Экспорт всего клиентского досье в PDF
 - [ ] RLS в Supabase (если появится авторизация)
-- [ ] Сохранение истории чата в DB

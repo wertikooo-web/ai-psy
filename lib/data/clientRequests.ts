@@ -99,6 +99,21 @@ export async function getCurrentClientRequest(clientId: string): Promise<ClientR
 }
 
 /**
+ * A specific request by its own ID, or null if not found / deleted.
+ */
+export async function getClientRequestById(id: string): Promise<ClientRequest | null> {
+  assertSupabase();
+  const { data, error } = await supabaseServer!
+    .from("client_requests")
+    .select("*")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(`[DAL/getClientRequestById] ${error.message}`);
+  return data ? rowToClientRequest(data as Record<string, unknown>) : null;
+}
+
+/**
  * Returns the id of the current request for use when creating a new consultation.
  * Returns null if the client has no current request yet.
  */
