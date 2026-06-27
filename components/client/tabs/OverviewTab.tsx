@@ -1,8 +1,9 @@
 "use client";
 
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { ClientRequestBlock } from "@/components/client/ClientRequestBlock";
 
-// ── Craft palette (consistent with clients page) ──────────────────────────────
+// ── Craft palette (consistent with clients page) ───────────────────────────────
 const S = {
   bg:     "#FBF8F2",
   border: "#D8CFBE",
@@ -19,13 +20,15 @@ interface MockSession {
 }
 
 interface OverviewClient {
-  mainTopics?: string[];
-  lastShift?: string;
+  mainTopics?:   string[];
+  lastShift?:    string;
   currentFocus?: string;
 }
 
 interface Props {
-  client: OverviewClient;
+  client:        OverviewClient;
+  clientId:      string;
+  isMock:        boolean;
   mockSessions?: MockSession[];
 }
 
@@ -40,24 +43,19 @@ function SectionBlock({ title, children }: { title: string; children: React.Reac
   );
 }
 
-export function OverviewTab({ client, mockSessions = [] }: Props) {
-  const dynamics = mockSessions.find((s) => s.clientMap)?.clientMap?.dynamics ?? [];
-  const hasContent =
+export function OverviewTab({ client, clientId, isMock, mockSessions = [] }: Props) {
+  const dynamics    = mockSessions.find((s) => s.clientMap)?.clientMap?.dynamics ?? [];
+  const hasSections =
     (client.mainTopics?.length ?? 0) > 0 ||
-    client.lastShift ||
-    client.currentFocus ||
+    !!client.lastShift                    ||
     dynamics.length > 0;
-
-  if (!hasContent) {
-    return (
-      <div className="py-10 text-center text-stone-400 text-sm">
-        Обзор пополнится после первых консультаций
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-3">
+      {/* Live client request block — always rendered */}
+      <ClientRequestBlock clientId={clientId} isMock={isMock} />
+
+      {/* Повторяющиеся темы */}
       {(client.mainTopics?.length ?? 0) > 0 && (
         <SectionBlock title="Повторяющиеся темы">
           <div className="flex flex-wrap gap-2">
@@ -74,18 +72,14 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
         </SectionBlock>
       )}
 
+      {/* Последний значимый сдвиг */}
       {client.lastShift && (
         <SectionBlock title="Последний значимый сдвиг">
           <p className="text-sm text-stone-700 leading-relaxed italic">{client.lastShift}</p>
         </SectionBlock>
       )}
 
-      {client.currentFocus && (
-        <SectionBlock title="Запрос клиента">
-          <p className="text-sm font-medium text-slate-700">{client.currentFocus}</p>
-        </SectionBlock>
-      )}
-
+      {/* Динамика терапии */}
       {dynamics.length > 0 && (
         <SectionBlock title="Динамика терапии">
           <div className="flex flex-wrap gap-2">
@@ -104,6 +98,13 @@ export function OverviewTab({ client, mockSessions = [] }: Props) {
             ))}
           </div>
         </SectionBlock>
+      )}
+
+      {/* Empty state only for mock clients with no content */}
+      {isMock && !hasSections && (
+        <div className="py-10 text-center text-stone-400 text-sm">
+          Обзор пополнится после первых консультаций
+        </div>
       )}
     </div>
   );

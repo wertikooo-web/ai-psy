@@ -279,6 +279,8 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
         {tab === "overview" && (
           <OverviewTab
             client={client}
+            clientId={id}
+            isMock={isMock}
             mockSessions={isMock ? mockSessionsForClient : []}
           />
         )}
