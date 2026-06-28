@@ -127,6 +127,16 @@ const components: Components = {
   ),
 };
 
+// Bold standalone subheadings that the AI writes as plain "Word:" lines.
+// Matches a line that is ONLY a short phrase ending in colon — no text after.
+// E.g. "Контакт:" → "**Контакт:**", leaving "Клиент сказал: что-то" untouched.
+function boldSubheadings(text: string): string {
+  return text.replace(
+    /^([А-ЯЁA-Z][а-яёА-ЯЁA-Za-z\s\-/]{0,60}):[ \t]*$/gm,
+    "**$1:**",
+  );
+}
+
 interface Props {
   content: string;
   className?: string;
@@ -136,7 +146,7 @@ export function MarkdownRenderer({ content, className }: Props) {
   return (
     <div className={className} style={{ minWidth: 0 }}>
       <ReactMarkdown components={components}>
-        {content}
+        {boldSubheadings(content)}
       </ReactMarkdown>
     </div>
   );
