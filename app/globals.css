@@ -46,6 +46,24 @@
   }
 }
 
+/* ── Consultation toolbar — shared height token ────────────────────────────── */
+/* All three column toolbars (TranscriptPanel tabs, Analysis tabs, ChatPanel
+   quick-links) MUST use .consultation-toolbar so their height is identical.
+   box-sizing: border-box is already applied globally via * { box-sizing: border-box }
+   in @layer base above, so `height` here is the full border-box height. */
+:root {
+  --consultation-toolbar-height: 36px;
+}
+
+.consultation-toolbar {
+  height: var(--consultation-toolbar-height);
+  min-height: var(--consultation-toolbar-height);
+  max-height: var(--consultation-toolbar-height);
+  display: flex;
+  flex-shrink: 0;
+  overflow-y: hidden;
+}
+
 /* ── EvidenceTooltip focus ring ────────────────────────────────────────────── */
 .evidence-tooltip-btn:focus-visible {
   outline: 2px solid #8B7355;

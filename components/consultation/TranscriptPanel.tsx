@@ -784,11 +784,11 @@ export function TranscriptPanel({
 
       {/* Tabs */}
       {(hasBoth || hasMaterials) && (
-        <div className="flex border-b flex-shrink-0 overflow-x-auto" style={{ background: "#F5F0E8", borderColor: "#E0D8CA" }}>
+        <div className="consultation-toolbar items-stretch overflow-x-auto" style={{ background: "#F5F0E8", borderBottom: "1px solid #E0D8CA" }}>
           {(!!plainText || hasFormatted || (!isNotes && segments.length > 0)) && (
             <button
               onClick={() => setActiveTab("transcript")}
-              className={clsx("flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+              className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
                 activeTab === "transcript" ? "border-brand-500 text-brand-600" : "border-transparent text-slate-400 hover:text-slate-600"
               )}
             >
@@ -798,7 +798,7 @@ export function TranscriptPanel({
           {!!notesText && (
             <button
               onClick={() => setActiveTab("notes")}
-              className={clsx("flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+              className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
                 activeTab === "notes" ? "border-amber-500 text-amber-600" : "border-transparent text-slate-400 hover:text-slate-600"
               )}
             >
@@ -808,7 +808,7 @@ export function TranscriptPanel({
           {hasMaterials && (
             <button
               onClick={() => setActiveTab("materials")}
-              className={clsx("flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+              className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
                 activeTab === "materials" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600"
               )}
             >

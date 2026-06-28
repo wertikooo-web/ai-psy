@@ -310,8 +310,8 @@ export function ChatPanel({
         </div>
       </div>
 
-      {/* Sub-panel: quick links — height: 36 matches transcript legend strip and analysis tabs bar */}
-      <div className="flex items-center gap-2 px-4 flex-shrink-0" style={{ height: 36, background: "#F5F0E8", borderBottom: "1px solid #D8CFBE" }}>
+      {/* Sub-panel: quick links */}
+      <div className="consultation-toolbar items-center gap-2 px-4" style={{ background: "#F5F0E8", borderBottom: "1px solid #D8CFBE" }}>
         <a
           href="https://chatgpt.com/g/g-6a39895c066481919568675af786bde7-transcript-ai-psy"
           target="_blank"

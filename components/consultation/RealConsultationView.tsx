@@ -505,7 +505,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
             {/* Mode tabs — shown when 2+ analyses exist, or a second one is generating */}
             {(analyses.length > 1 || (analyses.length === 1 && generatingMode !== null && generatingMode !== analyses[0]?.mode)) && (
-              <div className="flex border-b flex-shrink-0 overflow-x-auto scrollbar-none" style={{ height: 36, background: "#F5F0E8", borderColor: "#D8CFBE" }}>
+              <div className="consultation-toolbar items-stretch overflow-x-auto scrollbar-none" style={{ background: "#F5F0E8", borderBottom: "1px solid #D8CFBE" }}>
                 {ANALYSIS_MODES
                   .filter(m => analysesByMode.has(m.id) || generatingMode === m.id)
                   .map(m => (
