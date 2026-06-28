@@ -270,7 +270,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
         </div>
 
         {/* Tab navigation — scrollable for 6 tabs */}
-        <div className="flex gap-1 bg-stone-200/80 rounded-xl p-1 overflow-x-auto">
+        <div className="flex gap-1 bg-stone-300 rounded-xl p-1 overflow-x-auto">
           {TABS.map((t) => (
             <button
               key={t.id}
