@@ -708,7 +708,7 @@ function EventFormModal({
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Клиент</label>
             <select className={inputCls} value={form.clientId}
               onChange={(e) => handleClientChange(e.target.value)}>
-              <option value="">— без клиента —</option>
+              <option value="">— Новый клиент —</option>
               {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
