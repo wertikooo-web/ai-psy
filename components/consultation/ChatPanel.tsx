@@ -88,6 +88,7 @@ export function ChatPanel({
   const [clearPending, setClearPending]   = useState(false);
   const [clearLoading, setClearLoading]   = useState(false);
   const [saveState,    setSaveState]      = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [savedCount,   setSavedCount]     = useState<number | null>(null);
   const bottomRef    = useRef<HTMLDivElement>(null);
   const textareaRef  = useRef<HTMLTextAreaElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -258,8 +259,11 @@ export function ChatPanel({
 
 
 
+  // true when there are messages not yet saved in this session
+  const isDirty = messages.length > 0 && (savedCount === null || messages.length > savedCount);
+
   async function handleSaveChat() {
-    if (!consultationId || messages.length === 0 || saveState === "saving") return;
+    if (!consultationId || !isDirty || saveState === "saving") return;
     setSaveState("saving");
     try {
       const consultRes = await fetch(`/api/consultations/${consultationId}`);
@@ -282,9 +286,9 @@ export function ChatPanel({
       });
       if (!res.ok) throw new Error();
       setSaveState("saved");
+      setSavedCount(messages.length); // lock button until new messages appear
     } catch {
       setSaveState("error");
-    } finally {
       setTimeout(() => setSaveState("idle"), 2800);
     }
   }
@@ -396,21 +400,32 @@ export function ChatPanel({
         <div className="flex items-center">
             <button
               onClick={handleSaveChat}
-              disabled={messages.length === 0 || saveState === "saving"}
+              disabled={!isDirty || saveState === "saving"}
               aria-label="Сохранить чат"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed"
               style={{
-                background: saveState === "saved" ? "#D4EDD9" : saveState === "error" ? "#FDECEA" : "#E8E3DA",
-                color:      saveState === "saved" ? "#2D6A4F" : saveState === "error" ? "#B91C1C" : "#6B5E4E",
-                border: `1px solid ${saveState === "saved" ? "#A8D4B0" : saveState === "error" ? "#FECACA" : "#D0C7BA"}`,
+                background: !isDirty && savedCount !== null ? "#D4EDD9"
+                          : saveState === "error"           ? "#FDECEA"
+                          :                                   "#E8E3DA",
+                color:      !isDirty && savedCount !== null ? "#2D6A4F"
+                          : saveState === "error"           ? "#B91C1C"
+                          :                                   "#6B5E4E",
+                border: `1px solid ${
+                  !isDirty && savedCount !== null ? "#A8D4B0"
+                : saveState === "error"           ? "#FECACA"
+                :                                   "#D0C7BA"}`,
+                opacity: !isDirty && savedCount !== null ? 0.7 : 1,
               }}
-              onMouseEnter={e => { if (saveState === "idle") e.currentTarget.style.background = "#DDD7CE"; }}
-              onMouseLeave={e => { if (saveState === "idle") e.currentTarget.style.background = "#E8E3DA"; }}
+              onMouseEnter={e => { if (isDirty && saveState === "idle") e.currentTarget.style.background = "#DDD7CE"; }}
+              onMouseLeave={e => { if (isDirty && saveState === "idle") e.currentTarget.style.background = "#E8E3DA"; }}
             >
-              {saveState === "saving" ? <Loader2 size={11} className="animate-spin" />
-             : saveState === "saved"  ? <Check size={11} />
-             : <BookmarkPlus size={11} />}
-              {saveState === "saving" ? "Сохраняю…" : saveState === "saved" ? "Сохранено" : saveState === "error" ? "Ошибка" : "Сохранить"}
+              {saveState === "saving"              ? <Loader2 size={11} className="animate-spin" />
+             : !isDirty && savedCount !== null     ? <Check size={11} />
+             :                                       <BookmarkPlus size={11} />}
+              {saveState === "saving"          ? "Сохраняю…"
+             : saveState === "error"           ? "Ошибка"
+             : !isDirty && savedCount !== null ? "Уже сохранено"
+             :                                   "Сохранить"}
             </button>
           </div>
       </div>
