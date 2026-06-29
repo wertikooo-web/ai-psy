@@ -558,11 +558,18 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               {generatingMode !== null && generatingMode === displayedMode ? (
                 <AnalysisProgress transcriptLen={transcriptText?.length ?? 0} />
               ) : selectedAnalysis ? (
-                <AnalysisBlockRenderer
-                  result={selectedAnalysis.result}
-                  blocks={selectedAnalysis.blocks}
-                  showLupa={showEvidenceIcons}
-                />
+                <>
+                  {analysisStale && (
+                    <p className="text-xs mb-3 italic" style={{ color: "#A8997F" }}>
+                      * Данные изменились — обновите анализ
+                    </p>
+                  )}
+                  <AnalysisBlockRenderer
+                    result={selectedAnalysis.result}
+                    blocks={selectedAnalysis.blocks}
+                    showLupa={showEvidenceIcons}
+                  />
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
                   <BrainCircuit size={32} style={{ color: "#C9BBAA" }} />
