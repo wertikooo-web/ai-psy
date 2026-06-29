@@ -2,11 +2,10 @@
  * Types and utilities for structured analysis blocks (Step 2).
  *
  * AnalysisBlock wraps one semantic section of the analysis output.
- * Blocks with isInterpretive=true may carry evidenceTooltip and evidenceRefs
- * for the future 🔍 UI (Step 3).
+ * Blocks with isInterpretive=true carry explanation + evidenceRefs for the 🔍 UI.
  *
  * The `result` field on an analysis entry remains the canonical markdown text.
- * Blocks are a parallel structure for Step 3 — never shown in old UI.
+ * Blocks are a parallel structure — never shown in old UI.
  */
 
 import { z } from "zod";
@@ -35,7 +34,10 @@ export type AnalysisBlock = {
   content: string;
   tags?: string[];
   isInterpretive: boolean;
-  evidenceTooltip?: string[];   // 2–5 short strings, only for interpretive blocks
+  /** Rich 2–4 sentence explanation: observation + significance + limitation. */
+  explanation?: string;
+  /** Legacy short-line array — kept for backward compat with pre-explanation analyses. */
+  evidenceTooltip?: string[];
   evidenceRefs?: EvidenceReference[];
   confidence?: "high" | "medium" | "low";
 };
@@ -60,7 +62,7 @@ export function prepareEvidenceForAnalysis(ev: AnalysisEvidence): PreparedAnalys
       occurrences: t.occurrences,
       confidence: t.confidence,
       segmentId:  t.evidence[0]?.segmentId,
-      quote:      t.evidence[0]?.quote?.slice(0, 80),
+      quote:      t.evidence[0]?.quote?.slice(0, 100),
     })),
     repeatedPhrases: ev.repeatedPhrases.slice(0, 5).map((p) => ({
       phrase:      p.phrase,
@@ -69,19 +71,19 @@ export function prepareEvidenceForAnalysis(ev: AnalysisEvidence): PreparedAnalys
       segmentId:   p.evidence[0]?.segmentId,
     })),
     uncertaintyTotal:    ev.uncertaintyMarkers.total,
-    uncertaintyExamples: ev.uncertaintyMarkers.examples.slice(0, 3).map((e) => ({
+    uncertaintyExamples: ev.uncertaintyMarkers.examples.slice(0, 4).map((e) => ({
       segmentId: e.segmentId,
-      quote:     e.quote.slice(0, 70),
+      quote:     e.quote.slice(0, 90),
     })),
     offTopicAnswers: ev.possibleOffTopicAnswers.slice(0, 3).map((e) => ({
       segmentId:  e.segmentId,
-      quote:      e.quote.slice(0, 80),
+      quote:      e.quote.slice(0, 100),
       reason:     e.reason,
       confidence: e.confidence,
     })),
     importantQuotes: ev.importantQuotes.slice(0, 5).map((e) => ({
       segmentId:  e.segmentId,
-      quote:      e.quote.slice(0, 100),
+      quote:      e.quote.slice(0, 120),
       reason:     e.reason,
       confidence: e.confidence,
     })),
@@ -101,7 +103,8 @@ export function evidenceToPromptSection(ev: PreparedAnalysisEvidence): string {
     lines.push("**Повторяющиеся темы:**");
     for (const t of ev.repeatedThemes) {
       const seg = t.segmentId ? ` (${t.segmentId})` : "";
-      lines.push(`- ${t.label}: ${t.occurrences}× — уверенность: ${t.confidence}${seg}`);
+      const q   = t.quote     ? ` — «${t.quote}»`   : "";
+      lines.push(`- ${t.label}: ${t.occurrences}× — уверенность: ${t.confidence}${seg}${q}`);
     }
     lines.push("");
   }
@@ -168,6 +171,7 @@ const AnalysisBlockSchema = z.object({
   content:        z.string().max(20000),
   tags:           z.array(z.string().max(100)).max(10).optional(),
   isInterpretive: z.boolean(),
+  explanation:    z.string().max(1500).optional(),
   evidenceTooltip: z.array(z.string().max(600)).min(1).max(8).optional(),
   evidenceRefs:   z.array(EvidenceReferenceSchema).max(10).optional(),
   confidence:     z.enum(["high", "medium", "low"]).optional(),
@@ -194,23 +198,76 @@ export function buildBlockExtractionPrompt(
 1. Готовый аналитический текст (разбит на разделы с заголовками).
 2. Компактные данные наблюдений из транскрипта.
 
-Твоя задача — разбить текст на блоки и для ИНТЕРПРЕТАЦИОННЫХ блоков создать evidenceTooltip.
+Твоя задача — разбить текст на блоки и для ИНТЕРПРЕТАЦИОННЫХ блоков создать поле explanation.
 
-ПРАВИЛА:
+═══════════════════════════════════════════════════════
+ПРАВИЛА РАЗБИВКИ НА БЛОКИ:
+═══════════════════════════════════════════════════════
+
 - Каждый заголовок (##, ###) и его текст — отдельный блок.
 - isInterpretive: true — только для гипотез, интерпретаций, паттернов, обобщений.
   Примеры: "Похоже, тема оценки...", "Можно предположить...", "Это может быть..."
 - isInterpretive: false — для фактических описаний, перечислений тем, вопросов к следующей сессии.
   Примеры: "Клиент упоминает...", "В транскрипте...", "Вопросы для следующей сессии:"
-- evidenceTooltip: 2–5 коротких строк, только для isInterpretive=true, только если есть реальные данные.
-  Каждая строка отвечает на вопрос: "почему этот вывод появился в анализе?"
-  Пиши от наблюдения, не от модели. Не "AI считает...", а "Тема встречается в 4 эпизодах..."
-  Не ставь диагнозы. Не делай категоричных утверждений.
-- Если evidenceTooltip нечем подкрепить — не создавай его вовсе.
-- evidenceRefs: ссылайся только на segmentId и category, которые реально есть в данных выше.
-  Не придумывай segmentId, таймкоды, цитаты.
-- confidence: только для interpretive blocks, берётся из данных (не выдумывай).
 - Не суммаризируй и не перефразируй content — переноси текст точно как в анализе.
+- Если внутри блока есть самостоятельные строки-подзаголовки без Markdown-разметки
+  (например «Фигура», «Фон», «Контакт», «Запрос клиента» на отдельной строке без ##) —
+  при копировании content добавь перед ними ### : "### Фигура\nТекст..."
+
+═══════════════════════════════════════════════════════
+ПОЛЕ explanation (ГЛАВНОЕ ИЗМЕНЕНИЕ):
+═══════════════════════════════════════════════════════
+
+Для каждого блока с isInterpretive=true и РЕАЛЬНЫМИ данными наблюдений:
+обязательно создай поле explanation из 2–4 содержательных предложений.
+
+Структура explanation (три части):
+1. ЧТО наблюдается: фактическое наблюдение из данных (без интерпретации).
+2. ПОЧЕМУ это связано с выводом: логика связи между наблюдением и выводом.
+3. ОГРАНИЧЕНИЕ: что нельзя утверждать точно, альтернативное объяснение.
+
+КРИТЕРИИ КАЧЕСТВА:
+
+ПЛОХО (нельзя):
+  "Тема родителей поднималась 3 раза."
+  "Фраза «не знаю» использована 5 раз."
+  "Найдено несколько упоминаний."
+
+ХОРОШО (нужно):
+  "Клиент несколько раз возвращается к теме влияния родителей на его решения.
+  Эти упоминания появляются при обсуждении выбора профессии и будущего —
+  поэтому тема выглядит не случайной, а связанной с актуальной неопределённостью.
+  Само количество повторов не доказывает психологическую причину, но показывает,
+  что этот вопрос занимает заметное место в разговоре."
+
+  "Фраза «не знаю» несколько раз появляется в ответах на вопросы о будущем
+  и собственных желаниях. В этих фрагментах она может отражать реальную
+  неопределённость, трудность сформулировать позицию или нежелание отвечать
+  однозначно. По одному речевому маркеру нельзя делать уверенный вывод —
+  это скорее направление для дальнейшего уточнения."
+
+ОБЪЁМ: 40–90 слов. Не превращай лупу в отдельный анализ. Не пересказывай основной вывод.
+ГОЛОС: от наблюдения, не от модели. Не "AI считает...", а "Тема встречается..."
+Не ставь диагнозы. Не делай категоричных утверждений.
+
+Если evidenceRefs нечем подкрепить реальными данными — не создавай explanation вовсе.
+
+═══════════════════════════════════════════════════════
+ПОЛЕ evidenceRefs:
+═══════════════════════════════════════════════════════
+
+- Ссылайся только на segmentId и category, которые реально есть в данных выше.
+- В поле quote включай ТОЧНЫЕ цитаты из данных наблюдений (до 150 символов).
+  Не придумывай цитаты. Берись только из данных, которые показаны выше.
+- Не придумывай segmentId, таймкоды.
+- Выбирай 1–3 самых сильных подтверждающих фрагмента, а не все подряд.
+
+═══════════════════════════════════════════════════════
+ОСТАЛЬНЫЕ ПОЛЯ:
+═══════════════════════════════════════════════════════
+
+- confidence: только для interpretive blocks, берётся из данных (не выдумывай).
+- evidenceTooltip: НЕ создавай — поле устарело, explanation заменяет его.
 - Возвращай ТОЛЬКО валидный JSON, без markdown и комментариев.
 
 СТРУКТУРА JSON:
@@ -219,12 +276,21 @@ export function buildBlockExtractionPrompt(
     {
       "id": "block-1",
       "title": "Заголовок раздела",
-      "content": "Точный текст раздела",
+      "content": "Точный текст раздела с нормализованными ### подзаголовками",
       "isInterpretive": true,
-      "evidenceTooltip": ["строка 1", "строка 2"],
-      "evidenceRefs": [{"category": "repeatedThemes", "segmentId": "seg-3"}],
+      "explanation": "2–4 предложения: что наблюдается + почему важно + ограничение.",
+      "evidenceRefs": [
+        {"category": "repeatedThemes", "segmentId": "seg-3", "quote": "Точная цитата из данных"},
+        {"category": "importantQuotes", "quote": "Другая цитата из данных"}
+      ],
       "confidence": "medium",
       "tags": ["тревога"]
+    },
+    {
+      "id": "block-2",
+      "title": "Фактический раздел",
+      "content": "Текст",
+      "isInterpretive": false
     }
   ]
 }`;

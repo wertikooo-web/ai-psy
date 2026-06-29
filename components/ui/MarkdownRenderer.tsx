@@ -127,14 +127,25 @@ const components: Components = {
   ),
 };
 
-// Bold standalone subheadings that the AI writes as plain "Word:" lines.
-// Matches a line that is ONLY a short phrase ending in colon — no text after.
-// E.g. "Контакт:" → "**Контакт:**", leaving "Клиент сказал: что-то" untouched.
+// Bold standalone subheadings that the AI writes without Markdown ## markers.
+// Two patterns:
+//   1. "Word:" / "Word phrase:" — phrase ending with colon on its own line.
+//   2. Short Cyrillic-only line (≤35 chars, no trailing punctuation) — gestalt terms
+//      like "Фигура", "Фон", "Контакт и прерывания", "Незавершённые ситуации".
+// Leaves regular sentences untouched (they end with . ! ? , or are too long).
 function boldSubheadings(text: string): string {
-  return text.replace(
-    /^([А-ЯЁA-Z][а-яёА-ЯЁA-Za-z\s\-/]{0,60}):[ \t]*$/gm,
-    "**$1:**",
-  );
+  return text
+    // Pattern 1: "Word:" → "**Word:**"
+    .replace(
+      /^([А-ЯЁA-Z][а-яёА-ЯЁA-Za-z\s\-/]{0,60}):[ \t]*$/gm,
+      "**$1:**",
+    )
+    // Pattern 2: short standalone Cyrillic section label (no colon, no punctuation)
+    // Starts with capital Cyrillic, ends with lowercase Cyrillic, ≤35 chars total.
+    .replace(
+      /^([А-ЯЁ][а-яёА-ЯЁ\s\-]{1,33}[а-яёА-ЯЁ])[ \t]*$/gm,
+      "**$1**",
+    );
 }
 
 interface Props {

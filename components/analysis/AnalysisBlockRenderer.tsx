@@ -5,7 +5,7 @@
  *
  * If blocks are present (Step 2 extraction was done):
  *   - Each block's content is rendered via MarkdownRenderer
- *   - Interpretive blocks with valid evidenceTooltip get a 🔍 icon
+ *   - Interpretive blocks with explanation or evidenceTooltip get a 🔍 icon
  *
  * If blocks are absent (old analysis or extraction not yet done):
  *   - Falls back to MarkdownRenderer(result) — identical to previous behavior
@@ -52,7 +52,8 @@ export function AnalysisBlockRenderer({ result, blocks, showLupa = true }: Props
                 }}
               >
                 <EvidenceTooltip
-                  tooltip={block.evidenceTooltip!}
+                  explanation={block.explanation}
+                  tooltip={block.evidenceTooltip}
                   confidence={block.confidence}
                   evidenceRefs={block.evidenceRefs}
                 />
