@@ -78,6 +78,7 @@ export type MaterialType =
   | "observation"       // Наблюдение по клиенту (из FAB, участвует в AI)
   | "gpt_analysis"      // Старые анализы GPT
   | "past_transcript"   // Транскрипт прошлой встречи
+  | "ai_chat"           // Сохранённый AI-диалог из панели чата консультации
   | "other";            // Другое
 
 export interface ClientMaterial {
@@ -129,6 +130,7 @@ export const MATERIAL_TYPE_LABELS: Record<MaterialType, string> = {
   observation:      "Наблюдение",
   gpt_analysis:     "Анализ GPT",
   past_transcript:  "Транскрипт новой встречи",
+  ai_chat:          "AI-диалог сессии",
   other:            "Другое",
 };
 

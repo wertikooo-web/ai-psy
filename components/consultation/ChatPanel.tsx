@@ -248,7 +248,7 @@ export function ChatPanel({
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type:           "therapist_notes",
+          type:           "ai_chat",
           title:          `Чат — ${consult.title || "Консультация"}`,
           content,
           consultationId,
