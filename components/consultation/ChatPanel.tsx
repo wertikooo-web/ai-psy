@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "@/lib/mockData";
-import type { ClientMaterial } from "@/lib/types";
 import {
   Send, BrainCircuit, User, ChevronsLeft, ChevronsRight,
   MessagesSquare, AlertCircle, Mic, MicOff, Trash2,
-  BookmarkPlus, Check, Loader2, ChevronUp, ChevronDown, Download,
+  BookmarkPlus, Check, Loader2, Download,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -88,10 +87,6 @@ export function ChatPanel({
   const [clearPending, setClearPending]   = useState(false);
   const [clearLoading, setClearLoading]   = useState(false);
   const [saveState,    setSaveState]      = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [chatView,     setChatView]       = useState<"active" | "saved">("active");
-  const [savedChats,   setSavedChats]     = useState<ClientMaterial[]>([]);
-  const [savedLoading, setSavedLoading]   = useState(false);
-  const [savedExpanded,setSavedExpanded]  = useState<string | null>(null);
   const bottomRef    = useRef<HTMLDivElement>(null);
   const textareaRef  = useRef<HTMLTextAreaElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -260,23 +255,7 @@ export function ChatPanel({
     URL.revokeObjectURL(url);
   }
 
-  async function loadSavedChats() {
-    if (!consultationId) return;
-    setSavedLoading(true);
-    try {
-      const consultRes = await fetch(`/api/consultations/${consultationId}`);
-      if (!consultRes.ok) return;
-      const consult = await consultRes.json();
-      const matsRes = await fetch(`/api/client-materials/${consult.clientId}`);
-      if (!matsRes.ok) return;
-      const all: ClientMaterial[] = await matsRes.json();
-      setSavedChats(all.filter(m => m.type === "ai_chat" && m.consultationId === consultationId));
-    } catch {
-      // non-critical
-    } finally {
-      setSavedLoading(false);
-    }
-  }
+
 
   async function handleSaveChat() {
     if (!consultationId || messages.length === 0 || saveState === "saving") return;
@@ -302,8 +281,6 @@ export function ChatPanel({
       });
       if (!res.ok) throw new Error();
       setSaveState("saved");
-      // Refresh saved list so badge count updates
-      loadSavedChats();
     } catch {
       setSaveState("error");
     } finally {
@@ -407,36 +384,9 @@ export function ChatPanel({
 
         {/* Tabs */}
         <div className="flex items-center gap-0.5">
-          <button
-            onClick={() => setChatView("active")}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors"
-            style={{
-              background: chatView === "active" ? "#E0D8CA" : "transparent",
-              color: chatView === "active" ? "#4A3C2E" : "#9C8E80",
-            }}
-          >
-            Чат
-          </button>
-          <button
-            onClick={() => { setChatView("saved"); if (savedChats.length === 0 && !savedLoading) loadSavedChats(); }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors"
-            style={{
-              background: chatView === "saved" ? "#E0D8CA" : "transparent",
-              color: chatView === "saved" ? "#4A3C2E" : "#9C8E80",
-            }}
-          >
-            История
-            {savedChats.length > 0 && (
-              <span className="px-1 py-0 rounded-full text-[10px] font-bold" style={{ background: "#D0C7BA", color: "#6B5E4E" }}>
-                {savedChats.length}
-              </span>
-            )}
-          </button>
         </div>
 
-        {/* Actions — only in active chat view */}
-        {chatView === "active" && (
-          <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5">
             <a
               href="https://chatgpt.com/g/g-6a39895c066481919568675af786bde7-transcript-ai-psy"
               target="_blank"
@@ -469,85 +419,8 @@ export function ChatPanel({
               {saveState === "saving" ? "Сохраняю…" : saveState === "saved" ? "Сохранено" : saveState === "error" ? "Ошибка" : "Сохранить"}
             </button>
           </div>
-        )}
       </div>
 
-      {/* ── Saved chats view ──────────────────────────────────────────── */}
-      {chatView === "saved" && (
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
-          {savedLoading && (
-            <div className="flex justify-center py-8">
-              <Loader2 size={18} className="animate-spin text-slate-300" />
-            </div>
-          )}
-
-          {!savedLoading && savedChats.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <BookmarkPlus size={24} style={{ color: "#C9BBAA" }} />
-              <p className="text-sm font-medium" style={{ color: "#9C8E80" }}>Нет сохранённых чатов</p>
-              <p className="text-xs text-center" style={{ color: "#B8AA9C", maxWidth: 220 }}>
-                Нажмите «Сохранить» в активном чате — диалог появится здесь
-              </p>
-            </div>
-          )}
-
-          {savedChats.map(chat => {
-            const isOpen = savedExpanded === chat.id;
-            const lines  = chat.content.split("\n\n—\n\n");
-            const msgCount = lines.length;
-            const date = new Date(chat.createdAt).toLocaleDateString("ru-RU", {
-              day: "numeric", month: "long", year: "numeric",
-              hour: "2-digit", minute: "2-digit",
-            });
-            return (
-              <div
-                key={chat.id}
-                className="rounded-2xl border overflow-hidden"
-                style={{ background: "#FAF8F2", borderColor: "#D8CFBE" }}
-              >
-                {/* Card header */}
-                <button
-                  onClick={() => setSavedExpanded(isOpen ? null : chat.id)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                  style={{ background: isOpen ? "#EDE8DE" : "#F0EBE0" }}
-                  onMouseEnter={e => { if (!isOpen) e.currentTarget.style.background = "#EDE8DE"; }}
-                  onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = "#F0EBE0"; }}
-                >
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "#D8CFBE" }}
-                  >
-                    <MessagesSquare size={13} style={{ color: "#6B5D4F" }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: "#4A3C2E" }}>
-                      {chat.title}
-                    </p>
-                    <p className="text-xs" style={{ color: "#9C8E80" }}>
-                      {msgCount} {msgCount === 1 ? "сообщение" : msgCount < 5 ? "сообщения" : "сообщений"} · {date}
-                    </p>
-                  </div>
-                  <span style={{ color: "#9C8E80", flexShrink: 0 }}>
-                    {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  </span>
-                </button>
-
-                {/* Card content */}
-                {isOpen && (
-                  <div className="px-4 py-3 border-t" style={{ borderColor: "#E0D8CA" }}>
-                    <pre className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: "#5C4E42", fontFamily: "inherit" }}>
-                      {chat.content}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Messages + prompts + input — active chat view only */}
-      {chatView === "active" && (<>
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
         {!historyLoaded && (
           <div className="flex justify-center py-4">
@@ -672,7 +545,6 @@ export function ChatPanel({
         </div>
         <p className="text-xs text-slate-500 text-center font-medium mt-1.5">Enter — отправить · Shift+Enter — перенос</p>
       </div>
-      </>)}
     </div>
   );
 }
