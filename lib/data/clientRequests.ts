@@ -321,6 +321,87 @@ export async function softDeleteClientRequest(
   if (error) throw new Error(`[DAL/softDeleteClientRequest] ${error.message}`);
 }
 
+// ── Write: delete with optional promotion ─────────────────────────────────────
+
+/**
+ * Deletes a request (soft delete). Handles the current-request case atomically:
+ *   - Non-current request → simple soft-delete.
+ *   - Current request with other requests → promote the newest remaining one first, then delete.
+ *   - Last request → clear is_current, then soft-delete.
+ *
+ * Returns the promoted request if a promotion happened, or null otherwise.
+ */
+export async function deleteClientRequestWithPromotion(
+  requestId: string,
+  clientId:  string,
+): Promise<{ promoted: ClientRequest | null }> {
+  assertSupabase();
+
+  // Fetch and validate
+  const { data: existing, error: fetchError } = await supabaseServer!
+    .from("client_requests")
+    .select("id, client_id, is_current, deleted_at")
+    .eq("id", requestId)
+    .maybeSingle();
+  if (fetchError) throw new Error(`[DAL/deleteClientRequestWithPromotion] ${fetchError.message}`);
+  if (!existing)  throw new Error(`[DAL/deleteClientRequestWithPromotion] request ${requestId} not found`);
+
+  const row = existing as Record<string, unknown>;
+  if (row.client_id !== clientId) {
+    throw new Error(`[DAL/deleteClientRequestWithPromotion] request ${requestId} does not belong to client ${clientId}`);
+  }
+  if (row.deleted_at !== null) return { promoted: null }; // already deleted — idempotent
+
+  if (row.is_current === true) {
+    // Find the most recently created non-deleted, non-current candidate
+    const { data: candidates, error: findError } = await supabaseServer!
+      .from("client_requests")
+      .select("*")
+      .eq("client_id", clientId)
+      .eq("is_current", false)
+      .is("deleted_at", null)
+      .neq("id", requestId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (findError) throw new Error(`[DAL/deleteClientRequestWithPromotion] ${findError.message}`);
+
+    const next = (candidates ?? [])[0] as Record<string, unknown> | undefined;
+
+    if (next) {
+      // Promote next via atomic RPC, then soft-delete the old current
+      const { error: rpcError } = await supabaseServer!.rpc("set_current_client_request", {
+        p_client_id:  clientId,
+        p_request_id: next.id,
+      });
+      if (rpcError) throw new Error(`[DAL/deleteClientRequestWithPromotion] promote: ${rpcError.message}`);
+
+      const { error: delError } = await supabaseServer!
+        .from("client_requests")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", requestId);
+      if (delError) throw new Error(`[DAL/deleteClientRequestWithPromotion] delete: ${delError.message}`);
+
+      return { promoted: rowToClientRequest(next) };
+    } else {
+      // Last request — clear is_current and soft-delete in one update
+      const { error } = await supabaseServer!
+        .from("client_requests")
+        .update({ deleted_at: new Date().toISOString(), is_current: false })
+        .eq("id", requestId);
+      if (error) throw new Error(`[DAL/deleteClientRequestWithPromotion] ${error.message}`);
+      return { promoted: null };
+    }
+  }
+
+  // Non-current — simple soft-delete
+  const { error } = await supabaseServer!
+    .from("client_requests")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", requestId);
+  if (error) throw new Error(`[DAL/deleteClientRequestWithPromotion] ${error.message}`);
+  return { promoted: null };
+}
+
 // ── Re-export aliases used by the read-only step (migration 008) ──────────────
 // Keep old names working so nothing breaks if they were imported elsewhere.
 

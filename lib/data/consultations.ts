@@ -171,21 +171,47 @@ export async function softDeleteConsultation(id: string): Promise<void> {
   await jsonStore.writeAll(all.filter(c => c.id !== id));
 }
 
-export async function getConsultationsByRequestId(requestId: string): Promise<StoredConsultation[]> {
+export async function getConsultationsByRequestId(
+  requestId: string,
+  clientId?: string,
+): Promise<StoredConsultation[]> {
   if (!isSupabaseConfigured()) return [];
-  const { data, error } = await supabaseServer!
+
+  // Fetch consultations explicitly linked to this request
+  const { data: linked, error: e1 } = await supabaseServer!
     .from("consultations")
     .select("id, client_id, title, created_at, source, status, notes, transcript_text, analyses, request_id")
     .eq("request_id", requestId)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
-  if (error) {
-    // Graceful degradation — column may not exist if migration 010 hasn't run yet.
-    // Log server-side; caller gets empty list so UI shows the empty state, not an error.
-    console.error(`[DAL/getConsultationsByRequestId] requestId=${requestId} error: ${error.message}`);
+  if (e1) {
+    console.error(`[DAL/getConsultationsByRequestId] requestId=${requestId} error: ${e1.message}`);
     return [];
   }
-  return (data ?? []).map(rowToConsultation);
+
+  // Also fetch unlinked consultations for the same client (created before the request_id feature).
+  // These have request_id IS NULL but belong to the same client — they should appear in История.
+  let unlinked: typeof linked = [];
+  if (clientId) {
+    const { data: ul, error: e2 } = await supabaseServer!
+      .from("consultations")
+      .select("id, client_id, title, created_at, source, status, notes, transcript_text, analyses, request_id")
+      .eq("client_id", clientId)
+      .is("request_id", null)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true });
+    if (!e2) unlinked = ul ?? [];
+  }
+
+  // Merge, deduplicate, sort chronologically
+  const seen = new Set<string>();
+  const all: typeof linked = [];
+  for (const row of [...(linked ?? []), ...unlinked]) {
+    if (!seen.has(row.id)) { seen.add(row.id); all.push(row); }
+  }
+  all.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+  return all.map(rowToConsultation);
 }
 
 export async function softDeleteConsultationsForClient(clientId: string): Promise<void> {
