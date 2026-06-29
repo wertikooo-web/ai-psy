@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ChevronLeft, ChevronRight, Plus, Clock, MapPin, User,
   Pencil, Trash2, Check, X, LayoutGrid, CalendarDays,
@@ -890,7 +891,13 @@ function defaultForm(date?: Date, hour?: number): FormState {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function CalendarPage() {
+  const router  = useRouter();
   const today   = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
+
+  function handleClose() {
+    if (window.history.length > 1) router.back();
+    else router.push("/");
+  }
 
   const [view,          setView]          = useState<ViewType>("week");
   const [current,       setCurrent]       = useState<Date>(() => { const d = new Date(); d.setHours(0,0,0,0); return d; });
@@ -1072,6 +1079,13 @@ export default function CalendarPage() {
         <button onClick={() => openCreate()}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#4F46E5] text-white text-sm font-semibold hover:bg-[#4338CA] transition-colors">
           <Plus size={15} /> <span className="hidden sm:inline">Новая</span>
+        </button>
+
+        {/* Close */}
+        <button onClick={handleClose}
+          title="Закрыть"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors flex-shrink-0">
+          <X size={18} />
         </button>
       </header>
 
