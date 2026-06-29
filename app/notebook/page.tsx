@@ -430,7 +430,7 @@ export default function NotebookPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-[#3D3228]">Блокнот психолога</h1>
-              <p className="text-sm text-[#8F7F69]">Личные записи · без автоматического AI-контекста</p>
+              <p className="text-sm text-[#8F7F69]">Личные записи, идеи, наблюдения и напоминания</p>
             </div>
           </div>
 
@@ -465,11 +465,11 @@ export default function NotebookPage() {
               onChange={(e) => updateQuery({ sort: e.target.value as SortMode })}
               className="h-10 rounded-xl border border-[#D8CFBE] bg-white/80 px-3 text-sm text-[#4D4034] outline-none focus:border-[#6088ff]"
             >
-              <option value="newest">Сначала новые</option>
-              <option value="oldest">Сначала старые</option>
-              <option value="updated">Недавно изменённые</option>
-              <option value="client">По имени клиента</option>
-              <option value="topic">По теме</option>
+              <option value="newest">Сортировка: сначала новые</option>
+              <option value="oldest">Сортировка: сначала старые</option>
+              <option value="updated">Сортировка: недавно изменённые</option>
+              <option value="client">Сортировка: по клиенту</option>
+              <option value="topic">Сортировка: по теме</option>
             </select>
 
             {/* Group */}
@@ -478,10 +478,10 @@ export default function NotebookPage() {
               onChange={(e) => updateQuery({ group: e.target.value as GroupMode })}
               className="h-10 rounded-xl border border-[#D8CFBE] bg-white/80 px-3 text-sm text-[#4D4034] outline-none focus:border-[#6088ff]"
             >
-              <option value="none">Без группировки</option>
-              <option value="date">По дате</option>
-              <option value="client">По клиенту</option>
-              <option value="topic">По теме</option>
+              <option value="none">Группировка: нет</option>
+              <option value="date">Группировка: по дате</option>
+              <option value="client">Группировка: по клиенту</option>
+              <option value="topic">Группировка: по теме</option>
             </select>
 
             {/* New entry */}
@@ -520,6 +520,9 @@ export default function NotebookPage() {
                 <option value="">Все темы</option>
                 {TOPICS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
+              <span className="mt-1 block text-[11px] normal-case tracking-normal text-[#A8997F]">
+                Тема задаётся при создании или редактировании записи.
+              </span>
             </label>
             <label className="text-xs font-semibold uppercase tracking-wide text-[#8F7F69]">
               Дата

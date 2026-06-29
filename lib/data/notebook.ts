@@ -50,15 +50,23 @@ function rowToEntry(row: Record<string, unknown>): NotebookEntry {
   const client = row.clients as Record<string, unknown> | null | undefined;
   const hasTitleColumn = Object.prototype.hasOwnProperty.call(row, "title");
   const rawText = (row.text as string | null) ?? "";
-  const legacy = hasTitleColumn ? { title: (row.title as string | null) ?? "", text: rawText } : parseLegacyNotebookText(rawText);
+  const legacy = hasTitleColumn
+    ? {
+      title:    (row.title as string | null) ?? "",
+      text:     rawText,
+      clientId: (row.client_id as string | null) ?? undefined,
+      topic:    (row.topic as string | null) ?? undefined,
+      tags:     asStringArray(row.tags),
+    }
+    : parseLegacyNotebookMeta(rawText);
   return {
     id:         row.id as string,
     title:      legacy.title,
     text:       legacy.text,
-    clientId:   (row.client_id as string | null) ?? undefined,
+    clientId:   legacy.clientId,
     clientName: (client?.full_name as string | undefined) ?? undefined,
-    topic:      (row.topic as string | null) ?? undefined,
-    tags:       asStringArray(row.tags),
+    topic:      legacy.topic,
+    tags:       legacy.tags,
     createdAt:  row.created_at as string,
     updatedAt:  (row.updated_at as string | null) ?? (row.created_at as string),
     deletedAt:  (row.deleted_at as string | null) ?? undefined,
@@ -80,15 +88,53 @@ function sanitizeFilterText(value: string): string {
 }
 
 function parseLegacyNotebookText(text: string): { title: string; text: string } {
+  const metaMatch = text.match(/^\[\[notebook-meta:(.*?)\]\]\n\n([\s\S]*)$/);
+  if (metaMatch) {
+    try {
+      const meta = JSON.parse(decodeURIComponent(metaMatch[1])) as Partial<NotebookEntry>;
+      return {
+        title: typeof meta.title === "string" ? meta.title : "",
+        text:  metaMatch[2] ?? "",
+      };
+    } catch {
+      return { title: "", text };
+    }
+  }
   const match = text.match(/^\[\[notebook-title:(.*?)\]\]\n\n([\s\S]*)$/);
   if (!match) return { title: "", text };
   return { title: match[1].trim(), text: match[2] ?? "" };
 }
 
+function parseLegacyNotebookMeta(text: string): Pick<NotebookEntry, "title" | "text" | "clientId" | "topic" | "tags"> {
+  const metaMatch = text.match(/^\[\[notebook-meta:(.*?)\]\]\n\n([\s\S]*)$/);
+  if (metaMatch) {
+    try {
+      const meta = JSON.parse(decodeURIComponent(metaMatch[1])) as Partial<NotebookEntry>;
+      return {
+        title:    typeof meta.title === "string" ? meta.title : "",
+        text:     metaMatch[2] ?? "",
+        clientId: typeof meta.clientId === "string" ? meta.clientId : undefined,
+        topic:    typeof meta.topic === "string" ? meta.topic : undefined,
+        tags:     asStringArray(meta.tags),
+      };
+    } catch {
+      return { title: "", text, tags: [] };
+    }
+  }
+  const legacy = parseLegacyNotebookText(text);
+  return { ...legacy, tags: [] };
+}
+
 function formatLegacyNotebookText(input: NotebookInput): string {
-  const title = input.title?.trim() ?? "";
+  const meta = {
+    title:    input.title?.trim() ?? "",
+    clientId: input.clientId || undefined,
+    topic:    input.topic?.trim() || undefined,
+    tags:     normalizeTags(input.tags),
+  };
+  const hasMeta = meta.title || meta.clientId || meta.topic || meta.tags.length > 0;
   const text = input.text.trim();
-  return title ? `[[notebook-title:${title}]]\n\n${text}` : text;
+  return hasMeta ? `[[notebook-meta:${encodeURIComponent(JSON.stringify(meta))}]]\n\n${text}` : text;
 }
 
 function isMissingNotebookV2Schema(message: string): boolean {
