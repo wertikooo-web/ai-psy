@@ -7,7 +7,7 @@ import {
   Search, User, Stethoscope, ChevronsLeft, ChevronsRight, Mic,
   NotebookPen, FileText, Paperclip, ChevronDown, ChevronUp, Users,
   Loader2, Play, Pause, MoreHorizontal, Download, Trash2, AlertTriangle,
-  Volume2, Clock, EyeOff, Eye, Copy, Check,
+  Volume2, Clock, EyeOff, Eye, Copy, Check, Plus,
 } from "lucide-react";
 import { CollapsedConsultationPanel } from "./CollapsedConsultationPanel";
 import clsx from "clsx";
@@ -324,6 +324,7 @@ type ActiveTab = "transcript" | "notes" | "materials";
 
 interface TranscriptPanelProps {
   consultationId:      string;
+  clientId?:           string;
   segments:            TranscriptSegment[];
   collapsed:           boolean;
   onToggle:            () => void;
@@ -350,6 +351,7 @@ function formatDate(iso: string) {
 
 export function TranscriptPanel({
   consultationId,
+  clientId,
   segments,
   collapsed,
   onToggle,
@@ -378,6 +380,10 @@ export function TranscriptPanel({
   const [actionMsg, setActionMsg]        = useState<string | null>(null);
   const [deletingMatId, setDeletingMatId] = useState<string | null>(null);
   const [matDeleteLoading, setMatDeleteLoading] = useState(false);
+  const [obsFormOpen, setObsFormOpen]   = useState(false);
+  const [obsDraft, setObsDraft]         = useState("");
+  const [obsSaving, setObsSaving]       = useState(false);
+  const [obsSaved, setObsSaved]         = useState(false);
 
   const seekRef    = useRef<((sec: number) => void) | null>(null);
   const menuRef    = useRef<HTMLDivElement>(null);   // wraps trigger + dropdown
@@ -585,6 +591,35 @@ export function TranscriptPanel({
       setActionMsg("Ошибка удаления");
     } finally {
       setMatDeleteLoading(false);
+    }
+  }
+
+  // ── Save observation from notes tab ────────────────────────────────────────
+  async function saveObservation() {
+    if (!obsDraft.trim() || !clientId) return;
+    setObsSaving(true);
+    try {
+      const res = await fetch(`/api/client-materials/${clientId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "observation",
+          title: "Наблюдение",
+          content: obsDraft.trim(),
+          source: "manual",
+          consultationId,
+        }),
+      });
+      if (res.ok) {
+        const obs = await res.json();
+        window.dispatchEvent(new CustomEvent("observation-created", { detail: { clientId, observation: obs } }));
+        setObsDraft("");
+        setObsFormOpen(false);
+        setObsSaved(true);
+        setTimeout(() => setObsSaved(false), 3000);
+      }
+    } finally {
+      setObsSaving(false);
     }
   }
 
@@ -950,8 +985,67 @@ export function TranscriptPanel({
 
       {/* Notes */}
       {showNotes && notesText && (
-        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
           <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{notesText}</p>
+
+          {/* Add observation block */}
+          {clientId && (
+            <div className="pt-2 border-t" style={{ borderColor: "#E0D8CA" }}>
+              {!obsFormOpen ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setObsFormOpen(true)}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors"
+                    style={{ background: "#EFF6FF", borderColor: "#BFDBFE", color: "#1E40AF" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#DBEAFE"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "#EFF6FF"; }}
+                  >
+                    <Plus size={11} /> Добавить наблюдение
+                  </button>
+                  {obsSaved && (
+                    <span className="text-xs font-medium" style={{ color: "#16A34A" }}>
+                      ✓ Наблюдение сохранено
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <textarea
+                    autoFocus
+                    rows={3}
+                    value={obsDraft}
+                    onChange={e => setObsDraft(e.target.value)}
+                    placeholder="Введите наблюдение о клиенте..."
+                    className="w-full px-3 py-2 rounded-xl border text-sm text-slate-800 placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none"
+                    style={{ borderColor: "#BFDBFE", background: "#FAFCFF" }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveObservation();
+                      if (e.key === "Escape") { setObsFormOpen(false); setObsDraft(""); }
+                    }}
+                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => { setObsFormOpen(false); setObsDraft(""); }}
+                      className="text-xs text-stone-400 hover:text-stone-600 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      onClick={saveObservation}
+                      disabled={obsSaving || !obsDraft.trim()}
+                      className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-40"
+                      style={{ background: "#1E40AF", color: "#fff" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "#1D4ED8"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "#1E40AF"; }}
+                    >
+                      {obsSaving ? <Loader2 size={11} className="animate-spin" /> : null}
+                      {obsSaving ? "Сохраняю..." : "Сохранить"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
