@@ -19,12 +19,12 @@ import { Mic, ArrowLeft, Trash2, Pause, Archive, RotateCcw } from "lucide-react"
 
 type Tab = "overview" | "consultations" | "history" | "observations" | "materials";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "overview",      label: "Обзор"            },
-  { id: "consultations", label: "Консультации"      },
-  { id: "history",       label: "История"           },
-  { id: "observations",  label: "Наблюдения"        },
-  { id: "materials",     label: "Материалы"         },
+const TABS: { id: Tab; label: string; tooltip: string }[] = [
+  { id: "overview",      label: "Обзор",         tooltip: "Общая сводка по клиенту: запрос, последние сессии, ключевые наблюдения.\nБыстрый обзор всей работы с клиентом в одном месте."         },
+  { id: "consultations", label: "Консультации",  tooltip: "Список всех сессий с транскриптами и AI-анализами.\nОткройте любую консультацию для детального разбора."                          },
+  { id: "history",       label: "История",       tooltip: "Хронология важных событий и фактов жизни клиента.\nПомогает понимать контекст при подготовке к сессии."                           },
+  { id: "observations",  label: "Наблюдения",    tooltip: "Личные заметки о динамике, паттернах и гипотезах.\nФиксируйте наблюдения между сессиями, пока они свежие."                        },
+  { id: "materials",     label: "Материалы",     tooltip: "Дополнительные документы: старые анализы, транскрипты, тексты.\nПодключаются как контекст при AI-анализе новых сессий."             },
 ];
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
@@ -270,6 +270,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
+              title={t.tooltip}
               className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                 tab === t.id
                   ? "bg-white text-slate-800 shadow-sm"
