@@ -65,12 +65,40 @@ function rowToEntry(row: Record<string, unknown>): NotebookEntry {
     text:       legacy.text,
     clientId:   legacy.clientId,
     clientName: (client?.full_name as string | undefined) ?? undefined,
+    clientInitials: (client?.initials as string | undefined) ?? undefined,
+    clientColor: (client?.color as string | undefined) ?? undefined,
     topic:      legacy.topic,
     tags:       legacy.tags,
     createdAt:  row.created_at as string,
     updatedAt:  (row.updated_at as string | null) ?? (row.created_at as string),
     deletedAt:  (row.deleted_at as string | null) ?? undefined,
   };
+}
+
+async function enrichLegacyClientData(entries: NotebookEntry[]): Promise<NotebookEntry[]> {
+  const clientIds = [...new Set(entries.map((entry) => entry.clientId).filter((id): id is string => !!id))];
+  if (!clientIds.length || !isSupabaseConfigured()) return entries;
+
+  const { data } = await supabaseServer!
+    .from("clients")
+    .select("id,full_name,initials,color")
+    .in("id", clientIds);
+
+  const clientMap = new Map(
+    (data ?? []).map((client) => [
+      client.id as string,
+      {
+        clientName: client.full_name as string,
+        clientInitials: client.initials as string | undefined,
+        clientColor: client.color as string | undefined,
+      },
+    ]),
+  );
+
+  return entries.map((entry) => ({
+    ...entry,
+    ...(entry.clientId ? clientMap.get(entry.clientId) : undefined),
+  }));
 }
 
 function normalizeTags(tags?: string[]): string[] {
@@ -202,7 +230,7 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
     const clientIds = search ? await getClientIdsByName(search) : [];
     let request = supabaseServer!
       .from("notebook")
-      .select("*, clients:client_id(full_name)", { count: "exact" })
+      .select("*, clients:client_id(full_name,initials,color)", { count: "exact" })
       .is("deleted_at", null);
 
     if (search) {
@@ -246,7 +274,7 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
     }
     const total = count ?? 0;
     return {
-      entries: (data ?? []).map(rowToEntry),
+      entries: await enrichLegacyClientData((data ?? []).map(rowToEntry)),
       page,
       pageSize: NOTEBOOK_PAGE_SIZE,
       total,
@@ -273,7 +301,7 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
   const total = entries.length;
   const totalPages = Math.max(1, Math.ceil(total / NOTEBOOK_PAGE_SIZE));
   return {
-    entries: entries.slice((page - 1) * NOTEBOOK_PAGE_SIZE, page * NOTEBOOK_PAGE_SIZE),
+    entries: await enrichLegacyClientData(entries.slice((page - 1) * NOTEBOOK_PAGE_SIZE, page * NOTEBOOK_PAGE_SIZE)),
     page,
     pageSize: NOTEBOOK_PAGE_SIZE,
     total,
@@ -299,7 +327,7 @@ async function getLegacyEntries(query: NotebookQuery): Promise<NotebookPageResul
   if (error) throw new Error(`[DAL/notebook/getLegacyEntries] ${error.message}`);
   const total = count ?? 0;
   return {
-    entries: (data ?? []).map(rowToEntry),
+    entries: await enrichLegacyClientData((data ?? []).map(rowToEntry)),
     page,
     pageSize: NOTEBOOK_PAGE_SIZE,
     total,
@@ -311,7 +339,7 @@ export async function getEntryById(id: string): Promise<NotebookEntry | null> {
   if (isSupabaseConfigured()) {
     const { data, error } = await supabaseServer!
       .from("notebook")
-      .select("*, clients:client_id(full_name)")
+      .select("*, clients:client_id(full_name,initials,color)")
       .eq("id", id)
       .is("deleted_at", null)
       .single();
@@ -322,11 +350,13 @@ export async function getEntryById(id: string): Promise<NotebookEntry | null> {
           .select("id,text,created_at")
           .eq("id", id)
           .single();
-        return legacy.data ? rowToEntry(legacy.data as Record<string, unknown>) : null;
+        const enriched = await enrichLegacyClientData(legacy.data ? [rowToEntry(legacy.data as Record<string, unknown>)] : []);
+        return enriched[0] ?? null;
       }
       return null;
     }
-    return data ? rowToEntry(data as Record<string, unknown>) : null;
+    const enriched = await enrichLegacyClientData(data ? [rowToEntry(data as Record<string, unknown>)] : []);
+    return enriched[0] ?? null;
   }
 
   return memStore.getNotebookEntries().find((entry) => entry.id === id) ?? null;
@@ -355,7 +385,7 @@ export async function addEntry(input: NotebookInput & { id: string }): Promise<N
         topic:      entry.topic ?? null,
         tags:       entry.tags,
       })
-      .select("*, clients:client_id(full_name)")
+      .select("*, clients:client_id(full_name,initials,color)")
       .single();
     if (error) {
       if (isMissingNotebookV2Schema(error.message)) {
@@ -365,7 +395,8 @@ export async function addEntry(input: NotebookInput & { id: string }): Promise<N
           .select("id,text,created_at")
           .single();
         if (legacy.error) throw new Error(`[DAL/notebook/addEntryLegacy] ${legacy.error.message}`);
-        return rowToEntry(legacy.data as Record<string, unknown>);
+        const enriched = await enrichLegacyClientData([rowToEntry(legacy.data as Record<string, unknown>)]);
+        return enriched[0];
       }
       throw new Error(`[DAL/notebook/addEntry] ${error.message}`);
     }
@@ -389,7 +420,7 @@ export async function updateEntry(id: string, input: NotebookInput): Promise<Not
       })
       .eq("id", id)
       .is("deleted_at", null)
-      .select("*, clients:client_id(full_name)")
+      .select("*, clients:client_id(full_name,initials,color)")
       .single();
     if (error) {
       if (isMissingNotebookV2Schema(error.message)) {
@@ -400,7 +431,8 @@ export async function updateEntry(id: string, input: NotebookInput): Promise<Not
           .select("id,text,created_at")
           .single();
         if (legacy.error) throw new Error(`[DAL/notebook/updateEntryLegacy] ${legacy.error.message}`);
-        return legacy.data ? rowToEntry(legacy.data as Record<string, unknown>) : null;
+        const enriched = await enrichLegacyClientData(legacy.data ? [rowToEntry(legacy.data as Record<string, unknown>)] : []);
+        return enriched[0] ?? null;
       }
       throw new Error(`[DAL/notebook/updateEntry] ${error.message}`);
     }
