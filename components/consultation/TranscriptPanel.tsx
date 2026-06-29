@@ -376,6 +376,8 @@ export function TranscriptPanel({
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMsg, setActionMsg]        = useState<string | null>(null);
+  const [deletingMatId, setDeletingMatId] = useState<string | null>(null);
+  const [matDeleteLoading, setMatDeleteLoading] = useState(false);
 
   const seekRef    = useRef<((sec: number) => void) | null>(null);
   const menuRef    = useRef<HTMLDivElement>(null);   // wraps trigger + dropdown
@@ -566,6 +568,23 @@ export function TranscriptPanel({
     } else {
       const segs = transcriptFormatted ?? [];
       downloadText(buildMd(segs, clientName, consultationDate, showTimestamps), `${base}.md`, "text/markdown;charset=utf-8");
+    }
+  }
+
+  // ── Delete material ─────────────────────────────────────────────────────────
+  async function execDeleteMaterial(mat: ClientMaterial) {
+    setMatDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/client-materials/${mat.clientId}/${mat.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setDeletingMatId(null);
+      setActionMsg("Материал удалён");
+      onRefresh?.();
+    } catch {
+      setDeletingMatId(null);
+      setActionMsg("Ошибка удаления");
+    } finally {
+      setMatDeleteLoading(false);
     }
   }
 
@@ -863,14 +882,52 @@ export function TranscriptPanel({
             return (
               <div key={m.id} className="rounded-xl border overflow-hidden" style={{ background: "#F8F5F0", borderColor: "#E4DDD0" }}>
                 <div className="px-4 py-3" style={{ background: "#F0EBE0", borderBottom: "1px solid #E4DDD0" }}>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-semibold" style={{ color: "#4A3C2E" }}>{m.title || MATERIAL_TYPE_LABELS[m.type]}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#E4DDD0", color: "#7A6E63", border: "1px solid #D0C8B8" }}>
-                      {MATERIAL_TYPE_LABELS[m.type]}
-                    </span>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <span className="text-xs font-semibold truncate" style={{ color: "#4A3C2E" }}>{m.title || MATERIAL_TYPE_LABELS[m.type]}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "#E4DDD0", color: "#7A6E63", border: "1px solid #D0C8B8" }}>
+                        {MATERIAL_TYPE_LABELS[m.type]}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setDeletingMatId(deletingMatId === m.id ? null : m.id)}
+                      title="Удалить материал"
+                      className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg transition-colors"
+                      style={{ color: deletingMatId === m.id ? "#B91C1C" : "#C4B8A8", background: deletingMatId === m.id ? "#FEE2E2" : "transparent" }}
+                      onMouseEnter={e => { if (deletingMatId !== m.id) e.currentTarget.style.color = "#B91C1C"; }}
+                      onMouseLeave={e => { if (deletingMatId !== m.id) e.currentTarget.style.color = "#C4B8A8"; }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
                   </div>
                   <p className="text-xs text-stone-400 mt-0.5">{formatDate(m.createdAt)}</p>
                 </div>
+
+                {/* Inline delete confirm */}
+                {deletingMatId === m.id && (
+                  <div className="px-4 py-3 flex items-center justify-between gap-3" style={{ background: "#FFF5F5", borderBottom: "1px solid #FECACA" }}>
+                    <p className="text-xs" style={{ color: "#7F1D1D" }}>Удалить этот материал?</p>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => setDeletingMatId(null)}
+                        className="text-xs px-2.5 py-1 rounded-lg border transition-colors"
+                        style={{ borderColor: "#D4C9B5", color: "#6B5D4F", background: "#FAF8F5" }}
+                      >
+                        Нет
+                      </button>
+                      <button
+                        onClick={() => execDeleteMaterial(m)}
+                        disabled={matDeleteLoading}
+                        className="text-xs px-2.5 py-1 rounded-lg font-medium transition-colors flex items-center gap-1"
+                        style={{ background: "#DC2626", color: "#fff" }}
+                      >
+                        {matDeleteLoading ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="px-4 py-3">
                   <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
                     {isOpen ? m.content : preview}
