@@ -1,16 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, Trash2, ChevronDown, ChevronUp, Loader2, AlertCircle, RotateCcw, Plus } from "lucide-react";
+import { Eye, Trash2, ChevronDown, ChevronUp, Loader2, AlertCircle, Plus } from "lucide-react";
 import type { ClientMaterial } from "@/lib/types";
 
+// ── Craft palette (matches HistoryTab) ────────────────────────────────────────
 const S = {
-  bg:      "#FBF8F2",
-  border:  "#D8CFBE",
-  header:  "#E9DCC7",
-  divider: "#EDE8DE",
-  title:   "#4A3C2E",
-  muted:   "#A8997F",
+  bg:       "#FBF8F2",
+  border:   "#D8CFBE",
+  header:   "#E9DCC7",
+  divider:  "#EDE8DE",
+  title:    "#6B5D4F",
+  count:    "#E4D9C8",
+  countTxt: "#9C8E80",
+  muted:    "#A8997F",
 };
 
 function formatDate(iso: string) {
@@ -18,6 +21,18 @@ function formatDate(iso: string) {
     day: "numeric", month: "long", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
+}
+
+function ObsBadge() {
+  return (
+    <span
+      title="Наблюдение психолога"
+      className="mt-0.5 flex-shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full"
+      style={{ background: "#DBEAFE", border: "1px solid #BFDBFE", color: "#1E40AF" }}
+    >
+      <Eye size={10} />
+    </span>
+  );
 }
 
 interface Props {
@@ -31,7 +46,6 @@ export function ObservationsTab({ clientId, isMock }: Props) {
   const [expanded,   setExpanded]   = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Initial fetch
   useEffect(() => {
     if (isMock) { setLoading(false); return; }
     fetch(`/api/client-materials/${clientId}`)
@@ -43,7 +57,6 @@ export function ObservationsTab({ clientId, isMock }: Props) {
       .finally(() => setLoading(false));
   }, [clientId, isMock]);
 
-  // Real-time event listeners
   useEffect(() => {
     function onCreated(e: CustomEvent) {
       if (e.detail?.clientId !== clientId) return;
@@ -88,24 +101,9 @@ export function ObservationsTab({ clientId, isMock }: Props) {
     );
   }
 
-  if (sorted.length === 0) {
-    return (
-      <div
-        className="rounded-2xl border py-14 text-center"
-        style={{ background: S.bg, borderColor: S.border }}
-      >
-        <Eye size={28} className="mx-auto mb-3" style={{ color: S.border }} />
-        <p className="text-sm font-medium" style={{ color: S.title }}>Наблюдений пока нет</p>
-        <p className="text-xs max-w-xs mx-auto mt-1.5 leading-relaxed" style={{ color: S.muted }}>
-          Нажмите кнопку 🎙 справа внизу — запишите голосовое или текстовое наблюдение.
-          Оно попадёт сюда и будет учтено в следующем AI‑анализе.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3">
+
       {/* Context banner */}
       <div
         className="flex items-start gap-2 rounded-xl px-4 py-3 text-xs"
@@ -117,125 +115,122 @@ export function ObservationsTab({ clientId, isMock }: Props) {
         </span>
       </div>
 
+      {/* Card — matches HistoryTab structure */}
       <div
         className="rounded-2xl border overflow-hidden"
         style={{ background: S.bg, borderColor: S.border }}
       >
-        {/* Header */}
+        {/* Section header */}
         <div
-          className="flex items-center justify-between gap-3 px-5 py-3 border-b"
+          className="flex items-center justify-between px-5 py-3.5 border-b"
           style={{ background: S.header, borderColor: S.divider }}
         >
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: S.muted }}>
-            Наблюдения · {sorted.length}
-          </span>
+          <div className="flex items-center gap-2.5">
+            <h3 className="text-sm font-semibold" style={{ color: S.title }}>Наблюдения</h3>
+            {sorted.length > 0 && (
+              <span
+                className="text-xs rounded-full px-2 py-0.5 font-medium"
+                style={{ background: S.count, color: S.countTxt }}
+              >
+                {sorted.length}
+              </span>
+            )}
+          </div>
           {!isMock && (
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("open-observation-modal"))}
-              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors flex-shrink-0"
-              style={{ background: "#D4C5B1", color: "#4A3C2E" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#C9BBAA"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#D4C5B1"; }}
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors"
+              style={{ color: S.countTxt }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = S.count)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
-              <Plus size={11} />
+              <Plus size={12} />
               Добавить
             </button>
           )}
         </div>
 
-        {/* List */}
-        {sorted.map((obs, i) => {
-          const isTranscribing = obs.status === "transcribing";
-          const isError        = obs.status === "error";
-          const isOpen         = expanded === obs.id;
-          const preview        = obs.content.slice(0, 280);
-          const hasMore        = obs.content.length > 280;
+        {/* Items */}
+        <div>
+          {sorted.length === 0 && (
+            <p className="px-5 py-3.5 text-xs italic" style={{ color: "#C9BBAA" }}>Нет наблюдений</p>
+          )}
 
-          return (
-            <div key={obs.id}>
-              {i > 0 && <div style={{ height: 1, background: S.divider }} />}
-              <div className="px-5 py-4">
+          {sorted.map((obs, i) => {
+            const isTranscribing = obs.status === "transcribing";
+            const isError        = obs.status === "error";
+            const isOpen         = expanded === obs.id;
+            const preview        = obs.content.slice(0, 280);
+            const hasMore        = obs.content.length > 280;
 
-                {/* Meta row */}
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-xs font-medium" style={{ color: S.muted }}>
-                      {formatDate(obs.createdAt)}
-                    </span>
-                    {/* Source label */}
-                    <span
-                      className="text-xs font-medium inline-flex items-center gap-1"
-                      style={{ color: "#6B5D4F" }}
-                    >
-                      <Eye size={10} />
-                      Наблюдение психолога
-                    </span>
-                  </div>
+            return (
+              <div
+                key={obs.id}
+                className="flex items-start gap-3 px-5 py-3.5 group"
+                style={{ borderTop: i > 0 ? `1px solid ${S.divider}` : undefined }}
+              >
+                <ObsBadge />
 
-                  {/* Delete — only for done observations */}
-                  {!isMock && !isTranscribing && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs mb-1" style={{ color: S.muted }}>{formatDate(obs.createdAt)}</p>
+
+                  {isTranscribing && (
+                    <div className="flex items-center gap-2">
+                      <Loader2 size={12} className="animate-spin flex-shrink-0" style={{ color: S.muted }} />
+                      <span className="text-sm italic" style={{ color: S.muted }}>Расшифровывается…</span>
+                    </div>
+                  )}
+
+                  {isError && (
+                    <div className="flex items-center gap-2">
+                      <AlertCircle size={12} className="flex-shrink-0 text-rose-400" />
+                      <span className="text-sm" style={{ color: "#be123c" }}>
+                        {obs.content || "Ошибка транскрипции. Аудио сохранено."}
+                      </span>
+                    </div>
+                  )}
+
+                  {!isTranscribing && !isError && (
+                    <>
+                      <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
+                        {isOpen ? obs.content : preview}
+                        {!isOpen && hasMore && <span style={{ color: S.muted }}>…</span>}
+                      </p>
+                      {hasMore && (
+                        <button
+                          onClick={() => setExpanded(isOpen ? null : obs.id)}
+                          className="mt-1.5 flex items-center gap-1 text-xs font-medium transition-colors"
+                          style={{ color: S.muted }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = S.title; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = S.muted; }}
+                        >
+                          {isOpen ? <><ChevronUp size={11} /> Свернуть</> : <><ChevronDown size={11} /> Показать полностью</>}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Trash — visible on hover, like HistoryTab */}
+                {!isMock && !isTranscribing && (
+                  <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => handleDelete(obs.id)}
                       disabled={deletingId === obs.id}
-                      className="flex-shrink-0 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
-                      style={{ width: 26, height: 26, color: S.muted }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "#FEE2E2"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = S.muted; e.currentTarget.style.background = "transparent"; }}
+                      className="p-1 rounded-md transition-colors disabled:opacity-40"
+                      style={{ color: S.muted }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = "#EF4444"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = S.muted; }}
                       title="Удалить наблюдение"
                     >
                       <Trash2 size={12} />
                     </button>
-                  )}
-                </div>
-
-                {/* Transcribing state */}
-                {isTranscribing && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <Loader2 size={13} className="animate-spin flex-shrink-0" style={{ color: S.muted }} />
-                    <span className="text-sm italic" style={{ color: S.muted }}>Расшифровывается…</span>
                   </div>
                 )}
-
-                {/* Error state */}
-                {isError && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <AlertCircle size={13} className="flex-shrink-0 text-rose-400" />
-                    <span className="text-sm" style={{ color: "#be123c" }}>
-                      {obs.content || "Ошибка транскрипции. Аудио сохранено."}
-                    </span>
-                  </div>
-                )}
-
-                {/* Normal content */}
-                {!isTranscribing && !isError && (
-                  <>
-                    <p
-                      className="text-sm leading-relaxed whitespace-pre-wrap"
-                      style={{ color: S.title }}
-                    >
-                      {isOpen ? obs.content : preview}
-                      {!isOpen && hasMore && <span style={{ color: S.muted }}>…</span>}
-                    </p>
-                    {hasMore && (
-                      <button
-                        onClick={() => setExpanded(isOpen ? null : obs.id)}
-                        className="mt-2 flex items-center gap-1 text-xs font-medium transition-colors"
-                        style={{ color: S.muted }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = S.title; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = S.muted; }}
-                      >
-                        {isOpen
-                          ? <><ChevronUp size={11} /> Свернуть</>
-                          : <><ChevronDown size={11} /> Показать полностью</>}
-                      </button>
-                    )}
-                  </>
-                )}
-
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
