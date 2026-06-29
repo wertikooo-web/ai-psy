@@ -33,8 +33,9 @@ const D = {
 };
 
 // ── Widths ────────────────────────────────────────────────────────────────────
-export const FULL_W = 240;
-export const DECO_W = 94;
+export const FULL_W  = 240;
+// Decorative mode keeps the same width as full — only hidden collapses to 0
+const LOGO_H = 64; // logo area height, matches full sidebar header
 
 // ── Nav data ──────────────────────────────────────────────────────────────────
 const mainNav = [
@@ -187,7 +188,8 @@ export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
   const easing     = "cubic-bezier(0.4,0,0.2,1)";
   const wTrans     = transitionEnabled ? `width 280ms ${easing}` : "none";
   const opTrans    = transitionEnabled ? `opacity 200ms ${easing}` : "none";
-  const deskWidth  = mode === "hidden" ? 0 : mode === "decorative" ? DECO_W : FULL_W;
+  // full and decorative share the same width — only hidden collapses
+  const deskWidth  = mode === "hidden" ? 0 : FULL_W;
 
   return (
     <>
@@ -255,43 +257,56 @@ export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
         <div
           style={{
             position: "absolute", top: 0, left: 0, bottom: 0,
-            width: DECO_W,
+            width: FULL_W,          // same width as full — no layout shift
             opacity: mode === "decorative" ? 1 : 0,
             pointerEvents: mode === "decorative" ? "auto" : "none",
             transition: opTrans,
-            display: "flex", flexDirection: "column", alignItems: "center",
             background: D.bg,
             borderRight: `1px solid ${D.border}`,
           }}
         >
-          {/* Control buttons */}
+          {/* Logo area — identical height to full sidebar header */}
           <div
             style={{
-              width: "100%", display: "flex", flexDirection: "column",
-              alignItems: "center", gap: 2,
-              padding: "10px 0 8px",
+              height: LOGO_H,
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "0 16px",
               borderBottom: `1px solid ${D.border}`,
+              flexShrink: 0,
             }}
           >
-            <DecoBtn
-              icon={PanelLeft}
-              onClick={() => onModeChange("full")}
-              label="Открыть боковое меню"
-              title="Открыть меню"
-            />
-            <DecoBtn
-              icon={ChevronsLeft}
-              onClick={() => onModeChange("hidden")}
-              label="Скрыть боковую панель полностью"
-              title="Скрыть панель"
-            />
+            <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: "#EDE8DE", border: `1px solid ${D.border}` }}
+              >
+                <BrainCircuit size={18} style={{ color: "#6B5D4F" }} />
+              </div>
+            </Link>
+
+            {/* Control buttons — right side of logo row */}
+            <div style={{ display: "flex", gap: 2 }}>
+              <DecoBtn
+                icon={PanelLeft}
+                onClick={() => onModeChange("full")}
+                label="Открыть боковое меню"
+                title="Открыть меню"
+              />
+              <DecoBtn
+                icon={ChevronsLeft}
+                onClick={() => onModeChange("hidden")}
+                label="Скрыть боковую панель полностью"
+                title="Скрыть панель"
+              />
+            </div>
           </div>
 
-          {/* Illustration — fills rest of height */}
+          {/* Illustration — fills everything below the logo */}
           <div
             style={{
-              flex: 1, width: "100%", overflow: "hidden",
-              display: "flex", alignItems: "flex-end",
+              position: "absolute",
+              top: LOGO_H, left: 0, right: 0, bottom: 0,
+              overflow: "hidden",
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -303,7 +318,7 @@ export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
                 width: "100%",
                 height: "100%",
                 objectFit: "contain",
-                objectPosition: "bottom center",
+                objectPosition: "center bottom",
                 userSelect: "none",
                 pointerEvents: "none",
                 display: "block",
