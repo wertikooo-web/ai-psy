@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClients, createClient } from "@/lib/data/clients";
+import { createClientRequest } from "@/lib/data/clientRequests";
 
 const COLORS = [
   "#6088ff", "#4f8e4f", "#e06060", "#c47d2e",
@@ -31,13 +32,26 @@ export async function POST(req: NextRequest) {
     const allClients = await getClients();
     const color = COLORS[allClients.length % COLORS.length];
 
+    const concern = (body.concern ?? "").trim();
+
     const client = await createClient({
       name,
       initials: initials(name),
       color,
-      age:     body.age ? Number(body.age) : undefined,
-      concern: (body.concern ?? "").trim(),
+      age:    body.age ? Number(body.age) : undefined,
+      concern,
     });
+
+    // Also persist concern as the initial client_request so it
+    // appears in the client card's "Запрос" tab and the home-page list
+    if (concern) {
+      try {
+        await createClientRequest({ clientId: client.id, text: concern, source: "initial", makeCurrent: true });
+      } catch (e) {
+        console.error("[clients POST] createClientRequest failed:", e);
+        // non-fatal — client is already created
+      }
+    }
 
     return NextResponse.json(client, { status: 201 });
   } catch (err) {
