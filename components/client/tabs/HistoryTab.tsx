@@ -131,20 +131,19 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
                 >
                   <SourceBadge source={item.source} />
                   <p className="flex-1 text-sm text-stone-700 leading-relaxed">{item.text}</p>
-                  <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {!isMock && (
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        disabled={deletingId === item.id}
-                        className="p-1 rounded-md transition-colors" style={{ color: "#A8997F" }}
-                        onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = "#A8997F"; }}
-                        title="Удалить"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
-                  </div>
+                  {!isMock && (
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      disabled={deletingId === item.id}
+                      className="flex-shrink-0 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
+                      style={{ width: 26, height: 26, background: "#FEF2F2", border: "1px solid #FECACA", color: "#EF4444" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FCA5A5"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.borderColor = "#FECACA"; }}
+                      title="Удалить"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  )}
                 </div>
               ))}
 

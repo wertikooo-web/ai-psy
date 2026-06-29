@@ -211,21 +211,18 @@ export function ObservationsTab({ clientId, isMock }: Props) {
                   )}
                 </div>
 
-                {/* Trash — visible on hover, like HistoryTab */}
                 {!isMock && !isTranscribing && (
-                  <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => handleDelete(obs.id)}
-                      disabled={deletingId === obs.id}
-                      className="p-1 rounded-md transition-colors disabled:opacity-40"
-                      style={{ color: S.muted }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = "#EF4444"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = S.muted; }}
-                      title="Удалить наблюдение"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => handleDelete(obs.id)}
+                    disabled={deletingId === obs.id}
+                    className="flex-shrink-0 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
+                    style={{ width: 26, height: 26, background: "#FEF2F2", border: "1px solid #FECACA", color: "#EF4444" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FCA5A5"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.borderColor = "#FECACA"; }}
+                    title="Удалить наблюдение"
+                  >
+                    <Trash2 size={11} />
+                  </button>
                 )}
               </div>
             );
