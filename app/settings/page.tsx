@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Save, Trash2, User, CheckCircle2, AlertCircle,
@@ -47,12 +47,21 @@ const AI_DEFAULTS = {
 
 const APPROACHES = ["Гештальт", "КПТ", "ACT", "Схема-терапия", "Интегративный", "Другой"];
 
-type SectionId = "profile" | "ai" | "interface" | "transcription" | "knowledge" | "data";
+type SectionId = "profile" | "ai" | "interface" | "transcription" | "data";
+
+const VALID_SECTION_IDS: SectionId[] = ["profile", "ai", "interface", "transcription", "data"];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Resolve section from URL (?section=profile)
+  const rawSection = searchParams.get("section");
+  const targetSection = (rawSection && VALID_SECTION_IDS.includes(rawSection as SectionId))
+    ? (rawSection as SectionId)
+    : null;
 
   // Profile state
   const [profile, setProfile] = useState<UserProfile>(EMPTY);
@@ -70,8 +79,10 @@ export default function SettingsPage() {
   const [checkingApi, setCheckingApi]     = useState(false);
   const [checkResult, setCheckResult]     = useState("");
 
-  // Accordion: all sections collapsed by default
-  const [openSections, setOpenSections] = useState<Set<SectionId>>(new Set<SectionId>());
+  // Accordion: open target section on load, rest collapsed
+  const [openSections, setOpenSections] = useState<Set<SectionId>>(
+    new Set<SectionId>(targetSection ? [targetSection] : [])
+  );
   const isOpen = (id: SectionId) => openSections.has(id);
   function toggleSection(id: SectionId) {
     setOpenSections((prev) => {
@@ -80,6 +91,19 @@ export default function SettingsPage() {
       return next;
     });
   }
+
+  // Scroll to the target section after mount
+  const targetSectionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!targetSection) return;
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        targetSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load city animation from localStorage
   useEffect(() => {
@@ -239,6 +263,7 @@ export default function SettingsPage() {
         <div className="space-y-2">
 
           {/* 1. Profile */}
+          <div ref={targetSection === "profile" ? targetSectionRef : undefined}>
           <SettingsSection
             title="Профиль"
             description="Имя и специализация, отображаются в боковой панели"
@@ -327,6 +352,7 @@ export default function SettingsPage() {
               </div>
             </div>
           </SettingsSection>
+          </div>
 
           {/* 2. AI Settings */}
           <SettingsSection

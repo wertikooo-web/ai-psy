@@ -110,7 +110,7 @@ export function UserChip() {
             {/* Переход к настройкам */}
             <div className="px-6 pb-5">
               <Link
-                href="/settings"
+                href="/settings?section=profile"
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors"
               >
