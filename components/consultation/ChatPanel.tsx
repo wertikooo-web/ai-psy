@@ -162,19 +162,20 @@ export function ChatPanel({
     setListening(true);
   }
 
-  async function send() {
-    if (!input.trim() || loading) return;
+  async function send(quickText?: string) {
+    const text = quickText ?? input.trim();
+    if (!text || loading) return;
 
     const userMsg: ChatMessage = {
       id:        `u${Date.now()}`,
       role:      "user",
-      content:   input.trim(),
+      content:   text,
       timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
     };
 
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
-    setInput("");
+    if (!quickText) setInput("");
     setError(null);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     setLoading(true);
@@ -458,18 +459,25 @@ export function ChatPanel({
                 }
               </div>
               <div className={clsx("max-w-[85%]", !isAI && "flex flex-col items-end")}>
-                <div className={clsx(
-                  "text-sm leading-relaxed rounded-2xl px-3.5 py-2.5",
-                  isAI
-                    ? "bg-[#F3EDE2] text-slate-700 rounded-tl-sm"
-                    : "bg-brand-500 text-white rounded-tr-sm whitespace-pre-wrap"
-                )}>
-                  {isAI ? (
-                    <span style={{ whiteSpace: "pre-wrap", lineHeight: "1.6", display: "block" }}>
-                      {formatChatMessage(msg.content)}
-                    </span>
-                  ) : msg.content}
-                </div>
+                {!isAI && QUICK_PROMPTS.includes(msg.content) ? (
+                  <span className="text-xs px-2.5 py-1 rounded-full border"
+                    style={{ background: "#EEF2FF", borderColor: "#C7D2FE", color: "#4338CA" }}>
+                    {msg.content}
+                  </span>
+                ) : (
+                  <div className={clsx(
+                    "text-sm leading-relaxed rounded-2xl px-3.5 py-2.5",
+                    isAI
+                      ? "bg-[#F3EDE2] text-slate-700 rounded-tl-sm"
+                      : "bg-brand-500 text-white rounded-tr-sm whitespace-pre-wrap"
+                  )}>
+                    {isAI ? (
+                      <span style={{ whiteSpace: "pre-wrap", lineHeight: "1.6", display: "block" }}>
+                        {formatChatMessage(msg.content)}
+                      </span>
+                    ) : msg.content}
+                  </div>
+                )}
                 <span className="text-xs text-slate-300 mt-1 px-1">{msg.timestamp}</span>
               </div>
             </div>
@@ -507,8 +515,9 @@ export function ChatPanel({
           {QUICK_PROMPTS.map((s) => (
             <button
               key={s}
-              onClick={() => { setInput(s); textareaRef.current?.focus(); }}
-              className="text-xs px-2.5 py-1 rounded-full bg-brand-50 text-brand-600 border border-brand-100 hover:bg-brand-100 transition-colors"
+              onClick={() => send(s)}
+              disabled={loading}
+              className="text-xs px-2.5 py-1 rounded-full bg-brand-50 text-brand-600 border border-brand-100 hover:bg-brand-100 transition-colors disabled:opacity-40"
             >
               {s}
             </button>
@@ -546,7 +555,7 @@ export function ChatPanel({
             </button>
           </div>
           <button
-            onClick={send}
+            onClick={() => send()}
             disabled={!input.trim() || loading}
             className="w-9 h-9 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors flex-shrink-0"
           >
