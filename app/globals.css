@@ -158,9 +158,627 @@
   background-size: 24px 24px;
 }
 
+.notebook-vertical-wrap {
+  width: min(620px, calc(100vw - 48px), calc((100dvh - 140px) * 0.72));
+  aspect-ratio: 0.72;
+  min-height: 0;
+  margin: 0 auto;
+  position: relative;
+}
+
+.notebook-cover-stage {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  perspective: 1400px;
+  text-align: left;
+}
+
+.notebook-cover-exact-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  transform-origin: left center;
+  filter: drop-shadow(0 22px 28px rgba(73, 56, 37, 0.22));
+  transition: transform 420ms ease, opacity 420ms ease, filter 180ms ease;
+}
+
+.notebook-cover-stage:focus-visible {
+  outline: 3px solid rgba(96, 136, 255, 0.42);
+  outline-offset: 10px;
+  border-radius: 28px;
+}
+
+.notebook-closed-pages {
+  position: absolute;
+  border-radius: 24px 31px 31px 22px;
+  pointer-events: none;
+}
+
+.notebook-closed-pages-back {
+  inset: 18px -18px -18px 22px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      #eee4d2 0,
+      #eee4d2 2px,
+      #d7c8ad 3px,
+      #f7efdf 5px
+    );
+  box-shadow: 18px 22px 34px rgba(74, 55, 34, 0.2);
+}
+
+.notebook-closed-pages-middle {
+  inset: 9px -9px -10px 12px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      #f5ecdb 0,
+      #f5ecdb 3px,
+      #d9cab1 4px,
+      #fff8eb 6px
+    );
+  box-shadow: inset -12px 0 16px rgba(89, 67, 42, 0.16);
+}
+
+.notebook-closed-cover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(120, 95, 65, 0.24);
+  border-radius: 26px 32px 32px 26px;
+  background: #ead7b8;
+  box-shadow:
+    0 26px 52px rgba(73, 56, 37, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset -5px -7px 14px rgba(120, 90, 55, 0.1);
+  transform-origin: left center;
+  transition: transform 420ms ease, opacity 420ms ease, box-shadow 180ms ease;
+}
+
+.notebook-cover-stage:hover .notebook-closed-cover {
+  transform: translateY(-4px) rotateX(1deg);
+  box-shadow:
+    0 32px 62px rgba(73, 56, 37, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset -5px -7px 14px rgba(120, 90, 55, 0.1);
+}
+
+.notebook-cover-stage:hover .notebook-cover-exact-image {
+  transform: translateY(-4px) rotateX(1deg);
+  filter: drop-shadow(0 30px 34px rgba(73, 56, 37, 0.26));
+}
+
+.notebook-cover-stage-opening .notebook-closed-cover {
+  transform: rotateY(-18deg) translateX(-18px);
+  opacity: 0;
+}
+
+.notebook-cover-stage-opening .notebook-cover-exact-image {
+  transform: rotateY(-18deg) translateX(-18px);
+  opacity: 0;
+}
+
+.notebook-cover-spine {
+  position: relative;
+  z-index: 2;
+  background:
+    linear-gradient(90deg, #a88455 0%, #ccb287 52%, #a17d4d 100%),
+    radial-gradient(circle at 48% 24%, rgba(255,255,255,0.22), transparent 36%);
+  box-shadow:
+    inset -5px 0 10px rgba(80, 58, 35, 0.22),
+    inset 4px 0 8px rgba(255, 255, 255, 0.18);
+}
+
+.notebook-cover-spine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -1px;
+  bottom: 0;
+  width: 8px;
+  background: linear-gradient(to right, rgba(74, 52, 28, 0.18), rgba(255,255,255,0.16));
+}
+
+.notebook-cover-rings {
+  position: absolute;
+  top: 34px;
+  bottom: 34px;
+  left: 58px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.notebook-cover-ring {
+  width: 30px;
+  height: 15px;
+  border: 3px solid #876233;
+  border-right-color: #d2b67c;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow:
+    inset 0 1px 2px rgba(61, 43, 25, 0.28),
+    0 2px 4px rgba(61, 43, 25, 0.24);
+}
+
+.notebook-cover-ring::after {
+  content: "";
+  display: block;
+  width: 9px;
+  height: 9px;
+  margin: 0 0 0 5px;
+  border-radius: 999px;
+  background: #2d2117;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.45);
+}
+
+.notebook-cover-content {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 0 31px 31px 0;
+  background:
+    radial-gradient(circle at 52% 16%, rgba(255,255,255,0.46), transparent 24%),
+    linear-gradient(135deg, rgba(255,255,255,0.18), transparent 36%),
+    #ead8bd;
+  background-image:
+    linear-gradient(to right, rgba(121, 96, 62, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(121, 96, 62, 0.045) 1px, transparent 1px);
+  background-size: 18px 18px;
+  padding: clamp(54px, 8vh, 78px) clamp(34px, 7vw, 72px);
+  color: #9a7a4e;
+  text-align: center;
+}
+
+.notebook-cover-frame {
+  position: absolute;
+  inset: clamp(34px, 6vw, 58px);
+  border: 2px solid rgba(141, 105, 63, 0.56);
+  border-radius: 18px;
+  pointer-events: none;
+}
+
+.notebook-cover-title {
+  position: relative;
+  z-index: 1;
+  margin: 0 auto;
+  display: grid;
+  gap: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(40px, 5.4vw, 68px);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: 0;
+  color: #9b7c50;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.42);
+}
+
+.notebook-cover-divider {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  gap: 9px;
+  margin: 28px auto 18px;
+  align-items: center;
+}
+
+.notebook-cover-divider::before,
+.notebook-cover-divider::after {
+  content: "";
+  width: 56px;
+  height: 1px;
+  background: rgba(158, 118, 70, 0.35);
+}
+
+.notebook-cover-divider span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(154, 122, 78, 0.72);
+}
+
+.notebook-cover-illustration {
+  position: relative;
+  z-index: 1;
+  height: clamp(160px, 25vh, 230px);
+  margin: 0 auto 28px;
+  max-width: 390px;
+  opacity: 0.62;
+}
+
+.notebook-cover-chair,
+.notebook-cover-person,
+.notebook-cover-table,
+.notebook-cover-plant,
+.notebook-cover-shelf {
+  position: absolute;
+  border-color: #9f7b4b;
+}
+
+.notebook-cover-chair {
+  bottom: 16px;
+  width: 92px;
+  height: 84px;
+  border: 2px solid;
+  border-radius: 42px 42px 20px 20px;
+}
+
+.notebook-cover-chair-left { left: 54px; }
+.notebook-cover-chair-right { right: 48px; transform: scaleX(-1); }
+
+.notebook-cover-person {
+  bottom: 66px;
+  width: 42px;
+  height: 74px;
+  border: 2px solid;
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
+}
+
+.notebook-cover-person::before {
+  content: "";
+  position: absolute;
+  top: -24px;
+  left: 8px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #9f7b4b;
+  border-radius: 999px;
+}
+
+.notebook-cover-person-left { left: 92px; }
+.notebook-cover-person-right { right: 90px; }
+
+.notebook-cover-table {
+  left: 50%;
+  bottom: 40px;
+  width: 82px;
+  height: 34px;
+  border-top: 2px solid;
+  border-bottom: 2px solid;
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.notebook-cover-plant {
+  left: 6px;
+  bottom: 36px;
+  width: 42px;
+  height: 118px;
+  border-left: 2px solid #9f7b4b;
+  transform: rotate(-10deg);
+}
+
+.notebook-cover-plant::before,
+.notebook-cover-plant::after {
+  content: "";
+  position: absolute;
+  width: 28px;
+  height: 13px;
+  border: 2px solid #9f7b4b;
+  border-radius: 50%;
+}
+
+.notebook-cover-plant::before { top: 26px; left: 4px; transform: rotate(26deg); }
+.notebook-cover-plant::after { top: 58px; left: -22px; transform: rotate(-28deg); }
+
+.notebook-cover-shelf {
+  right: 0;
+  top: 34px;
+  width: 70px;
+  height: 78px;
+  border-top: 2px solid;
+  border-bottom: 2px solid;
+}
+
+.notebook-cover-caption {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: #9b7c50;
+  font-size: clamp(11px, 1.35vw, 15px);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.notebook-cover-leaf {
+  position: relative;
+  z-index: 1;
+  color: rgba(154, 122, 78, 0.72);
+  font-size: 40px;
+  line-height: 1;
+}
+
+.notebook-cover-leaf-top { margin-bottom: 22px; }
+.notebook-cover-leaf-bottom { margin-top: 30px; transform: rotate(180deg); }
+
+.notebook-shell {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid #cfc0a9;
+  border-radius: 22px 28px 28px 22px;
+  box-shadow: 0 24px 70px rgba(83, 63, 42, 0.16), 0 4px 12px rgba(83, 63, 42, 0.08);
+  background: #bca886;
+}
+
+.notebook-shell-cover-open {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.notebook-shell-cover-open .notebook-spine {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.notebook-spine {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  background: linear-gradient(180deg, #bca886 0%, #ac9470 100%);
+  border-right: 1px solid rgba(113, 83, 48, 0.28);
+}
+
+.notebook-spine-shadow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(69, 48, 25, 0.18));
+  pointer-events: none;
+}
+
+.notebook-rings {
+  position: absolute;
+  inset: 26px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.notebook-ring {
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  border: 2px solid #80643f;
+  background: #f7f3ea;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.22), 0 1px 0 rgba(255,255,255,0.18);
+}
+
+.notebook-ring::after {
+  content: "";
+  display: block;
+  width: 7px;
+  height: 7px;
+  margin: 3px;
+  border-radius: 999px;
+  background: rgba(237, 228, 211, 0.65);
+}
+
+.notebook-page {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0 27px 27px 0;
+}
+
+.notebook-page-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 32px 26px 46px;
+}
+
+.notebook-margin-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 24px;
+  width: 1px;
+  background: rgba(217, 166, 160, 0.65);
+}
+
+.notebook-back-page {
+  position: absolute;
+  z-index: 1;
+  right: -8px;
+  bottom: -8px;
+  width: calc(100% - 58px);
+  height: calc(100% - 18px);
+  border: 1px solid #d3c4ab;
+  border-left: 0;
+  border-radius: 0 26px 26px 0;
+  background: #ede4d3;
+  box-shadow: 0 12px 28px rgba(83, 63, 42, 0.08);
+}
+
+.notebook-back-page-b {
+  right: -14px;
+  bottom: -14px;
+  height: calc(100% - 34px);
+  background: #e5d8c3;
+}
+
 .notebook-turn {
   position: relative;
-  min-height: 360px;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+}
+
+.notebook-pagination {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #e2d8c8;
+  display: grid;
+  grid-template-columns: auto auto minmax(12px, 1fr) auto minmax(12px, 1fr) auto auto;
+  grid-template-areas:
+    "status status status status status status status"
+    "first prev spacer-left cover spacer-right next last";
+  align-items: center;
+  gap: 10px 12px;
+  flex-shrink: 0;
+}
+
+.notebook-pagination > :nth-child(1) {
+  grid-area: first;
+  justify-self: start;
+}
+
+.notebook-pagination > :nth-child(2) {
+  grid-area: prev;
+  justify-self: start;
+}
+
+.notebook-pagination > :nth-child(3) {
+  grid-area: status;
+  justify-self: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b5d4f;
+}
+
+.notebook-pagination > :nth-child(4) {
+  grid-area: cover;
+  justify-self: center;
+}
+
+.notebook-pagination > :nth-child(5) {
+  grid-area: next;
+  justify-self: end;
+}
+
+.notebook-pagination > :nth-child(6) {
+  grid-area: last;
+  justify-self: end;
+}
+
+.notebook-pagination-button {
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  border: 1px solid #d8cfbe;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4d4034;
+  white-space: nowrap;
+  transition: background-color 150ms ease, opacity 150ms ease;
+}
+
+.notebook-pagination-button:hover:not(:disabled) {
+  background: #fff;
+}
+
+.notebook-pagination-button:disabled {
+  opacity: 0.4;
+}
+
+.notebook-pagination-button-icon {
+  width: 36px;
+  padding: 0;
+}
+
+.notebook-cover-button {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(105, 78, 48, 0.48);
+  background: linear-gradient(180deg, #8a7355 0%, #5e4935 100%);
+  color: #fff7ea;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 4px 10px rgba(72, 54, 34, 0.22);
+  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.notebook-cover-button:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.24), 0 6px 14px rgba(72, 54, 34, 0.26);
+}
+
+.notebook-cover-button-active {
+  background: linear-gradient(180deg, #6f583f 0%, #453526 100%);
+}
+
+.notebook-close-button {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid #d8cfbe;
+  background: rgba(255, 255, 255, 0.7);
+  color: #5a4a3a;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.notebook-close-button:hover {
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.notebook-cover-view {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 22px 28px 28px 22px;
+  background: radial-gradient(circle at 50% 35%, #fbf4e8 0%, #eadbc4 58%, #c9ad82 100%);
+  box-shadow: inset 0 0 0 1px rgba(108, 77, 42, 0.18);
+}
+
+.notebook-cover-view::before {
+  content: none;
+}
+
+.notebook-cover-view::after {
+  content: none;
+}
+
+.notebook-cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 18px 22px rgba(65, 48, 30, 0.22));
 }
 
 .notebook-turn-next {
@@ -210,10 +828,128 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .notebook-closed-cover,
+  .notebook-cover-exact-image,
+  .notebook-cover-stage:hover .notebook-closed-cover,
+  .notebook-cover-stage:hover .notebook-cover-exact-image,
+  .notebook-cover-stage-opening .notebook-closed-cover,
+  .notebook-cover-stage-opening .notebook-cover-exact-image,
   .notebook-turn-next,
   .notebook-turn-prev,
   .notebook-turn-next::after,
   .notebook-turn-prev::after {
     animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .notebook-cover-stage-opening .notebook-closed-cover {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .notebook-vertical-wrap {
+    width: min(calc(100vw - 24px), calc((100dvh - 118px) * 0.72));
+    aspect-ratio: 0.72;
+  }
+
+  .notebook-shell {
+    grid-template-columns: 42px minmax(0, 1fr);
+    border-radius: 18px 22px 22px 18px;
+  }
+
+  .notebook-closed-cover {
+    grid-template-columns: 52px minmax(0, 1fr);
+    border-radius: 18px 22px 22px 18px;
+  }
+
+  .notebook-cover-rings {
+    top: 26px;
+    bottom: 26px;
+    left: 39px;
+  }
+
+  .notebook-cover-ring {
+    width: 22px;
+    height: 11px;
+    border-width: 2px;
+  }
+
+  .notebook-cover-ring::after {
+    width: 6px;
+    height: 6px;
+    margin-left: 4px;
+  }
+
+  .notebook-cover-content {
+    padding: 38px 22px;
+  }
+
+  .notebook-cover-frame {
+    inset: 24px 18px;
+  }
+
+  .notebook-cover-title {
+    font-size: clamp(34px, 12vw, 48px);
+  }
+
+  .notebook-cover-illustration {
+    height: 138px;
+    margin-bottom: 18px;
+  }
+
+  .notebook-cover-caption {
+    display: none;
+  }
+
+  .notebook-rings {
+    inset: 22px 0;
+  }
+
+  .notebook-ring {
+    width: 13px;
+    height: 13px;
+    border-width: 1.5px;
+  }
+
+  .notebook-ring::after {
+    width: 5px;
+    height: 5px;
+    margin: 2.5px;
+  }
+
+  .notebook-page-content {
+    padding: 24px 18px 20px 34px;
+  }
+
+  .notebook-margin-line {
+    left: 18px;
+  }
+
+  .notebook-pagination {
+    gap: 8px;
+    grid-template-columns: auto auto minmax(4px, 1fr) auto minmax(4px, 1fr) auto auto;
+  }
+
+  .notebook-pagination-button {
+    height: 34px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 12px;
+  }
+
+  .notebook-pagination-button-icon {
+    width: 34px;
+    padding: 0;
+  }
+
+  .notebook-cover-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .notebook-pagination > :nth-child(3) {
+    text-align: center;
   }
 }

@@ -7,6 +7,8 @@ export interface NotebookEntry {
   text:       string;
   clientId?:  string;
   clientName?: string;
+  clientInitials?: string;
+  clientColor?: string;
   topic?:     string;
   tags:       string[];
   createdAt:  string;

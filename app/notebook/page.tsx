@@ -5,8 +5,12 @@ import {
   BookOpen,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronsLeft,
+  ChevronsRight,
   Edit3,
   FilePlus2,
   Filter,
@@ -20,6 +24,9 @@ import {
   X,
 } from "lucide-react";
 import type { NotebookEntry } from "@/lib/notebookStore";
+import { Avatar } from "@/components/ui/Avatar";
+
+export const dynamic = "force-dynamic";
 
 const TOPICS = [
   "Идея",
@@ -34,6 +41,7 @@ const TOPICS = [
 type SortMode  = "newest" | "oldest" | "updated" | "client" | "topic";
 type GroupMode = "none" | "date" | "client" | "topic";
 type DateMode  = "all" | "today" | "7d" | "30d" | "custom";
+type NotebookView = "closed" | "open";
 
 interface ClientOption {
   id:   string;
@@ -161,6 +169,12 @@ function entryToForm(entry: NotebookEntry): FormState {
   };
 }
 
+function initialsFromName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
 // ── Decorative spiral binding strip ──────────────────────────────────────────
 
 function BindingStrip({ count = 13, small = false }: { count?: number; small?: boolean }) {
@@ -192,7 +206,91 @@ function BindingStrip({ count = 13, small = false }: { count?: number; small?: b
   );
 }
 
+function BindingSpine({ count = 12 }: { count?: number }) {
+  return (
+    <div className="notebook-spine" aria-hidden="true">
+      <div className="notebook-spine-shadow" />
+      <div className="notebook-rings">
+        {Array.from({ length: count }).map((_, i) => (
+          <span key={i} className="notebook-ring" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Delete confirmation dialog ────────────────────────────────────────────────
+
+function NotebookPageStack() {
+  return (
+    <>
+      <div className="notebook-closed-pages notebook-closed-pages-back" aria-hidden="true" />
+      <div className="notebook-closed-pages notebook-closed-pages-middle" aria-hidden="true" />
+    </>
+  );
+}
+
+function NotebookCoverRings({ count = 10 }: { count?: number }) {
+  return (
+    <div className="notebook-cover-rings" aria-hidden="true">
+      {Array.from({ length: count }).map((_, index) => (
+        <span key={index} className="notebook-cover-ring" />
+      ))}
+    </div>
+  );
+}
+
+function NotebookCoverContent() {
+  return (
+    <div className="notebook-cover-content">
+      <div className="notebook-cover-frame" aria-hidden="true" />
+      <div className="notebook-cover-leaf notebook-cover-leaf-top" aria-hidden="true">⌁</div>
+      <h2 className="notebook-cover-title">
+        <span>Блокнот</span>
+        <span>психолога</span>
+      </h2>
+      <div className="notebook-cover-divider" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="notebook-cover-illustration" aria-hidden="true">
+        <div className="notebook-cover-plant" />
+        <div className="notebook-cover-chair notebook-cover-chair-left" />
+        <div className="notebook-cover-chair notebook-cover-chair-right" />
+        <div className="notebook-cover-person notebook-cover-person-left" />
+        <div className="notebook-cover-person notebook-cover-person-right" />
+        <div className="notebook-cover-table" />
+        <div className="notebook-cover-shelf" />
+      </div>
+      <p className="notebook-cover-caption">Заметки · размышления · инсайты</p>
+      <div className="notebook-cover-leaf notebook-cover-leaf-bottom" aria-hidden="true">⌁</div>
+    </div>
+  );
+}
+
+function NotebookCover({
+  isOpening,
+  onOpen,
+}: {
+  isOpening: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`notebook-cover-stage ${isOpening ? "notebook-cover-stage-opening" : ""}`}
+      onClick={onOpen}
+      aria-label="Открыть блокнот психолога"
+    >
+      <img
+        src="/Bloknote Main 1.png"
+        alt="Обложка блокнота психолога"
+        className="notebook-cover-exact-image"
+      />
+    </button>
+  );
+}
 
 function DeleteConfirmDialog({
   onConfirm,
@@ -250,6 +348,10 @@ export default function NotebookPage() {
   const [toast, setToast]                     = useState("");
   const [turnDirection, setTurnDirection]     = useState<"next" | "prev" | "none">("none");
   const [openMenu, setOpenMenu]               = useState<string | null>(null);
+  const [sortOpen, setSortOpen]               = useState(false);
+  const [notebookView, setNotebookView]       = useState<NotebookView>("closed");
+  const [notebookOpening, setNotebookOpening] = useState(false);
+  const [expandedEntries, setExpandedEntries] = useState<Set<string>>(() => new Set());
   const [reloadKey, setReloadKey]             = useState(0);
   const [deleteTarget, setDeleteTarget]       = useState<string | null>(null);
 
@@ -400,11 +502,34 @@ export default function NotebookPage() {
     setOpenMenu(null);
   }
 
+  function toggleEntryExpanded(id: string) {
+    setExpandedEntries((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   function goToPage(nextPage: number) {
     if (nextPage < 1 || nextPage > data.totalPages || nextPage === query.page) return;
     setTurnDirection(nextPage > query.page ? "next" : "prev");
     updateQuery({ page: nextPage }, false);
     window.setTimeout(() => setTurnDirection("none"), 360);
+  }
+
+  function openNotebook() {
+    if (notebookOpening) return;
+    setNotebookOpening(true);
+    window.setTimeout(() => {
+      setNotebookView("open");
+      setNotebookOpening(false);
+    }, 430);
+  }
+
+  function closeNotebook() {
+    setNotebookView("closed");
+    setOpenMenu(null);
   }
 
   function resetFilters() {
@@ -419,7 +544,7 @@ export default function NotebookPage() {
   const heading    = groupTitle(data.entries[0], query.group);
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto bg-[#F7F3EA]">
+    <div className="flex-1 min-h-0 overflow-hidden bg-[#F7F3EA]">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
 
         {/* ── Page header ── */}
@@ -460,17 +585,46 @@ export default function NotebookPage() {
             </button>
 
             {/* Sort */}
-            <select
-              value={query.sort}
-              onChange={(e) => updateQuery({ sort: e.target.value as SortMode })}
-              className="h-10 rounded-xl border border-[#D8CFBE] bg-white/80 px-3 text-sm text-[#4D4034] outline-none focus:border-[#6088ff]"
-            >
-              <option value="newest">Сортировка: сначала новые</option>
-              <option value="oldest">Сортировка: сначала старые</option>
-              <option value="updated">Сортировка: недавно изменённые</option>
-              <option value="client">Сортировка: по клиенту</option>
-              <option value="topic">Сортировка: по теме</option>
-            </select>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSortOpen((v) => !v)}
+                className={`flex h-10 min-w-[150px] items-center justify-between gap-3 rounded-xl border px-3 text-sm font-medium transition-colors ${
+                  sortOpen
+                    ? "border-[#6088ff] bg-white text-[#3D3228]"
+                    : "border-[#D8CFBE] bg-white/80 text-[#4D4034] hover:bg-white"
+                }`}
+              >
+                Сортировка
+                <ChevronDown size={15} />
+              </button>
+              {sortOpen && (
+                <div className="absolute right-0 top-11 z-30 w-56 overflow-hidden rounded-xl border border-[#D8CFBE] bg-white shadow-xl">
+                  {[
+                    ["newest", "Нет"],
+                    ["oldest", "Сначала старые"],
+                    ["updated", "Недавно изменённые"],
+                    ["client", "По клиенту"],
+                    ["topic", "По теме"],
+                  ].map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        updateQuery({ sort: value as SortMode });
+                        setSortOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm hover:bg-[#F7F3EA] ${
+                        query.sort === value ? "font-semibold text-[#355E9C]" : "text-[#4D4034]"
+                      }`}
+                    >
+                      {label}
+                      {query.sort === value && <Check size={14} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Group */}
             <select
@@ -487,7 +641,7 @@ export default function NotebookPage() {
             {/* New entry */}
             <button
               onClick={openNewEntry}
-              className="flex h-10 items-center gap-2 rounded-xl bg-[#4A3C2E] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#3A2E22]"
+              className="flex h-10 items-center gap-2 rounded-xl bg-[#503C27] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#463520]"
             >
               <Plus size={15} />
               Новая запись
@@ -575,22 +729,26 @@ export default function NotebookPage() {
         )}
 
         {/* ── Notebook container ── */}
-        <div className="relative mx-auto max-w-4xl">
-          {/* Right page stack: two layers give a stacked-pages effect */}
-          <div className="absolute -right-2.5 top-14 hidden h-[78%] w-7 rounded-r-3xl border border-l-0 border-[#C9B89E] bg-[#E5D8C3] shadow-sm sm:block" />
-          <div className="absolute -right-0.5 top-16 hidden h-[72%] w-3.5 rounded-r-2xl border border-l-0 border-[#D3C4AB] bg-[#EDE4D3] sm:block" />
+        <div className="notebook-vertical-wrap">
+          {notebookView === "closed" ? (
+            <NotebookCover isOpening={notebookOpening} onOpen={openNotebook} />
+          ) : (
+            <>
+          {/* Back pages: subtle stacked sheets adapted to vertical format */}
+          <div className="notebook-back-page notebook-back-page-a" />
+          <div className="notebook-back-page notebook-back-page-b" />
 
-          {/* Main notebook paper */}
-          <div className="notebook-paper relative overflow-hidden rounded-[28px] border border-[#CFC0A9] shadow-[0_24px_70px_rgba(83,63,42,0.16),0_4px_12px_rgba(83,63,42,0.08)]">
+          {/* Main vertical notebook */}
+          <div className="notebook-shell">
+            <BindingSpine count={12} />
 
-            {/* Spiral binding strip */}
-            <BindingStrip count={13} />
+            {/* Paper page */}
+            <div className="notebook-paper notebook-page">
+              {/* Red margin line inside paper, after the spine */}
+              <div className="notebook-margin-line hidden sm:block" />
 
-            {/* Red left margin line (starts below the binding strip) */}
-            <div className="absolute left-[52px] top-10 h-[calc(100%-40px)] w-px bg-[#D9A6A0]/65 hidden sm:block" />
-
-            {/* Paper content area */}
-            <div className="px-5 py-5 sm:px-10 sm:py-6">
+              {/* Paper content area */}
+              <div className="notebook-page-content">
 
               {/* Inner notebook header */}
               <div className="mb-5 flex items-center justify-between gap-3 border-b border-[#E2D8C8] pb-4">
@@ -599,17 +757,28 @@ export default function NotebookPage() {
                     Личный блокнот
                   </p>
                   <p className="mt-0.5 text-sm text-[#6B5D4F]">
-                    {pluralNotes(data.total)} · по 3 на странице
+                    {pluralNotes(data.total)}
                   </p>
                 </div>
-                {/* Small decorative dots mirroring binder holes from the side */}
-                <div className="flex gap-1.5 opacity-50">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <span
-                      key={i}
-                      className="h-2.5 w-2.5 rounded-full border border-[#B7A48D] bg-[#F0E9DC] shadow-inner"
-                    />
-                  ))}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={closeNotebook}
+                    className="notebook-close-button"
+                    aria-label="Закрыть блокнот"
+                    title="Закрыть блокнот"
+                  >
+                    <BookOpen size={15} />
+                  </button>
+                  {/* Small decorative dots mirroring binder holes from the side */}
+                  <div className="flex gap-1.5 opacity-50">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="h-2.5 w-2.5 rounded-full border border-[#B7A48D] bg-[#F0E9DC] shadow-inner"
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -656,7 +825,7 @@ export default function NotebookPage() {
                     </p>
                     <button
                       onClick={isFiltered ? resetFilters : openNewEntry}
-                      className="mt-5 flex items-center gap-2 rounded-xl bg-[#4A3C2E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3A2E22]"
+                      className="mt-5 flex items-center gap-2 rounded-xl bg-[#503C27] px-4 py-2 text-sm font-semibold text-white hover:bg-[#463520]"
                     >
                       {isFiltered ? <X size={14} /> : <Plus size={14} />}
                       {isFiltered ? "Сбросить фильтры" : "+ Новая запись"}
@@ -665,7 +834,11 @@ export default function NotebookPage() {
                 ) : (
                   /* ── Entries ── */
                   <div className="divide-y divide-dashed divide-[#D9CDB9]">
-                    {data.entries.map((entry) => (
+                    {data.entries.map((entry) => {
+                      const isExpanded = expandedEntries.has(entry.id);
+                      const canExpand = entry.text.length > 260 || entry.text.split(/\r?\n/).length > 4;
+
+                      return (
                       <article key={entry.id} className="py-4 first:pt-0 last:pb-1">
                         <div className="flex items-start gap-3">
                           <div className="min-w-0 flex-1">
@@ -676,8 +849,12 @@ export default function NotebookPage() {
                                 {formatDate(entry.createdAt)}
                               </span>
                               {entry.clientName && (
-                                <span className="inline-flex items-center gap-1 text-[#7B6F60]">
-                                  <UserRound size={12} />
+                                <span className="inline-flex items-center gap-1.5 text-[#7B6F60]">
+                                  <Avatar
+                                    initials={entry.clientInitials ?? initialsFromName(entry.clientName)}
+                                    color={entry.clientColor ?? "#6088ff"}
+                                    size="xs"
+                                  />
                                   {entry.clientName}
                                 </span>
                               )}
@@ -691,9 +868,19 @@ export default function NotebookPage() {
                             )}
 
                             {/* Body text */}
-                            <p className="mt-1.5 max-h-[112px] overflow-hidden whitespace-pre-wrap text-sm leading-[1.7] text-[#463A2F]">
+                            <p className={`mt-1.5 whitespace-pre-wrap text-sm leading-[1.7] text-[#463A2F] ${!isExpanded && canExpand ? "max-h-[112px] overflow-hidden" : ""}`}>
                               {entry.text}
                             </p>
+
+                            {canExpand && (
+                              <button
+                                onClick={() => toggleEntryExpanded(entry.id)}
+                                className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#D8CFBE] bg-white/70 px-2.5 py-1 text-xs font-medium text-[#6B5D4F] hover:bg-[#F7F3EA]"
+                              >
+                                {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                {isExpanded ? "Свернуть" : "Показать полностью"}
+                              </button>
+                            )}
 
                             {/* Topic + tags */}
                             {(entry.topic || entry.tags.length > 0) && (
@@ -764,17 +951,28 @@ export default function NotebookPage() {
                           </div>
                         </div>
                       </article>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
               {/* ── Pagination ── */}
-              <div className="mt-6 flex items-center justify-between border-t border-[#E2D8C8] pt-4">
+              <div className="notebook-pagination">
+                <button
+                  onClick={() => goToPage(1)}
+                  disabled={query.page <= 1 || loading}
+                  className="notebook-pagination-button notebook-pagination-button-icon"
+                  aria-label="В начало"
+                  title="В начало"
+                >
+                  <ChevronsLeft size={15} />
+                </button>
+
                 <button
                   onClick={() => goToPage(query.page - 1)}
                   disabled={query.page <= 1 || loading}
-                  className="flex h-9 items-center gap-1.5 rounded-xl border border-[#D8CFBE] bg-white/70 px-3 text-sm font-medium text-[#4D4034] hover:bg-white disabled:opacity-40"
+                  className="notebook-pagination-button"
                 >
                   <ChevronLeft size={15} />
                   Предыдущая
@@ -785,16 +983,40 @@ export default function NotebookPage() {
                 </span>
 
                 <button
+                  type="button"
+                  onClick={closeNotebook}
+                  className="notebook-cover-button"
+                  aria-label="Закрыть блокнот"
+                  title="Закрыть блокнот"
+                >
+                  <BookOpen size={16} />
+                </button>
+
+                <button
                   onClick={() => goToPage(query.page + 1)}
                   disabled={query.page >= data.totalPages || loading}
-                  className="flex h-9 items-center gap-1.5 rounded-xl border border-[#D8CFBE] bg-white/70 px-3 text-sm font-medium text-[#4D4034] hover:bg-white disabled:opacity-40"
+                  className="notebook-pagination-button"
                 >
                   Следующая
                   <ChevronRight size={15} />
                 </button>
+
+                <button
+                  onClick={() => goToPage(data.totalPages)}
+                  disabled={query.page >= data.totalPages || loading}
+                  className="notebook-pagination-button notebook-pagination-button-icon"
+                  aria-label="В конец"
+                  title="В конец"
+                >
+                  <ChevronsRight size={15} />
+                </button>
               </div>
             </div>
+
           </div>
+          </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -873,7 +1095,7 @@ export default function NotebookPage() {
                 <button
                   onClick={saveEntry}
                   disabled={!form.text.trim() || saving}
-                  className="flex items-center gap-2 rounded-xl bg-[#4A3C2E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3A2E22] disabled:opacity-40"
+                  className="flex items-center gap-2 rounded-xl bg-[#503C27] px-4 py-2 text-sm font-semibold text-white hover:bg-[#463520] disabled:opacity-40"
                 >
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                   Сохранить
