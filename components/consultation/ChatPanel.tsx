@@ -89,6 +89,7 @@ export function ChatPanel({
   const [clearLoading, setClearLoading]   = useState(false);
   const [saveState,    setSaveState]      = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [savedCount,   setSavedCount]     = useState<number | null>(null);
+  const [dynSuggestions, setDynSuggestions] = useState<string[]>([]);
   const bottomRef    = useRef<HTMLDivElement>(null);
   const textareaRef  = useRef<HTMLTextAreaElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,6 +112,29 @@ export function ChatPanel({
       }
     })();
   }, [consultationId]);
+
+  // ── Dynamic suggestions ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!consultationId) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/chat-suggestions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            consultationId,
+            chatHistory: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setDynSuggestions(data.suggestions ?? []);
+        }
+      } catch { /* non-critical */ }
+    })();
+  // Re-run after each AI reply (when messages length changes and last msg is assistant)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consultationId, messages.filter(m => m.role === "assistant").length]);
 
   // ── Pending message from parent ───────────────────────────────────────────
   useEffect(() => {
@@ -512,6 +536,19 @@ export function ChatPanel({
       {/* Quick prompts */}
       <div className="px-4 pt-2 pb-1 flex-shrink-0">
         <div className="flex flex-wrap gap-1.5">
+          {dynSuggestions.map((s) => (
+            <button
+              key={s}
+              onClick={() => send(s)}
+              disabled={loading}
+              className="text-xs px-2.5 py-1 rounded-full border transition-colors disabled:opacity-40"
+              style={{ background: "#FDF4FF", borderColor: "#E9D5FF", color: "#7C3AED" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#F3E8FF"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#FDF4FF"; }}
+            >
+              {s}
+            </button>
+          ))}
           {QUICK_PROMPTS.map((s) => (
             <button
               key={s}
