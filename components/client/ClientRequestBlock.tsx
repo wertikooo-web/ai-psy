@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, Pencil, Plus, X, Loader2, History } from "lucide-react";
+import { ChevronDown, Pencil, Plus, X, Loader2, History, Trash2 } from "lucide-react";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 import { RequestHistoryDrawer } from "@/components/client/RequestHistoryDrawer";
 import type { ClientRequest } from "@/lib/types";
@@ -209,6 +209,98 @@ function NewRequestModal({
   );
 }
 
+// ── Delete confirmation dialog ─────────────────────────────────────────────────
+
+function DeleteConfirmDialog({
+  request,
+  onConfirm,
+  onClose,
+}: {
+  request:   ClientRequest;
+  onConfirm: () => Promise<void>;
+  onClose:   () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError]       = useState("");
+
+  async function handleDelete() {
+    setDeleting(true);
+    setError("");
+    try {
+      await onConfirm();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка удаления");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: S.border }}>
+            <h2 className="text-sm font-semibold" style={{ color: S.title }}>
+              {request.isCurrent ? "Удалить текущий запрос?" : "Удалить этот запрос?"}
+            </h2>
+            <button onClick={onClose} className="text-stone-400 hover:text-stone-600 transition-colors ml-4">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="px-5 py-4 space-y-2">
+            <p className="text-sm leading-relaxed" style={{ color: S.text, fontWeight: 600 }}>
+              «{request.text}»
+            </p>
+            <p className="text-xs" style={{ color: S.muted }}>
+              {request.isCurrent
+                ? "Предыдущая версия станет текущей. Если других запросов нет, у клиента не останется активного запроса."
+                : "Запись будет удалена из истории запросов клиента."}
+            </p>
+            {error && <p className="text-xs text-red-500">{error}</p>}
+          </div>
+          <div className="flex gap-3 px-5 pb-5">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl text-sm border transition-colors"
+              style={{ borderColor: S.border, color: "#6B5D4F" }}
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition-colors disabled:opacity-50"
+              style={{ background: "#C0392B" }}
+              onMouseEnter={e => { if (!deleting) e.currentTarget.style.background = "#922B21"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#C0392B"; }}
+            >
+              {deleting ? "Удаление..." : "Удалить"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalPortal>
+  );
+}
+
+// ── Toast notification ─────────────────────────────────────────────────────────
+
+function Toast({ message, onDone }: { message: string; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 3000);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <div
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-white"
+      style={{ background: "#3A2E22", maxWidth: "90vw" }}
+    >
+      {message}
+    </div>
+  );
+}
+
 // ── Main block ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -225,6 +317,8 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
   const [historyRequest, setHistoryRequest] = useState<ClientRequest | null>(null);
   const [editOpen, setEditOpen]       = useState(false);
   const [newOpen, setNewOpen]         = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ClientRequest | null>(null);
+  const [toast, setToast]             = useState("");
 
   const VISIBLE_LIMIT = 5;
   const current  = requests.find((r) => r.isCurrent) ?? null;
@@ -258,6 +352,25 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
       throw new Error(data.error ?? "Ошибка сохранения");
     }
     await reload();
+  }
+
+  async function handleDelete(req: ClientRequest) {
+    const res = await fetch(`/api/client-requests/${clientId}`, {
+      method:  "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ requestId: req.id }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error ?? "Ошибка удаления");
+    }
+    const data = await res.json();
+    await reload();
+    if (data.promoted) {
+      setToast("Запрос удалён. Предыдущая версия стала текущей");
+    } else {
+      setToast("Запрос удалён");
+    }
   }
 
   async function handleCreateNew(text: string, comment: string) {
@@ -344,7 +457,7 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
         <div className="px-5 py-4">
           {current ? (
             <>
-              <p className="text-sm leading-relaxed" style={{ color: S.text }}>{current.text}</p>
+              <p className="text-sm leading-relaxed font-semibold" style={{ color: S.text }}>{current.text}</p>
               {current.previousText && (
                 <p className="mt-2 text-xs" style={{ color: S.muted }}>
                   Уточнено: <span className="line-through">{current.previousText}</span>
@@ -352,7 +465,7 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
               )}
             </>
           ) : (
-            <p className="text-sm italic" style={{ color: S.muted }}>Запрос пока не задан.</p>
+            <p className="text-sm italic" style={{ color: S.muted }}>У клиента пока нет активного запроса.</p>
           )}
         </div>
 
@@ -401,12 +514,12 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
                         >
                           <div className="flex items-start justify-between gap-2">
                             <p
-                              className="text-sm leading-relaxed flex-1"
+                              className="text-sm leading-relaxed flex-1 font-semibold"
                               style={{ color: req.isCurrent ? S.title : "#7A6E60" }}
                             >
                               {req.text}
                             </p>
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
                               {req.isCurrent && (
                                 <span
                                   className="text-xs px-2 py-0.5 rounded-full"
@@ -425,6 +538,16 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
                               >
                                 <History size={11} />
                                 История
+                              </button>
+                              <button
+                                onClick={() => setDeleteTarget(req)}
+                                className="w-6 h-6 flex items-center justify-center rounded-lg transition-colors"
+                                style={{ color: "#A8997F", background: "transparent" }}
+                                onMouseEnter={e => { e.currentTarget.style.color = "#C0392B"; e.currentTarget.style.background = "#FEE2E2"; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = "#A8997F"; e.currentTarget.style.background = "transparent"; }}
+                                title="Удалить запрос"
+                              >
+                                <Trash2 size={12} />
                               </button>
                             </div>
                           </div>
@@ -491,6 +614,18 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
         request={historyRequest}
         onClose={() => setHistoryRequest(null)}
       />
+
+      {deleteTarget && (
+        <DeleteConfirmDialog
+          request={deleteTarget}
+          onConfirm={() => handleDelete(deleteTarget)}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {toast && (
+        <Toast message={toast} onDone={() => setToast("")} />
+      )}
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConsultationsByRequestId } from "@/lib/data/consultations";
 import { getChatMessageCounts }        from "@/lib/data/chatMessages";
+import { getClientRequestById }        from "@/lib/data/clientRequests";
 
 export interface ConsultationSummary {
   id:            string;
@@ -23,7 +24,9 @@ export async function GET(
   const { requestId } = await params;
   console.log(`[request-consultations] GET requestId=${requestId}`);
   try {
-    const consultations = await getConsultationsByRequestId(requestId);
+    // Look up clientId so we can also include unlinked legacy consultations
+    const requestRecord = await getClientRequestById(requestId).catch(() => null);
+    const consultations = await getConsultationsByRequestId(requestId, requestRecord?.clientId);
     console.log(`[request-consultations] found=${consultations.length} for requestId=${requestId}`);
 
     const ids       = consultations.map(c => c.id);
