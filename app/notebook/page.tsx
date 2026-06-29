@@ -599,7 +599,7 @@ export default function NotebookPage() {
                     Личный блокнот
                   </p>
                   <p className="mt-0.5 text-sm text-[#6B5D4F]">
-                    {pluralNotes(data.total)} · по 3 на странице
+                    {pluralNotes(data.total)}
                   </p>
                 </div>
                 {/* Small decorative dots mirroring binder holes from the side */}
