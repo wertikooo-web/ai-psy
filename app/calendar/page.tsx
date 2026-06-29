@@ -661,10 +661,16 @@ function EventDetailModal({
               className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 transition-colors">
               <Trash2 size={14} /> Удалить
             </button>
-            <button onClick={onEdit}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4F46E5] text-white text-sm font-medium hover:bg-[#4338CA] transition-colors">
-              <Pencil size={14} /> Редактировать
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={onClose}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                Закрыть
+              </button>
+              <button onClick={onEdit}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4F46E5] text-white text-sm font-medium hover:bg-[#4338CA] transition-colors">
+                <Pencil size={14} /> Редактировать
+              </button>
+            </div>
           </div>
         </div>
       </div>
