@@ -183,12 +183,34 @@ create index if not exists client_materials_client_id_idx on public.client_mater
 create table if not exists public.notebook (
   id          uuid        primary key default gen_random_uuid(),
   created_at  timestamptz not null    default now(),
-  text        text        not null    default ''
+  updated_at  timestamptz not null    default now(),
+  deleted_at  timestamptz             default null,
+  title       text        not null    default '',
+  text        text        not null    default '',
+  client_id   uuid        references public.clients(id) on delete set null,
+  topic       text,
+  tags        text[]      not null    default '{}'
 );
+
+drop trigger if exists notebook_updated_at on public.notebook;
+create trigger notebook_updated_at
+  before update on public.notebook
+  for each row execute function public.set_updated_at();
 
 alter table public.notebook enable row level security;
 
 create index if not exists notebook_created_at_idx on public.notebook (created_at desc);
+create index if not exists notebook_deleted_at_idx on public.notebook (deleted_at)
+  where deleted_at is null;
+create index if not exists notebook_created_at_active_idx on public.notebook (created_at desc)
+  where deleted_at is null;
+create index if not exists notebook_updated_at_active_idx on public.notebook (updated_at desc)
+  where deleted_at is null;
+create index if not exists notebook_client_id_idx on public.notebook (client_id)
+  where deleted_at is null;
+create index if not exists notebook_topic_idx on public.notebook (topic)
+  where deleted_at is null;
+create index if not exists notebook_tags_gin_idx on public.notebook using gin (tags);
 
 -- ── user_profile ──────────────────────────────────────────────────────────────
 -- Single row per installation, id = 'default'
@@ -203,7 +225,14 @@ create table if not exists public.user_profile (
   approach              text,
   email                 text,
   default_analysis_mode text        not null    default 'working',
-  photo_url             text        -- base64 data URL
+  photo_url             text,       -- base64 data URL
+
+  -- AI settings (added by migrations 003, 012)
+  ai_model              text        not null    default 'gpt-4o',
+  analysis_style        text        not null    default 'professional',
+  analysis_length       text        not null    default 'standard',
+  chat_style            text        not null    default 'normal',
+  ai_instructions       text        not null    default ''
 );
 
 alter table public.user_profile enable row level security;
