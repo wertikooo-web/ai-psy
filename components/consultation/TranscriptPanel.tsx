@@ -10,6 +10,7 @@ import {
   Volume2, Clock, EyeOff, Eye, Copy, Check, Plus,
 } from "lucide-react";
 import { CollapsedConsultationPanel } from "./CollapsedConsultationPanel";
+import { ImportMaterialModal } from "@/components/client/ImportMaterialModal";
 import clsx from "clsx";
 import type { ClientMaterial } from "@/lib/types";
 import { MATERIAL_TYPE_LABELS } from "@/lib/types";
@@ -475,6 +476,7 @@ export function TranscriptPanel({
   const [matDeleteLoading, setMatDeleteLoading] = useState(false);
   const [obsFormOpen, setObsFormOpen]   = useState(false);
   const [obsDraft, setObsDraft]         = useState("");
+  const [importMatOpen, setImportMatOpen] = useState(false);
   const [obsSaving, setObsSaving]       = useState(false);
   const [savedObsList, setSavedObsList] = useState<{ id: string; text: string; at: string }[]>([]);
 
@@ -961,35 +963,62 @@ export function TranscriptPanel({
 
       {/* Tabs */}
       {(hasBoth || hasMaterials) && (
-        <div className="consultation-toolbar items-stretch overflow-x-auto" style={{ background: "#F5F0E8", borderBottom: "1px solid #E0D8CA" }}>
-          {(!!plainText || hasFormatted || (!isNotes && segments.length > 0)) && (
+        <div className="flex items-stretch justify-between overflow-x-auto flex-shrink-0" style={{ background: "#F5F0E8", borderBottom: "1px solid #E0D8CA" }}>
+          {/* Tab buttons */}
+          <div className="flex items-stretch">
+            {(!!plainText || hasFormatted || (!isNotes && segments.length > 0)) && (
+              <button
+                onClick={() => setActiveTab("transcript")}
+                className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+                  activeTab === "transcript" ? "border-brand-500 text-brand-600" : "border-transparent text-slate-400 hover:text-slate-600"
+                )}
+              >
+                <Mic size={12} /> Транскрипт
+              </button>
+            )}
+            {!!notesText && (
+              <button
+                onClick={() => setActiveTab("notes")}
+                className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+                  activeTab === "notes" ? "border-amber-500 text-amber-600" : "border-transparent text-slate-400 hover:text-slate-600"
+                )}
+              >
+                <NotebookPen size={12} /> Заметки
+              </button>
+            )}
+            {hasMaterials && (
+              <button
+                onClick={() => setActiveTab("materials")}
+                className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+                  activeTab === "materials" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600"
+                )}
+              >
+                <Paperclip size={12} /> Материалы ({materials.length})
+              </button>
+            )}
+          </div>
+
+          {/* "+ Добавить" button — right side, context-aware */}
+          {activeTab === "notes" && clientId && (
             <button
-              onClick={() => setActiveTab("transcript")}
-              className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
-                activeTab === "transcript" ? "border-brand-500 text-brand-600" : "border-transparent text-slate-400 hover:text-slate-600"
-              )}
+              onClick={() => setObsFormOpen(true)}
+              className="flex items-center gap-1 px-3 py-1.5 my-1 mr-2 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap flex-shrink-0"
+              style={{ background: "#EFF6FF", borderColor: "#BFDBFE", color: "#1E40AF" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#DBEAFE"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#EFF6FF"; }}
             >
-              <Mic size={12} /> Транскрипт
+              <Plus size={11} /> Добавить
             </button>
           )}
-          {!!notesText && (
+          {activeTab === "materials" && clientId && (
             <button
-              onClick={() => setActiveTab("notes")}
-              className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
-                activeTab === "notes" ? "border-amber-500 text-amber-600" : "border-transparent text-slate-400 hover:text-slate-600"
-              )}
+              onClick={() => setImportMatOpen(true)}
+              className="flex items-center gap-1 px-3 py-1.5 my-1 mr-2 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap flex-shrink-0"
+              style={{ background: "#F0FDF4", borderColor: "#BBF7D0", color: "#166534" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#DCFCE7"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#F0FDF4"; }}
             >
-              <NotebookPen size={12} /> Заметки
-            </button>
-          )}
-          {hasMaterials && (
-            <button
-              onClick={() => setActiveTab("materials")}
-              className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
-                activeTab === "materials" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600"
-              )}
-            >
-              <Paperclip size={12} /> Материалы ({materials.length})
+              <Plus size={11} /> Добавить
             </button>
           )}
         </div>
@@ -1116,55 +1145,43 @@ export function TranscriptPanel({
             </div>
           )}
 
-          {/* Add observation block */}
-          {clientId && (
+          {/* Observation form — opens when tab-bar "+ Добавить" is clicked */}
+          {clientId && obsFormOpen && (
             <div className="pt-2 border-t" style={{ borderColor: "#E0D8CA" }}>
-              {!obsFormOpen ? (
-                <button
-                  onClick={() => setObsFormOpen(true)}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors"
-                  style={{ background: "#EFF6FF", borderColor: "#BFDBFE", color: "#1E40AF" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#DBEAFE"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "#EFF6FF"; }}
-                >
-                  <Plus size={11} /> Добавить наблюдение
-                </button>
-              ) : (
-                <div className="space-y-2">
-                  <textarea
-                    autoFocus
-                    rows={3}
-                    value={obsDraft}
-                    onChange={e => setObsDraft(e.target.value)}
-                    placeholder="Введите наблюдение о клиенте..."
-                    className="w-full px-3 py-2 rounded-xl border text-sm text-slate-800 placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none"
-                    style={{ borderColor: "#BFDBFE", background: "#FAFCFF" }}
-                    onKeyDown={e => {
-                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveObservation();
-                      if (e.key === "Escape") { setObsFormOpen(false); setObsDraft(""); }
-                    }}
-                  />
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => { setObsFormOpen(false); setObsDraft(""); }}
-                      className="text-xs text-stone-400 hover:text-stone-600 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      Отмена
-                    </button>
-                    <button
-                      onClick={saveObservation}
-                      disabled={obsSaving || !obsDraft.trim()}
-                      className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-40"
-                      style={{ background: "#1E40AF", color: "#fff" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "#1D4ED8"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "#1E40AF"; }}
-                    >
-                      {obsSaving ? <Loader2 size={11} className="animate-spin" /> : null}
-                      {obsSaving ? "Сохраняю..." : "Сохранить"}
-                    </button>
-                  </div>
+              <div className="space-y-2">
+                <textarea
+                  autoFocus
+                  rows={3}
+                  value={obsDraft}
+                  onChange={e => setObsDraft(e.target.value)}
+                  placeholder="Введите наблюдение о клиенте..."
+                  className="w-full px-3 py-2 rounded-xl border text-sm text-slate-800 placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none"
+                  style={{ borderColor: "#BFDBFE", background: "#FAFCFF" }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveObservation();
+                    if (e.key === "Escape") { setObsFormOpen(false); setObsDraft(""); }
+                  }}
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => { setObsFormOpen(false); setObsDraft(""); }}
+                    className="text-xs text-stone-400 hover:text-stone-600 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    onClick={saveObservation}
+                    disabled={obsSaving || !obsDraft.trim()}
+                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-40"
+                    style={{ background: "#1E40AF", color: "#fff" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#1D4ED8"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "#1E40AF"; }}
+                  >
+                    {obsSaving ? <Loader2 size={11} className="animate-spin" /> : null}
+                    {obsSaving ? "Сохраняю..." : "Сохранить"}
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </div>
@@ -1334,6 +1351,19 @@ export function TranscriptPanel({
             {filtered.length !== segments.length && ` · найдено ${filtered.length}`}
           </p>
         </div>
+      )}
+      {/* Import material modal — triggered from Materials tab "+ Добавить" */}
+      {clientId && (
+        <ImportMaterialModal
+          open={importMatOpen}
+          clientId={clientId}
+          onClose={() => setImportMatOpen(false)}
+          onImported={(m) => {
+            setImportMatOpen(false);
+            onRefresh?.();
+            window.dispatchEvent(new CustomEvent("material-added", { detail: { clientId, material: m } }));
+          }}
+        />
       )}
     </div>
   );
