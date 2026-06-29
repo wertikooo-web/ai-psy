@@ -134,10 +134,7 @@ export const MATERIAL_TYPE_LABELS: Record<MaterialType, string> = {
 
 export const HISTORY_SECTIONS_ORDER: HistorySection[] = [
   "main_topics",
-  "hypotheses",
-  "resources",
   "significant_events",
-  "explored",
-  "needs_clarification",
+  "resources",
   "notes",
 ];
