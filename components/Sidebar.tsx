@@ -25,10 +25,11 @@ const C = {
 };
 
 // ── Palette: decorative panel ─────────────────────────────────────────────────
+// D.bg sampled from the actual illustration background (light warm cream)
 const D = {
-  bg:     "#F5F0E8",
-  border: "#D8CFBE",
-  btnHov: "#E9DCC7",
+  bg:     "#FAF5EF",
+  border: "rgba(130, 100, 70, 0.14)",
+  btnHov: "#EFE9E0",
   btnTxt: "#9C8E80",
 };
 
@@ -327,6 +328,8 @@ export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
                 userSelect: "none",
                 pointerEvents: "none",
                 display: "block",
+                WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 6%, black 86%, transparent 100%)",
+                maskImage: "linear-gradient(to bottom, transparent 0%, black 6%, black 86%, transparent 100%)",
               }}
             />
           </div>
