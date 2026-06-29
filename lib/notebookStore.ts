@@ -2,15 +2,22 @@
 // TODO: migrate to Supabase `notebook` table for persistence on Railway.
 
 export interface NotebookEntry {
-  id:        string;
-  text:      string;
-  createdAt: string;
+  id:         string;
+  title:      string;
+  text:       string;
+  clientId?:  string;
+  clientName?: string;
+  topic?:     string;
+  tags:       string[];
+  createdAt:  string;
+  updatedAt:  string;
+  deletedAt?: string;
 }
 
 const store: NotebookEntry[] = [];
 
 export function getNotebookEntries(): NotebookEntry[] {
-  return [...store].sort(
+  return store.filter((entry) => !entry.deletedAt).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
@@ -21,5 +28,12 @@ export function addNotebookEntry(entry: NotebookEntry): void {
 
 export function deleteNotebookEntry(id: string): void {
   const idx = store.findIndex((e) => e.id === id);
-  if (idx >= 0) store.splice(idx, 1);
+  if (idx >= 0) store[idx] = { ...store[idx], deletedAt: new Date().toISOString() };
+}
+
+export function updateNotebookEntry(id: string, patch: Partial<NotebookEntry>): NotebookEntry | null {
+  const idx = store.findIndex((e) => e.id === id && !e.deletedAt);
+  if (idx < 0) return null;
+  store[idx] = { ...store[idx], ...patch, updatedAt: new Date().toISOString() };
+  return store[idx];
 }
