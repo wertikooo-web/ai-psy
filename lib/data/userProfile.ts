@@ -58,8 +58,16 @@ export async function writeProfile(profile: Partial<UserProfile>): Promise<void>
 
     const { error } = await supabaseServer!
       .from("user_profile")
-      .upsert({ id: "default", ...patch });
-    if (error) throw new Error(`[DAL/writeProfile] ${error.message}`);
+      .upsert({ id: "default", ...patch }, { onConflict: "id" });
+    if (error) {
+      console.error("PROFILE_SAVE_FAILED", {
+        code:    error.code,
+        message: error.message,
+        details: error.details,
+        hint:    error.hint,
+      });
+      throw new Error(error.message);
+    }
     return;
   }
   await jsonStore.writeProfile(profile);

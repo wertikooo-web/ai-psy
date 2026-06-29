@@ -66,6 +66,7 @@ export default function SettingsPage() {
   // Profile state
   const [profile, setProfile] = useState<UserProfile>(EMPTY);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError]   = useState<string>("");
   const [deleting, setDeleting] = useState(false);
 
   // City animation state
@@ -159,16 +160,21 @@ export default function SettingsPage() {
 
   async function handleSave() {
     setSaveStatus("saving");
+    setSaveError("");
     try {
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(profile),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Не удалось сохранить профиль");
+      }
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 3000);
-    } catch {
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Не удалось сохранить профиль");
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 3000);
     }
@@ -348,7 +354,7 @@ export default function SettingsPage() {
                 >
                   <Trash2 size={13} /> Очистить профиль
                 </button>
-                <SaveRow status={saveStatus} onSave={handleSave} />
+                <SaveRow status={saveStatus} onSave={handleSave} errorMsg={saveError} />
               </div>
             </div>
           </SettingsSection>
@@ -528,15 +534,16 @@ function SettingsSection({ title, description, icon, isOpen, onToggle, children 
 
 // ── SaveRow ───────────────────────────────────────────────────────────────────
 
-function SaveRow({ status, onSave, label = "Сохранить" }: {
+function SaveRow({ status, onSave, label = "Сохранить", errorMsg }: {
   status: "idle" | "saving" | "saved" | "error";
   onSave: () => void;
   label?: string;
+  errorMsg?: string;
 }) {
   return (
     <div className="flex items-center gap-3">
       {status === "saved" && <span className="flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 size={13} />Сохранено</span>}
-      {status === "error"  && <span className="flex items-center gap-1 text-xs text-rose-500"><AlertCircle size={13} />Ошибка</span>}
+      {status === "error"  && <span className="flex items-center gap-1 text-xs text-rose-500" title={errorMsg}><AlertCircle size={13} />Ошибка</span>}
       <button
         onClick={onSave}
         disabled={status === "saving"}
