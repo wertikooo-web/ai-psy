@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { CollapsedConsultationPanel } from "./CollapsedConsultationPanel";
 import { ImportMaterialModal } from "@/components/client/ImportMaterialModal";
+import { UploadModal } from "@/components/upload/UploadModal";
 import clsx from "clsx";
 import type { ClientMaterial } from "@/lib/types";
 import { MATERIAL_TYPE_LABELS } from "@/lib/types";
@@ -477,6 +478,7 @@ export function TranscriptPanel({
   const [obsFormOpen, setObsFormOpen]   = useState(false);
   const [obsDraft, setObsDraft]         = useState("");
   const [importMatOpen, setImportMatOpen] = useState(false);
+  const [uploadOpen, setUploadOpen]       = useState(false);
   const [obsSaving, setObsSaving]       = useState(false);
   const [savedObsList, setSavedObsList] = useState<{ id: string; text: string; at: string }[]>([]);
 
@@ -1000,6 +1002,17 @@ export function TranscriptPanel({
 
           {/* "+ Добавить" button — right side, vertically centred inside fixed-height toolbar */}
           <div className="flex items-center pr-2">
+            {activeTab === "transcript" && clientId && (
+              <button
+                onClick={() => setUploadOpen(true)}
+                className="flex items-center gap-1 px-2.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap leading-none"
+                style={{ height: 26, background: "#F5F3FF", borderColor: "#DDD6FE", color: "#4F46E5" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#EDE9FE"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#F5F3FF"; }}
+              >
+                <Plus size={11} /> Добавить
+              </button>
+            )}
             {activeTab === "notes" && clientId && (
               <button
                 onClick={() => setObsFormOpen(true)}
@@ -1365,6 +1378,16 @@ export function TranscriptPanel({
             onRefresh?.();
             window.dispatchEvent(new CustomEvent("material-added", { detail: { clientId, material: m } }));
           }}
+        />
+      )}
+
+      {/* Upload modal — triggered from Transcript tab "+ Добавить" */}
+      {clientId && (
+        <UploadModal
+          open={uploadOpen}
+          onClose={() => { setUploadOpen(false); onRefresh?.(); }}
+          presetClientId={clientId}
+          presetClientName={clientName}
         />
       )}
     </div>
