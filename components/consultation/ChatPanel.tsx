@@ -26,14 +26,34 @@ function formatChatMessage(text: string): string {
   // 1. Already has paragraph breaks → fine as-is
   if (t.includes("\n\n")) return t;
 
-  // 2. Has single line breaks → expand to paragraph breaks,
-  //    but keep consecutive list-item lines together (- … / * … / 1. …)
+  // 2. Has single line breaks — group prose lines into 2-sentence paragraphs,
+  //    list items (-, *, 1.) stay as one block
   if (t.includes("\n")) {
-    return t.replace(/\n(?=[^\n])/g, (_match: string, offset: number) => {
-      const nextLine = t.slice(offset + 1);
-      if (/^[-*•]\s/.test(nextLine) || /^\d+[.)]\s/.test(nextLine)) return "\n";
-      return "\n\n";
-    });
+    const lines = t.split("\n");
+    const proseBuf: string[] = [];
+    const out: string[] = [];
+
+    function flushProse() {
+      if (!proseBuf.length) return;
+      // group every 2 lines into one paragraph
+      for (let i = 0; i < proseBuf.length; i += 2) {
+        out.push(proseBuf.slice(i, i + 2).join(" "));
+      }
+      proseBuf.length = 0;
+    }
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) { flushProse(); continue; }
+      if (/^[-*•]\s/.test(trimmed) || /^\d+[.)]\s/.test(trimmed)) {
+        flushProse();
+        out.push(trimmed);
+      } else {
+        proseBuf.push(trimmed);
+      }
+    }
+    flushProse();
+    return out.join("\n\n");
   }
 
   // 3. Solid wall of text — split only if long enough and multi-sentence
