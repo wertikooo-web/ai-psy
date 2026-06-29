@@ -44,7 +44,8 @@ interface Props {
   evidenceRefs?: EvidenceReference[];
 }
 
-export function EvidenceTooltip({ explanation, tooltip, confidence, evidenceRefs }: Props) {
+// confidence is kept in the interface for data compatibility but not shown in UI
+export function EvidenceTooltip({ explanation, tooltip, evidenceRefs }: Props) {
   const [open, setOpen]   = useState(false);
   const btnRef            = useRef<HTMLButtonElement>(null);
   const popRef            = useRef<HTMLDivElement>(null);
@@ -53,8 +54,8 @@ export function EvidenceTooltip({ explanation, tooltip, confidence, evidenceRefs
   const validLines = (tooltip ?? []).filter((s) => typeof s === "string" && s.trim().length > 0);
   const hasContent = (explanation && explanation.trim().length > 0) || validLines.length > 0;
 
-  // Best evidence quotes (max 3, with actual quote text)
-  const topRefs = (evidenceRefs ?? []).filter((r) => r.quote && r.quote.trim().length > 0).slice(0, 3);
+  // Best evidence quotes (max 2, with actual quote text)
+  const topRefs = (evidenceRefs ?? []).filter((r) => r.quote && r.quote.trim().length > 0).slice(0, 2);
 
   // Close on Escape
   useEffect(() => {
@@ -76,24 +77,6 @@ export function EvidenceTooltip({ explanation, tooltip, confidence, evidenceRefs
   }, [open]);
 
   if (!hasContent) return null;
-
-  const confidenceLabel =
-    confidence === "high"   ? "Высокая уверенность"   :
-    confidence === "medium" ? "Средняя уверенность"   :
-    confidence === "low"    ? "Низкая уверенность"     : null;
-
-  const confidenceColor =
-    confidence === "high"   ? "#22C55E" :
-    confidence === "medium" ? "#F59E0B" : "#94A3B8";
-
-  const categoryLabel: Record<string, string> = {
-    repeatedThemes:              "повт. тема",
-    repeatedPhrases:             "повт. фраза",
-    uncertaintyMarkers:          "неопределённость",
-    possibleOffTopicAnswers:     "уход от темы",
-    importantQuotes:             "значимый фрагмент",
-    possibleTranscriptionIssues: "возм. ошибка транскр.",
-  };
 
   return (
     <div style={{ position: "relative", display: "inline-block", lineHeight: 1 }}>
@@ -246,44 +229,18 @@ export function EvidenceTooltip({ explanation, tooltip, confidence, evidenceRefs
                   }}>
                     «{ref.quote!.trim()}»
                   </p>
-                  <div style={{ display: "flex", gap: 8, marginTop: 3 }}>
-                    {ref.startSeconds !== undefined && (
+                  {ref.startSeconds !== undefined && (
+                    <div style={{ marginTop: 3 }}>
                       <span style={{ fontSize: 10, color: "#9CA3AF", fontVariantNumeric: "tabular-nums" }}>
                         {fmtSeconds(ref.startSeconds)}
                       </span>
-                    )}
-                    {ref.category && (
-                      <span style={{ fontSize: 10, color: "#B8A898" }}>
-                        {categoryLabel[ref.category] ?? ref.category}
-                      </span>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          {/* ── Confidence badge ── */}
-          {confidenceLabel && (
-            <div style={{
-              display:    "flex",
-              alignItems: "center",
-              gap:        5,
-              marginTop:  10,
-              paddingTop: 8,
-              borderTop:  "1px solid #F0EBE3",
-            }}>
-              <span style={{
-                display:      "inline-block",
-                width:        6,
-                height:       6,
-                borderRadius: "50%",
-                background:   confidenceColor,
-                flexShrink:   0,
-              }} />
-              <span style={{ fontSize: 11, color: "#94A3B8" }}>{confidenceLabel}</span>
-            </div>
-          )}
         </div>
       )}
     </div>
