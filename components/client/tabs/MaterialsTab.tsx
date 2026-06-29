@@ -63,15 +63,15 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
     <>
       <div className="space-y-3">
 
-        {/* Info banner — matches Observations style */}
+        {/* Info banner — same style as ObservationsTab */}
         <div
-          className="flex items-start gap-2.5 rounded-xl border px-4 py-3"
-          style={{ background: "#F0FDF4", borderColor: "#BBF7D0" }}
+          className="flex items-start gap-2 rounded-xl px-4 py-3 text-xs"
+          style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E40AF" }}
         >
-          <Paperclip size={13} className="text-emerald-600 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-emerald-700 leading-relaxed">
-            Материалы <span className="font-semibold">автоматически включаются</span> в контекст следующего AI‑анализа этого клиента.
-          </p>
+          <Paperclip size={13} className="flex-shrink-0 mt-0.5" />
+          <span>
+            Материалы <strong>автоматически включаются</strong> в контекст следующего AI‑анализа этого клиента.
+          </span>
         </div>
 
         {/* Header bar */}
