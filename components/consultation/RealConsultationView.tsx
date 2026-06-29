@@ -98,6 +98,7 @@ function AnalysisProgress({ transcriptLen }: { transcriptLen: number }) {
 }
 import { TranscriptPanel } from "./TranscriptPanel";
 import { ChatPanel } from "./ChatPanel";
+import { CollapsedConsultationPanel } from "./CollapsedConsultationPanel";
 
 interface Props {
   consultation: StoredConsultation;
@@ -404,23 +405,15 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
           {/* Analysis panel */}
           {panelCollapsed.analysis ? (
-            <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-[#FAF8F5]" style={{ borderRight: "1px solid #D8CFBE" }}>
-              <button
-                onClick={() => setPanelCollapsed(p => ({ ...p, analysis: false }))}
-                title="Развернуть AI-анализ"
-                className="flex-1 flex flex-col items-center justify-start pt-4 gap-3 hover:bg-stone-100 transition-colors w-full group"
-              >
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow-sm" style={{ background: "#9C9289" }}>
-                  <BrainCircuit size={15} className="text-white" />
-                </div>
-                <span
-                  className="text-xs font-semibold select-none"
-                  style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", color: "#9C9289" }}
-                >
-                  AI-анализ
-                </span>
-              </button>
-            </div>
+            <CollapsedConsultationPanel
+              label="AI-анализ"
+              icon={<BrainCircuit size={14} color="white" />}
+              bg="#9C9289"
+              hoverBg="#8A8079"
+              expandDirection="right"
+              onExpand={() => setPanelCollapsed(p => ({ ...p, analysis: false }))}
+              tooltip="Развернуть AI-анализ"
+            />
           ) : (
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#FAF8F5]">
             {/* Analysis header */}

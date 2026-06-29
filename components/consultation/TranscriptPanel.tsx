@@ -9,6 +9,7 @@ import {
   Loader2, Play, Pause, MoreHorizontal, Download, Trash2, AlertTriangle,
   Volume2, Clock, EyeOff, Eye, Copy, Check,
 } from "lucide-react";
+import { CollapsedConsultationPanel } from "./CollapsedConsultationPanel";
 import clsx from "clsx";
 import type { ClientMaterial } from "@/lib/types";
 import { MATERIAL_TYPE_LABELS } from "@/lib/types";
@@ -606,23 +607,19 @@ export function TranscriptPanel({
   // ── Collapsed ─────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
-      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-[#FAF8F5] border-r border-[#D8CFBE]">
-        <button
-          onClick={onToggle}
-          title={`Развернуть ${title.toLowerCase()}`}
-          className="flex-1 flex flex-col items-center justify-start pt-4 gap-3 hover:bg-brand-50 transition-colors w-full group"
-        >
-          <div className="w-7 h-7 rounded-lg bg-brand-500 flex items-center justify-center shadow-sm group-hover:bg-brand-600 transition-colors">
-            <ChevronsRight size={15} className="text-white" />
-          </div>
-          <span
-            className="text-xs font-semibold text-brand-500 select-none group-hover:text-brand-600 transition-colors"
-            style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
-          >
-            {title}
-          </span>
-        </button>
-      </div>
+      <CollapsedConsultationPanel
+        label={title}
+        icon={
+          isNotes && !hasBoth
+            ? <NotebookPen size={14} color="white" />
+            : <Mic size={14} color="white" />
+        }
+        bg="#4E5A6E"
+        hoverBg="#3D4A5C"
+        expandDirection="right"
+        onExpand={onToggle}
+        tooltip={`Развернуть ${title.toLowerCase()}`}
+      />
     );
   }
 

@@ -8,6 +8,7 @@ import {
   BookmarkPlus, Check, Loader2, Download,
 } from "lucide-react";
 import clsx from "clsx";
+import { CollapsedConsultationPanel } from "./CollapsedConsultationPanel";
 
 interface ChatPanelProps {
   collapsed:           boolean;
@@ -291,23 +292,15 @@ export function ChatPanel({
   // ── Collapsed ─────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
-      <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-[#FAF8F5] border-l border-[#D8CFBE]">
-        <button
-          onClick={onToggle}
-          title="Развернуть чат"
-          className="flex-1 flex flex-col items-center justify-start pt-4 gap-3 hover:bg-brand-50 transition-colors w-full group"
-        >
-          <div className="w-7 h-7 rounded-lg bg-brand-500 flex items-center justify-center shadow-sm group-hover:bg-brand-600 transition-colors">
-            <ChevronsRight size={15} className="text-white" />
-          </div>
-          <span
-            className="text-xs font-semibold text-brand-500 select-none group-hover:text-brand-600 transition-colors"
-            style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
-          >
-            Чат
-          </span>
-        </button>
-      </div>
+      <CollapsedConsultationPanel
+        label="Чат"
+        icon={<MessagesSquare size={14} color="white" />}
+        bg="#059669"
+        hoverBg="#047857"
+        expandDirection="left"
+        onExpand={onToggle}
+        tooltip="Развернуть чат"
+      />
     );
   }
 
