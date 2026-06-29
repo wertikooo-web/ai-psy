@@ -46,13 +46,13 @@ const mainNav = [
   { href: "/calendar",      label: "Календарь",    icon: CalendarDays },
 ];
 const toolsNav = [
-  { href: "/ai-chat",        label: "AI сервисы",  icon: MessageSquare },
-  { href: "/psy-gpts",       label: "PSY-GPTs",    icon: Bot           },
-  { href: "/knowledge-base", label: "База знаний", icon: BookOpen      },
+  { href: "/ai-chat",  label: "AI сервисы",       icon: MessageSquare },
+  { href: "/psy-gpts", label: "PSY-GPTs",          icon: Bot           },
+  { href: "/notebook", label: "Блокнот психолога", icon: BookOpenText  },
 ];
 const systemNav = [
-  { href: "/notebook", label: "Блокнот психолога", icon: BookOpenText },
-  { href: "/settings", label: "Настройки",         icon: Settings    },
+  { href: "/knowledge-base", label: "База знаний", icon: BookOpen   },
+  { href: "/settings",       label: "Настройки",   icon: Settings   },
   { href: "/help",     label: "Помощь",             icon: HelpCircle  },
   { href: "/about",    label: "About",              icon: Info        },
 ];
