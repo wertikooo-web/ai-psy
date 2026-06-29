@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, ChevronDown, ChevronUp, Trash2, FileText } from "lucide-react";
+import { Upload, ChevronDown, ChevronUp, Trash2, FileText, Plus } from "lucide-react";
 import { ImportMaterialModal } from "@/components/client/ImportMaterialModal";
 import { MATERIAL_TYPE_LABELS, type ClientMaterial } from "@/lib/types";
 
@@ -47,18 +47,23 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
   return (
     <>
       <div className="space-y-3">
-        {/* Upload button */}
-        <div className="flex justify-end">
-          <button
-            onClick={() => setImportOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
-            style={{ background: "#EDE8DE", color: "#6B5D4F", border: "1px solid #D8CFBE" }}
-            onMouseEnter={e => (e.currentTarget.style.background = "#E4DCCF")}
-            onMouseLeave={e => (e.currentTarget.style.background = "#EDE8DE")}
-          >
-            <Upload size={12} />
-            + Добавить
-          </button>
+        {/* Header bar — matches ObservationsTab style */}
+        <div className="rounded-2xl border overflow-hidden" style={{ background: S.bg, borderColor: S.border }}>
+          <div className="flex items-center justify-between gap-3 px-5 py-3 border-b" style={{ background: S.header, borderColor: S.divider }}>
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#9C8E80" }}>
+              Материалы · {materials.length}
+            </span>
+            <button
+              onClick={() => setImportOpen(true)}
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors flex-shrink-0"
+              style={{ background: "#D4C5B1", color: "#4A3C2E" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "#C9BBAA")}
+              onMouseLeave={e => (e.currentTarget.style.background = "#D4C5B1")}
+            >
+              <Plus size={11} />
+              Добавить
+            </button>
+          </div>
         </div>
 
         {materials.length === 0 && (
