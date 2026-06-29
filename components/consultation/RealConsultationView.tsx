@@ -456,21 +456,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                     <ScanSearch size={13} />
                   </button>
                 )}
-                {/* Download current analysis as .md */}
-                {selectedAnalysis && (
-                  <button
-                    onClick={() => {
-                      const modeLabel = ANALYSIS_MODES.find(m => m.id === displayedMode)?.label ?? displayedMode;
-                      const header = `# ${modeLabel}\n\n_Консультация: ${c.title}_\n_Клиент: ${c.clientName}_\n\n---\n\n`;
-                      downloadBlob(header + selectedAnalysis.result, `анализ-${displayedMode}-${c.id.slice(0,8)}.md`, "text/markdown;charset=utf-8");
-                    }}
-                    title="Скачать анализ в формате Markdown"
-                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
-                    style={{ background: "rgba(255,255,255,0.10)", color: "#FFFFFF" }}
-                  >
-                    <Download size={13} />
-                  </button>
-                )}
+                {/* Download moved to AnalysisPanel header dropdown */}
                 {/* Refresh current analysis — always visible when analysis exists */}
                 {displayedMode && analysesByMode.has(displayedMode) && (
                   <button
