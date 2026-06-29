@@ -1137,7 +1137,7 @@ export function TranscriptPanel({
                   style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A5F" }}
                 >
                   <p className="text-xs mb-1" style={{ color: "#60A5FA" }}>
-                    👁 Наблюдение · {new Date(o.at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                    👁 Наблюдение · {new Date(o.at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
                   </p>
                   <p className="whitespace-pre-wrap">{o.text}</p>
                 </div>
