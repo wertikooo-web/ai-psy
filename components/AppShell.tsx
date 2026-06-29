@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, Eye } from "lucide-react";
+import { Menu, Eye, ChevronRight } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
+import type { SidebarMode } from "@/components/Sidebar";
 import { ObservationModal } from "@/components/observation/ObservationModal";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -11,8 +12,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen,     setSidebarOpen]     = useState(false);
   const [observationOpen, setObservationOpen] = useState(false);
   const [tooltip,         setTooltip]         = useState(false);
+  const [sidebarMode,     setSidebarMode]     = useState<SidebarMode>("full");
 
   const onConsultation = pathname.startsWith("/consultation/");
+
+  // Read persisted sidebar mode after mount (avoids SSR mismatch)
+  useEffect(() => {
+    const stored = localStorage.getItem("app_sidebar_mode") as SidebarMode | null;
+    if (stored === "full" || stored === "decorative" || stored === "hidden") {
+      setSidebarMode(stored);
+    }
+  }, []);
+
+  function handleModeChange(mode: SidebarMode) {
+    setSidebarMode(mode);
+    localStorage.setItem("app_sidebar_mode", mode);
+  }
 
   useEffect(() => {
     const handler = () => setObservationOpen(true);
@@ -21,22 +36,67 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Auto-detect current client from URL: /client/[id]
-  const clientMatch     = pathname.match(/^\/client\/([^/]+)/);
-  const currentClientId = clientMatch?.[1] ?? undefined;
+  const clientMatch        = pathname.match(/^\/client\/([^/]+)/);
+  const currentClientId    = clientMatch?.[1] ?? undefined;
 
   // Auto-detect consultation ID from URL: /consultation/[id]
-  const consultMatch       = pathname.match(/^\/consultation\/([^/]+)/);
-  const currentConsultationId = consultMatch?.[1] ?? undefined;
+  const consultMatch           = pathname.match(/^\/consultation\/([^/]+)/);
+  const currentConsultationId  = consultMatch?.[1] ?? undefined;
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* position:relative + zIndex:10 ensures sidebar paints above the city actor
-          overlay (position:fixed zIndex:1 at document.body level) */}
-      <div style={{ position:"relative", zIndex:10, flexShrink:0 }}>
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* Sidebar wrapper — zIndex above city canvas overlay */}
+      <div style={{ position: "relative", zIndex: 10, flexShrink: 0 }}>
+        <Sidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          mode={sidebarMode}
+          onModeChange={handleModeChange}
+        />
       </div>
 
-      <main className="flex-1 overflow-hidden flex flex-col min-h-0 relative" style={{ zIndex:10 }}>
+      {/* Hidden-mode pull handle — desktop only, fixed to left edge */}
+      {sidebarMode === "hidden" && (
+        <button
+          className="hidden lg:flex items-center justify-center"
+          onClick={() => handleModeChange("decorative")}
+          style={{
+            position:            "fixed",
+            left:                0,
+            top:                 "50%",
+            transform:           "translateY(-50%)",
+            zIndex:              25,
+            width:               16,
+            height:              52,
+            borderTopRightRadius:    8,
+            borderBottomRightRadius: 8,
+            background:          "#E9DCC7",
+            border:              "1px solid #D8CFBE",
+            borderLeft:          "none",
+            color:               "#9C8E80",
+            cursor:              "pointer",
+            boxShadow:           "2px 0 8px rgba(0,0,0,0.10)",
+            transition:          "width 150ms ease, background 150ms ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.width      = "22px";
+            e.currentTarget.style.background = "#D8CFBE";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.width      = "16px";
+            e.currentTarget.style.background = "#E9DCC7";
+          }}
+          aria-label="Показать мини-панель"
+          title="Показать панель"
+        >
+          <ChevronRight size={10} />
+        </button>
+      )}
+
+      <main
+        className="flex-1 overflow-hidden flex flex-col min-h-0 relative"
+        style={{ zIndex: 10 }}
+      >
         {/* Mobile hamburger */}
         <button
           onClick={() => setSidebarOpen(true)}
@@ -56,18 +116,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className="fixed right-6 z-40"
           style={{ bottom: onConsultation ? "90px" : "24px" }}
         >
-          {/* Tooltip */}
           {tooltip && (
             <div
-              className="absolute right-0 bottom-[calc(100%+10px)] rounded-xl px-3 py-2 text-xs shadow-lg whitespace-nowrap pointer-events-none"
+              className="absolute right-0 bottom-[calc(100%+10px)] rounded-xl px-3 py-2 text-xs shadow-lg pointer-events-none"
               style={{
-                background:  "#3D3228",
-                color:       "#FDFAF5",
-                border:      "1px solid #2A221A",
-                maxWidth:    260,
-                whiteSpace:  "normal",
-                textAlign:   "right",
-                lineHeight:  "1.4",
+                background: "#3D3228",
+                color:      "#FDFAF5",
+                border:     "1px solid #2A221A",
+                maxWidth:   260,
+                whiteSpace: "normal",
+                textAlign:  "right",
+                lineHeight: "1.4",
               }}
             >
               <p className="font-medium">Добавить наблюдение</p>
@@ -89,8 +148,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               boxShadow:    "0 4px 16px rgba(0,0,0,0.15)",
             }}
             aria-label="Добавить наблюдение"
-            onMouseDown={(e)  => { e.currentTarget.style.background = "#EDE7DA"; e.currentTarget.style.borderColor = "#A8997F"; }}
-            onMouseUp={(e)    => { e.currentTarget.style.background = "white";    e.currentTarget.style.borderColor = "#D8CFBE"; }}
+            onMouseDown={(e) => { e.currentTarget.style.background = "#EDE7DA"; e.currentTarget.style.borderColor = "#A8997F"; }}
+            onMouseUp={(e)   => { e.currentTarget.style.background = "white";   e.currentTarget.style.borderColor = "#D8CFBE"; }}
           >
             <div
               className="flex items-center justify-center rounded-full"

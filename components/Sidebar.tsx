@@ -6,11 +6,14 @@ import { usePathname } from "next/navigation";
 import {
   Home, Users, FileText, BookOpen, Bot,
   Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, BookOpenText,
+  PanelLeftClose, PanelLeft, ChevronsLeft,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
 
-// ── Sidebar palette (neutral, ChatGPT-like) ───────────────────────────────────
+export type SidebarMode = "full" | "decorative" | "hidden";
+
+// ── Palette: full sidebar ─────────────────────────────────────────────────────
 const C = {
   bg:         "#F7F7F8",
   border:     "#E5E5E5",
@@ -19,16 +22,28 @@ const C = {
   activeTxt:  "#111827",
   idleTxt:    "#6B7280",
   groupLabel: "#9CA3AF",
-  uploadBdr:  "#D1D5DB",
 };
 
+// ── Palette: decorative panel ─────────────────────────────────────────────────
+const D = {
+  bg:     "#F5F0E8",
+  border: "#D8CFBE",
+  btnHov: "#E9DCC7",
+  btnTxt: "#9C8E80",
+};
+
+// ── Widths ────────────────────────────────────────────────────────────────────
+export const FULL_W = 240;
+export const DECO_W = 94;
+
+// ── Nav data ──────────────────────────────────────────────────────────────────
 const mainNav = [
   { href: "/",              label: "Главная",      icon: Home     },
   { href: "/clients",       label: "Клиенты",      icon: Users    },
   { href: "/consultations", label: "Консультации", icon: FileText },
 ];
 const toolsNav = [
-  { href: "/ai-chat",        label: "AI сервисы",      icon: MessageSquare },
+  { href: "/ai-chat",        label: "AI сервисы",  icon: MessageSquare },
   { href: "/psy-gpts",       label: "PSY-GPTs",    icon: Bot           },
   { href: "/knowledge-base", label: "База знаний", icon: BookOpen      },
 ];
@@ -39,7 +54,7 @@ const systemNav = [
   { href: "/about",    label: "About",              icon: Info        },
 ];
 
-// ── Nav item ──────────────────────────────────────────────────────────────────
+// ── NavItem ───────────────────────────────────────────────────────────────────
 function NavItem({
   href, label, icon: Icon, exact = false, onNavigate,
 }: {
@@ -48,7 +63,6 @@ function NavItem({
 }) {
   const pathname = usePathname();
   const active   = exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
-
   return (
     <Link
       href={href}
@@ -67,16 +81,95 @@ function NavItem({
   );
 }
 
+// ── Decorative icon button ────────────────────────────────────────────────────
+function DecoBtn({
+  icon: Icon, onClick, label, title: t,
+}: { icon: React.ElementType; onClick: () => void; label: string; title: string }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: 30, height: 30, borderRadius: 8,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "transparent", border: "none",
+        color: D.btnTxt, cursor: "pointer",
+        transition: "background 150ms",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = D.btnHov; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+      aria-label={label}
+      title={t}
+    >
+      <Icon size={15} />
+    </button>
+  );
+}
+
+// ── Nav groups ────────────────────────────────────────────────────────────────
+function NavGroups({ onNavigate, onUpload }: { onNavigate?: () => void; onUpload: () => void }) {
+  return (
+    <nav className="flex-1 px-3 py-5 overflow-y-auto flex flex-col gap-8">
+      <div className="space-y-0.5">
+        <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+          Основное
+        </div>
+        {mainNav.map(({ href, label, icon }) => (
+          <NavItem key={href} href={href} label={label} icon={icon} exact={href === "/"} onNavigate={onNavigate} />
+        ))}
+        <button
+          onClick={onUpload}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+          style={{ color: C.idleTxt, background: "transparent" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = C.hover; e.currentTarget.style.color = C.activeTxt; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.idleTxt; }}
+        >
+          <Mic size={16} strokeWidth={1.8} />
+          Загрузить запись
+        </button>
+      </div>
+
+      <div className="space-y-0.5">
+        <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+          Инструменты
+        </div>
+        {toolsNav.map(({ href, label, icon }) => (
+          <NavItem key={href} href={href} label={label} icon={icon} onNavigate={onNavigate} />
+        ))}
+      </div>
+
+      <div className="space-y-0.5">
+        <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+          Система
+        </div>
+        {systemNav.map(({ href, label, icon }) => (
+          <NavItem key={href} href={href} label={label} icon={icon} onNavigate={onNavigate} />
+        ))}
+      </div>
+    </nav>
+  );
+}
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 interface SidebarProps {
   open?: boolean;
   onClose?: () => void;
+  mode: SidebarMode;
+  onModeChange: (m: SidebarMode) => void;
 }
 
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
   const [uploadOpen, setUploadOpen] = useState(false);
+  // Delay enabling transitions until after first paint — prevents layout flash
+  const [transitionEnabled, setTransitionEnabled] = useState(false);
 
-  // Close on Escape
+  useEffect(() => {
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(() => setTransitionEnabled(true))
+    );
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  // ESC closes mobile overlay
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape" && onClose) onClose();
@@ -85,114 +178,142 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Prevent body scroll when mobile overlay is open
+  // Lock scroll on mobile overlay
   useEffect(() => {
-    if (open) document.body.style.overflow = "hidden";
-    else       document.body.style.overflow = "";
+    document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  const nav = (
-    <>
-      <aside
-        className="w-60 flex-shrink-0 flex flex-col h-full"
-        style={{ background: C.bg, borderRight: `1px solid ${C.border}` }}
-      >
-        {/* Logo */}
-        <Link
-          href="/"
-          onClick={onClose}
-          className="px-5 py-5 flex items-center gap-2.5 transition-opacity hover:opacity-80"
-          style={{ borderBottom: `1px solid ${C.border}` }}
-        >
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: "#E9E9EA", border: `1px solid ${C.border}` }}
-          >
-            <BrainCircuit size={18} style={{ color: C.activeTxt }} />
-          </div>
-          <div>
-            <div className="text-sm font-bold leading-tight" style={{ color: "#111827" }}>
-              TRANSCRIPT AI
-            </div>
-            <div className="text-xs font-semibold tracking-wider" style={{ color: "#9CA3AF" }}>
-              PSY
-            </div>
-          </div>
-          {/* Mobile close button */}
-          {onClose && (
-            <button
-              onClick={(e) => { e.preventDefault(); onClose(); }}
-              className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center lg:hidden"
-              style={{ color: C.idleTxt }}
-            >
-              <X size={16} />
-            </button>
-          )}
-        </Link>
+  const easing     = "cubic-bezier(0.4,0,0.2,1)";
+  const wTrans     = transitionEnabled ? `width 280ms ${easing}` : "none";
+  const opTrans    = transitionEnabled ? `opacity 200ms ${easing}` : "none";
+  const deskWidth  = mode === "hidden" ? 0 : mode === "decorative" ? DECO_W : FULL_W;
 
-        {/* Nav groups */}
-        <nav className="flex-1 px-3 py-5 overflow-y-auto flex flex-col gap-8">
-
-          <div className="space-y-0.5">
-            <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
-              Основное
-            </div>
-            {mainNav.map(({ href, label, icon }) => (
-              <NavItem key={href} href={href} label={label} icon={icon} exact={href === "/"} onNavigate={onClose} />
-            ))}
-            <button
-              onClick={() => setUploadOpen(true)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
-              style={{ color: C.idleTxt, background: "transparent" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = C.hover; e.currentTarget.style.color = C.activeTxt; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.idleTxt; }}
-            >
-              <Mic size={16} strokeWidth={1.8} />
-              Загрузить запись
-            </button>
-          </div>
-
-          <div className="space-y-0.5">
-            <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
-              Инструменты
-            </div>
-            {toolsNav.map(({ href, label, icon }) => (
-              <NavItem key={href} href={href} label={label} icon={icon} onNavigate={onClose} />
-            ))}
-          </div>
-
-          <div className="space-y-0.5">
-            <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
-              Система
-            </div>
-            {systemNav.map(({ href, label, icon }) => (
-              <NavItem key={href} href={href} label={label} icon={icon} onNavigate={onClose} />
-            ))}
-          </div>
-
-        </nav>
-
-        {/* UserChip */}
-        <div className="px-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
-          <UserChip />
-        </div>
-      </aside>
-
-      <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
-    </>
-  );
-
-  // Desktop: always visible inline
-  // Mobile: controlled overlay via props
   return (
     <>
-      {/* Desktop sidebar — always in flow */}
-      <div className="hidden lg:flex h-screen sticky top-0 flex-shrink-0">
-        {nav}
+      {/* ── DESKTOP SIDEBAR ─────────────────────────────────────────── */}
+      <div
+        className="hidden lg:block h-screen sticky top-0 overflow-hidden flex-shrink-0"
+        style={{ width: deskWidth, transition: wTrans, position: "relative" }}
+        role="navigation"
+        aria-label="Боковая навигация"
+        aria-expanded={mode === "full"}
+      >
+
+        {/* ── FULL panel ──────────────────────────────────────────────── */}
+        <div
+          style={{
+            position: "absolute", top: 0, left: 0, bottom: 0,
+            width: FULL_W,
+            opacity: mode === "full" ? 1 : 0,
+            pointerEvents: mode === "full" ? "auto" : "none",
+            transition: opTrans,
+            display: "flex", flexDirection: "column",
+            background: C.bg,
+            borderRight: `1px solid ${C.border}`,
+          }}
+        >
+          {/* Logo row + collapse button */}
+          <div
+            className="px-4 py-4 flex items-center gap-2"
+            style={{ borderBottom: `1px solid ${C.border}`, minHeight: 64 }}
+          >
+            <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80 flex-1 min-w-0">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "#E9E9EA", border: `1px solid ${C.border}` }}
+              >
+                <BrainCircuit size={18} style={{ color: C.activeTxt }} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold leading-tight" style={{ color: "#111827" }}>TRANSCRIPT AI</div>
+                <div className="text-xs font-semibold tracking-wider" style={{ color: "#9CA3AF" }}>PSY</div>
+              </div>
+            </Link>
+
+            <button
+              onClick={() => onModeChange("decorative")}
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+              style={{ color: C.idleTxt }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = C.hover; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              aria-label="Свернуть боковое меню"
+              title="Свернуть"
+            >
+              <PanelLeftClose size={16} />
+            </button>
+          </div>
+
+          <NavGroups onUpload={() => setUploadOpen(true)} />
+
+          <div className="px-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
+            <UserChip />
+          </div>
+        </div>
+
+        {/* ── DECORATIVE panel ────────────────────────────────────────── */}
+        <div
+          style={{
+            position: "absolute", top: 0, left: 0, bottom: 0,
+            width: DECO_W,
+            opacity: mode === "decorative" ? 1 : 0,
+            pointerEvents: mode === "decorative" ? "auto" : "none",
+            transition: opTrans,
+            display: "flex", flexDirection: "column", alignItems: "center",
+            background: D.bg,
+            borderRight: `1px solid ${D.border}`,
+          }}
+        >
+          {/* Control buttons */}
+          <div
+            style={{
+              width: "100%", display: "flex", flexDirection: "column",
+              alignItems: "center", gap: 2,
+              padding: "10px 0 8px",
+              borderBottom: `1px solid ${D.border}`,
+            }}
+          >
+            <DecoBtn
+              icon={PanelLeft}
+              onClick={() => onModeChange("full")}
+              label="Открыть боковое меню"
+              title="Открыть меню"
+            />
+            <DecoBtn
+              icon={ChevronsLeft}
+              onClick={() => onModeChange("hidden")}
+              label="Скрыть боковую панель полностью"
+              title="Скрыть панель"
+            />
+          </div>
+
+          {/* Illustration — fills rest of height */}
+          <div
+            style={{
+              flex: 1, width: "100%", overflow: "hidden",
+              display: "flex", alignItems: "flex-end",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/sidebar-psychologist.png"
+              alt="Иллюстрация психолога"
+              draggable={false}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                objectPosition: "bottom center",
+                userSelect: "none",
+                pointerEvents: "none",
+                display: "block",
+              }}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Mobile sidebar — overlay */}
+      {/* ── MOBILE OVERLAY ──────────────────────────────────────────────── */}
       <div className="lg:hidden">
         {/* Backdrop */}
         {open && (
@@ -201,18 +322,56 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             onClick={onClose}
           />
         )}
+
         {/* Slide-in panel */}
         <div
-          className="fixed top-0 left-0 h-full z-50 flex flex-col"
+          className="fixed top-0 left-0 h-full z-50"
           style={{
-            transform: open ? "translateX(0)" : "translateX(-100%)",
+            transform:  open ? "translateX(0)" : "translateX(-100%)",
             transition: "transform 0.28s cubic-bezier(0.4,0,0.2,1)",
             willChange: "transform",
           }}
         >
-          {nav}
+          <aside
+            className="w-60 h-full flex flex-col"
+            style={{ background: C.bg, borderRight: `1px solid ${C.border}` }}
+          >
+            <Link
+              href="/"
+              onClick={onClose}
+              className="px-5 py-5 flex items-center gap-2.5 transition-opacity hover:opacity-80"
+              style={{ borderBottom: `1px solid ${C.border}` }}
+            >
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "#E9E9EA", border: `1px solid ${C.border}` }}
+              >
+                <BrainCircuit size={18} style={{ color: C.activeTxt }} />
+              </div>
+              <div>
+                <div className="text-sm font-bold leading-tight" style={{ color: "#111827" }}>TRANSCRIPT AI</div>
+                <div className="text-xs font-semibold tracking-wider" style={{ color: "#9CA3AF" }}>PSY</div>
+              </div>
+              <button
+                onClick={(e) => { e.preventDefault(); onClose?.(); }}
+                className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center lg:hidden"
+                style={{ color: C.idleTxt }}
+                aria-label="Закрыть меню"
+              >
+                <X size={16} />
+              </button>
+            </Link>
+
+            <NavGroups onNavigate={onClose} onUpload={() => setUploadOpen(true)} />
+
+            <div className="px-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
+              <UserChip />
+            </div>
+          </aside>
         </div>
       </div>
+
+      <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
     </>
   );
 }
