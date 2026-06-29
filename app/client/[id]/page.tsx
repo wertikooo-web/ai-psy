@@ -250,13 +250,13 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
                 className="flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
                 style={{
                   width: 34, height: 34,
-                  background: "#FFFFFF",
-                  border: "1px solid #D8CFBE",
+                  background: "#FEF2F2",
+                  border: "1px solid #FECACA",
                   boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-                  color: "#6B5D4F",
+                  color: "#EF4444",
                 }}
-                onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FECACA"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "#6B5D4F"; e.currentTarget.style.background = "#FFFFFF"; e.currentTarget.style.borderColor = "#D8CFBE"; }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FCA5A5"; e.currentTarget.style.color = "#DC2626"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.borderColor = "#FECACA"; e.currentTarget.style.color = "#EF4444"; }}
               >
                 <Trash2 size={15} />
               </button>
