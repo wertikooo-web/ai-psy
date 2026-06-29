@@ -5,6 +5,7 @@ import { ChatMessage } from "@/lib/mockData";
 import {
   Send, BrainCircuit, User, ChevronsLeft, ChevronsRight,
   MessagesSquare, AlertCircle, Mic, MicOff, Trash2,
+  BookmarkPlus, Check, Loader2,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -85,6 +86,7 @@ export function ChatPanel({
   const [listening, setListening]         = useState(false);
   const [clearPending, setClearPending]   = useState(false);
   const [clearLoading, setClearLoading]   = useState(false);
+  const [saveState,    setSaveState]      = useState<"idle" | "saving" | "saved" | "error">("idle");
   const bottomRef    = useRef<HTMLDivElement>(null);
   const textareaRef  = useRef<HTMLTextAreaElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -230,6 +232,37 @@ export function ChatPanel({
     }
   }
 
+  async function handleSaveChat() {
+    if (!consultationId || messages.length === 0 || saveState === "saving") return;
+    setSaveState("saving");
+    try {
+      const consultRes = await fetch(`/api/consultations/${consultationId}`);
+      if (!consultRes.ok) throw new Error();
+      const consult = await consultRes.json();
+
+      const content = messages
+        .map(m => `${m.role === "user" ? "Психолог" : "AI"} [${m.timestamp ?? ""}]:\n${m.content}`)
+        .join("\n\n—\n\n");
+
+      const res = await fetch(`/api/client-materials/${consult.clientId}`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type:           "therapist_notes",
+          title:          `Чат — ${consult.title || "Консультация"}`,
+          content,
+          consultationId,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    } finally {
+      setTimeout(() => setSaveState("idle"), 2800);
+    }
+  }
+
   // ── Collapsed ─────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
@@ -325,6 +358,39 @@ export function ChatPanel({
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Перейти в GPTS
         </a>
+
+        <button
+          onClick={handleSaveChat}
+          disabled={messages.length === 0 || saveState === "saving"}
+          aria-label="Сохранить чат как заметку"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{
+            background: saveState === "saved"  ? "#D4EDD9"
+                      : saveState === "error"  ? "#FDECEA"
+                      : "#E8E3DA",
+            color:      saveState === "saved"  ? "#2D6A4F"
+                      : saveState === "error"  ? "#B91C1C"
+                      : "#6B5E4E",
+            border: `1px solid ${
+              saveState === "saved" ? "#A8D4B0"
+            : saveState === "error" ? "#FECACA"
+            : "#D0C7BA"}`,
+          }}
+          onMouseEnter={e => {
+            if (saveState === "idle") e.currentTarget.style.background = "#DDD7CE";
+          }}
+          onMouseLeave={e => {
+            if (saveState === "idle") e.currentTarget.style.background = "#E8E3DA";
+          }}
+        >
+          {saveState === "saving" ? <Loader2 size={12} className="animate-spin" />
+         : saveState === "saved"  ? <Check size={12} />
+         : <BookmarkPlus size={12} />}
+          {saveState === "saving" ? "Сохраняю…"
+         : saveState === "saved"  ? "Сохранено"
+         : saveState === "error"  ? "Ошибка"
+         : "Сохранить"}
+        </button>
       </div>
 
       {/* Messages */}
