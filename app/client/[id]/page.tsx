@@ -325,7 +325,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
         {tab === "materials" && (
           <MaterialsTab
             clientId={id}
-            materials={materials.filter((m) => m.type !== "therapist_notes" && m.type !== "observation")}
+            materials={materials.filter((m) => m.type !== "observation")}
             isMock={isMock}
             onAdd={(m) => setMaterials((prev) => [m, ...prev])}
             onDelete={(mid) => setMaterials((prev) => prev.filter((m) => m.id !== mid))}

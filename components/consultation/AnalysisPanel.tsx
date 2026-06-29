@@ -94,6 +94,34 @@ export function AnalysisPanel({
     onCompare();
   }
 
+  function handleDownload() {
+    const sects = modeAnalysis?.working ?? sections;
+    const lines: string[] = [
+      `AI-анализ сессии — ${clientName}`,
+      `Дата: ${formattedDate}`,
+      "",
+      "═".repeat(52),
+      "",
+    ];
+    sects.forEach((s) => {
+      lines.push(`## ${s.title}`);
+      lines.push("");
+      lines.push(s.content);
+      lines.push("");
+      lines.push("─".repeat(40));
+      lines.push("");
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `AI-анализ_${clientName}_${date}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   // ── Collapsed: narrow vertical tab ──────────────────────────────────────────
   if (collapsed) {
     return (
@@ -139,6 +167,16 @@ export function AnalysisPanel({
           <h2 className="text-lg font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
           <p className="text-xs leading-tight mt-0.5" style={{ color: "#FDFAF5" }}>Анализ актуален</p>
         </div>
+        <button
+          onClick={handleDownload}
+          title="Скачать анализ"
+          className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors flex-shrink-0"
+          style={{ background: "rgba(255,255,255,0.10)" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.20)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; }}
+        >
+          <Download size={14} style={{ color: "#D8CFBE" }} />
+        </button>
         <button
           onClick={onToggle}
           title="Свернуть"
@@ -193,12 +231,11 @@ export function AnalysisPanel({
                 Сравнить с предыдущей сессией
               </button>
               <button
-                disabled
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left cursor-not-allowed"
+                onClick={() => { setMenuOpen(false); handleDownload(); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors text-left"
               >
-                <Download size={13} className="text-slate-300" />
-                <span className="text-slate-300">Экспорт отчёта</span>
-                <span className="ml-auto text-xs text-slate-200">скоро</span>
+                <Download size={13} className="text-slate-400" />
+                Скачать анализ (.txt)
               </button>
             </div>
           )}
