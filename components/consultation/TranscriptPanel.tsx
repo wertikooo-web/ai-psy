@@ -90,6 +90,99 @@ function downloadText(content: string, filename: string, mime = "text/plain;char
   URL.revokeObjectURL(url);
 }
 
+async function buildAndDownloadDocx(
+  segments: FormattedSegment[],
+  plainFallback: string,
+  clientName: string,
+  date: string,
+  withTimestamps: boolean,
+  baseName: string,
+) {
+  const { Document, Paragraph, TextRun, HeadingLevel, Packer } = await import("docx");
+  const dateStr = date ? formatDateRu(date) : "";
+
+  const children: InstanceType<typeof Paragraph>[] = [
+    new Paragraph({ text: "Транскрипт консультации", heading: HeadingLevel.HEADING_1 }),
+    new Paragraph({
+      children: [
+        new TextRun({ text: "Клиент: ", bold: true }),
+        new TextRun(clientName),
+      ],
+    }),
+    ...(dateStr ? [new Paragraph({
+      children: [
+        new TextRun({ text: "Дата: ", bold: true }),
+        new TextRun(dateStr),
+      ],
+    })] : []),
+    new Paragraph({ text: "" }),
+  ];
+
+  if (segments.length > 0) {
+    segments.forEach((s) => {
+      const who = s.speaker === "therapist" ? "Психолог" : s.speaker === "client" ? "Клиент" : "Неизвестно";
+      const ts = withTimestamps && s.start_seconds > 0 ? `[${fmtTime(s.start_seconds)}] ` : "";
+      children.push(
+        new Paragraph({ children: [new TextRun({ text: `${ts}${who}`, bold: true })] }),
+        new Paragraph({ text: s.text }),
+        new Paragraph({ text: "" }),
+      );
+    });
+  } else if (plainFallback) {
+    plainFallback.split("\n").forEach((line) => {
+      children.push(new Paragraph({ text: line }));
+    });
+  }
+
+  const doc = new Document({ sections: [{ children }] });
+  const buffer = await Packer.toBlob(doc);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(buffer);
+  a.download = `${baseName}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function exportPdf(
+  segments: FormattedSegment[],
+  plainFallback: string,
+  clientName: string,
+  date: string,
+  withTimestamps: boolean,
+) {
+  const dateStr = date ? formatDateRu(date) : "";
+  const rows = segments.length > 0
+    ? segments.map((s) => {
+        const who = s.speaker === "therapist" ? "Психолог" : s.speaker === "client" ? "Клиент" : "Неизвестно";
+        const ts = withTimestamps && s.start_seconds > 0 ? `<span style="color:#999;font-size:11px">[${fmtTime(s.start_seconds)}]</span> ` : "";
+        const color = s.speaker === "therapist" ? "#4F46E5" : "#374151";
+        return `<div style="margin-bottom:14px">
+          <div style="font-weight:700;color:${color};margin-bottom:3px">${ts}${who}</div>
+          <div style="line-height:1.6">${s.text.replace(/\n/g, "<br>")}</div>
+        </div>`;
+      }).join("")
+    : `<p style="white-space:pre-wrap;line-height:1.7">${plainFallback}</p>`;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>Транскрипт — ${clientName}</title>
+    <style>
+      body { font-family: Georgia, serif; font-size: 13px; color: #1a1a1a; max-width: 720px; margin: 40px auto; padding: 0 20px; }
+      h1 { font-size: 20px; margin-bottom: 4px; }
+      .meta { color: #666; font-size: 12px; margin-bottom: 28px; }
+      @media print { body { margin: 0; } }
+    </style>
+  </head><body>
+    <h1>Транскрипт консультации</h1>
+    <div class="meta">Клиент: <b>${clientName}</b>${dateStr ? ` &nbsp;·&nbsp; ${dateStr}` : ""}</div>
+    ${rows}
+    <script>window.onload=()=>window.print()<\/script>
+  </body></html>`;
+
+  const w = window.open("", "_blank");
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
 // ── Audio player ─────────────────────────────────────────────────────────────
 
 function AudioPlayer({
@@ -563,17 +656,21 @@ export function TranscriptPanel({
     }).catch(() => {});
   }
 
-  function doExport(fmt: "txt" | "md") {
+  function doExport(fmt: "txt" | "md" | "docx" | "pdf") {
     const base = safeBaseName(clientName, consultationDate);
+    const segs = transcriptFormatted ?? [];
     if (fmt === "txt") {
       if (hasFormatted) {
-        downloadText(buildTxt(transcriptFormatted!, clientName, consultationDate, showTimestamps), `${base}.txt`);
+        downloadText(buildTxt(segs, clientName, consultationDate, showTimestamps), `${base}.txt`);
       } else if (plainText) {
         downloadText(plainText, `${base}_исходный.txt`);
       }
-    } else {
-      const segs = transcriptFormatted ?? [];
+    } else if (fmt === "md") {
       downloadText(buildMd(segs, clientName, consultationDate, showTimestamps), `${base}.md`, "text/markdown;charset=utf-8");
+    } else if (fmt === "docx") {
+      buildAndDownloadDocx(segs, plainText ?? "", clientName, consultationDate, showTimestamps, base);
+    } else if (fmt === "pdf") {
+      exportPdf(segs, plainText ?? "", clientName, consultationDate, showTimestamps);
     }
   }
 
@@ -740,9 +837,23 @@ export function TranscriptPanel({
                           className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-stone-100 transition-colors text-left"
                           style={{ color: "#3D3228" }}
                         >
-                          <Download size={12} /> Скачать Markdown
+                          <Download size={12} /> Скачать Markdown (.md)
                         </button>
                       )}
+                      <button
+                        onClick={() => { closeMenu(); doExport("docx"); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-stone-100 transition-colors text-left"
+                        style={{ color: "#3D3228" }}
+                      >
+                        <Download size={12} /> Скачать Word (.docx)
+                      </button>
+                      <button
+                        onClick={() => { closeMenu(); doExport("pdf"); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-stone-100 transition-colors text-left"
+                        style={{ color: "#3D3228" }}
+                      >
+                        <Download size={12} /> Экспорт в PDF (печать)
+                      </button>
                       <div className="h-px mx-3 my-1" style={{ background: "#E8E3DA" }} />
                     </>
                   )}
