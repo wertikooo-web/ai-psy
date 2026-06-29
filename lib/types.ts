@@ -136,5 +136,4 @@ export const HISTORY_SECTIONS_ORDER: HistorySection[] = [
   "main_topics",
   "significant_events",
   "resources",
-  "notes",
 ];
