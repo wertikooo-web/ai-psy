@@ -171,7 +171,10 @@ export function ConsultationsTab({
               <button
                 onClick={() => handleDelete(c.id)}
                 disabled={deletingId === c.id}
-                className="p-1.5 text-stone-300 hover:text-rose-400 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0"
+                className="flex items-center justify-center rounded-lg transition-colors flex-shrink-0 disabled:opacity-40"
+                style={{ width: 28, height: 28, background: "#FEF2F2", border: "1px solid #FECACA", color: "#EF4444" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FCA5A5"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.borderColor = "#FECACA"; }}
                 title="Удалить запись"
               >
                 <Trash2 size={13} />
