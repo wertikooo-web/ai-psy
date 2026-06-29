@@ -51,10 +51,13 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
         <div className="flex justify-end">
           <button
             onClick={() => setImportOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+            style={{ background: "#EDE8DE", color: "#6B5D4F", border: "1px solid #D8CFBE" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "#E4DCCF")}
+            onMouseLeave={e => (e.currentTarget.style.background = "#EDE8DE")}
           >
-            <Upload size={14} />
-            Добавить материалы
+            <Upload size={12} />
+            + Добавить
           </button>
         </div>
 
