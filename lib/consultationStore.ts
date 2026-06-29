@@ -140,6 +140,10 @@ export interface StoredConsultation {
     result: string;
     createdAt: string;
     blocks?: import("@/lib/analysisBlocks").AnalysisBlock[];
+    // Metadata: settings used when this analysis was created
+    model?:          string;
+    analysisStyle?:  string;
+    analysisLength?: string;
   }>;
 
   // Hidden evidence layer — extracted from transcript text, never re-runs Whisper

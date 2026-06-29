@@ -95,8 +95,18 @@ export async function POST(req: NextRequest) {
     await updateConsultation(consultationId, { status: "analyzing" });
 
     // Read model and style settings from user profile
-    const profile = await readProfile();
-    const model = profile.aiModel ?? "gpt-4o";
+    const profile        = await readProfile();
+    const model          = profile.aiModel       ?? "gpt-4o";
+    const analysisStyle  = profile.analysisStyle  ?? "professional";
+    const analysisLength = profile.analysisLength ?? "standard";
+
+    console.log("AI_SETTINGS_RESOLVED", {
+      mode,
+      model,
+      analysisStyle,
+      analysisLength,
+      hasCustomInstruction: !!(profile.aiInstructions?.trim()),
+    });
 
     // Build canonical text and compute hash (single source of truth for staleness)
     const canonicalText = canonicalTranscriptText(
@@ -159,9 +169,9 @@ export async function POST(req: NextRequest) {
         clientContext:     clientContext || undefined,
         provider:          "openai",
         model,
-        styleHint:         profile.analysisStyle     ?? "professional",
-        lengthHint:        profile.analysisLength    ?? "standard",
-        extraInstructions: profile.aiInstructions    ?? "",
+        styleHint:         analysisStyle,
+        lengthHint:        analysisLength,
+        extraInstructions: profile.aiInstructions ?? "",
         analysisEvidence:  storedEvidence ?? undefined,
       }),
       evidenceIsStale
@@ -186,14 +196,27 @@ export async function POST(req: NextRequest) {
     // Extract blocks synchronously so lupa icons appear immediately in UI
     const blocks = await extractBlocks(output.text, freshEvidence, model, "openai");
 
-    // Persist result + blocks
+    // Persist result + blocks + settings metadata
     const entry = {
-      id:        randomUUID(),
+      id:             randomUUID(),
       mode,
-      result:    output.text,
-      blocks:    blocks.length > 0 ? blocks : undefined,
-      createdAt: new Date().toISOString(),
+      result:         output.text,
+      blocks:         blocks.length > 0 ? blocks : undefined,
+      createdAt:      new Date().toISOString(),
+      model:          output.model,
+      analysisStyle,
+      analysisLength,
     };
+
+    console.log("AI_REQUEST_CONFIG", {
+      operation:   "analysis",
+      mode,
+      provider:    output.provider,
+      model:       output.model,
+      style:       analysisStyle,
+      length:      analysisLength,
+      blocks:      blocks.length,
+    });
 
     const withoutCurrent = existingAnalyses.filter(a => a.mode !== mode);
     await updateConsultation(consultationId, {

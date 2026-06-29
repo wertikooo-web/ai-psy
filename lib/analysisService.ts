@@ -219,7 +219,15 @@ export async function generateAnalysis(
     hypothesis:        3000,
     next_session:      2500,
   };
-  const maxTokens = maxTokensByMode[mode] ?? 3000;
+  const baseMaxTokens = maxTokensByMode[mode] ?? 3000;
+  // Adjust token budget based on length setting:
+  // brief → cap at 600 tokens (model respects "до 300 слов" instruction)
+  // standard → use mode default
+  // detailed → allow 50% more than default
+  const maxTokens =
+    lengthHint === "brief"    ? Math.min(600, baseMaxTokens) :
+    lengthHint === "detailed" ? Math.round(baseMaxTokens * 1.5) :
+    baseMaxTokens;
 
   // ── Step 1: static pre-cap (fast, no KB read) ───────────────────────────
   // Rough guard before we can measure the assembled prompt.

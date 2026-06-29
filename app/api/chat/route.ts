@@ -196,28 +196,38 @@ ${consultationMeta ? `\n${consultationMeta}` : ""}
       : "");
 
     // ── Call model ────────────────────────────────────────────────────────────
-    const profile = await readProfile();
-    const model   = profile.aiModel ?? "gpt-4o";
-    const chatStyle = profile.chatStyle ?? "normal";
+    const profile        = await readProfile();
+    const model          = profile.aiModel      ?? "gpt-4o";
+    const chatStyle      = profile.chatStyle    ?? "normal";
     const aiInstructions = profile.aiInstructions ?? "";
 
     const chatStyleConfig = {
-      brief:    { maxTokens: 350, instruction: "\n\nСТИЛЬ ОТВЕТА: Очень кратко — 2-3 предложения максимум. Прямо к сути, без вступлений." },
-      normal:   { maxTokens: 800, instruction: "" },
+      brief:    { maxTokens: 350,  instruction: "\n\nСТИЛЬ ОТВЕТА: Очень кратко — 2-3 предложения максимум. Прямо к сути, без вступлений." },
+      normal:   { maxTokens: 800,  instruction: "" },
       detailed: { maxTokens: 1400, instruction: "\n\nСТИЛЬ ОТВЕТА: Можно давать развёрнутые ответы с подробными объяснениями и примерами из транскрипта." },
     };
-    const { maxTokens, instruction: chatInstruction } = chatStyleConfig[chatStyle] ?? chatStyleConfig.normal;
+    const { maxTokens, instruction: chatInstruction } = chatStyleConfig[chatStyle as keyof typeof chatStyleConfig] ?? chatStyleConfig.normal;
 
     const finalSystemPrompt = systemPrompt
       + chatInstruction
       + (aiInstructions.trim() ? `\n\nДОПОЛНИТЕЛЬНЫЕ ИНСТРУКЦИИ ОТ ПСИХОЛОГА:\n${aiInstructions.trim()}` : "");
 
-    const openai = new OpenAI({ apiKey });
+    console.log("AI_REQUEST_CONFIG", {
+      operation: "chat",
+      model,
+      chatStyle,
+      hasCustomInstruction: !!aiInstructions.trim(),
+    });
 
+    const openai   = new OpenAI({ apiKey });
     const isOModel = /^o\d/.test(model);
+
     const completion = await openai.chat.completions.create({
       model,
-      ...(isOModel ? {} : { temperature: 0.7 }),
+      // o-series models: no temperature, use max_completion_tokens
+      ...(isOModel
+        ? { max_completion_tokens: maxTokens }
+        : { temperature: 0.7, max_tokens: maxTokens }),
       messages: [
         { role: "system", content: finalSystemPrompt },
         ...messages.map((m) => ({
@@ -225,7 +235,6 @@ ${consultationMeta ? `\n${consultationMeta}` : ""}
           content: m.content,
         })),
       ],
-      max_tokens: maxTokens,
     });
 
     const reply = completion.choices[0]?.message?.content ?? "Не удалось получить ответ.";
