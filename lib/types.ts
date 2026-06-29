@@ -127,7 +127,7 @@ export const MATERIAL_TYPE_LABELS: Record<MaterialType, string> = {
   general_history:  "Общая история клиента",
   therapist_notes:  "Заметки психолога",
   observation:      "Наблюдение",
-  gpt_analysis:     "Старый анализ GPT",
+  gpt_analysis:     "Анализ GPT",
   past_transcript:  "Транскрипт прошлой встречи",
   other:            "Другое",
 };
