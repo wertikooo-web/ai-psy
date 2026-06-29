@@ -159,9 +159,6 @@ function ConsultationRow({ c }: { c: ConsultationSummary }) {
               </div>
             )}
           </div>
-          <p className="text-xs mt-3" style={{ color: S.muted }}>
-            Экспорт консультации — в разработке
-          </p>
         </div>
       )}
     </div>
