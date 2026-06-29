@@ -170,7 +170,7 @@ create table if not exists public.client_materials (
   constraint client_materials_type_check
     check (type in (
       'general_history', 'therapist_notes', 'gpt_analysis',
-      'past_transcript', 'other', 'observation'
+      'past_transcript', 'other', 'observation', 'ai_chat'
     ))
 );
 

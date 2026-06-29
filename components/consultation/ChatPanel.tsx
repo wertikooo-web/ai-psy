@@ -6,7 +6,7 @@ import type { ClientMaterial } from "@/lib/types";
 import {
   Send, BrainCircuit, User, ChevronsLeft, ChevronsRight,
   MessagesSquare, AlertCircle, Mic, MicOff, Trash2,
-  BookmarkPlus, Check, Loader2, ChevronUp, ChevronDown,
+  BookmarkPlus, Check, Loader2, ChevronUp, ChevronDown, Download,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -237,6 +237,29 @@ export function ChatPanel({
     }
   }
 
+  function handleDownloadChat() {
+    if (messages.length === 0) return;
+    const lines: string[] = [
+      "Чат по консультации",
+      `Дата: ${new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}`,
+      "",
+      "═".repeat(52),
+      "",
+      ...messages.map(m =>
+        `${m.role === "user" ? "Психолог" : "AI"} [${m.timestamp ?? ""}]:\n${m.content}`
+      ).join("\n\n—\n\n").split("\n"),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `Чат_консультация_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function loadSavedChats() {
     if (!consultationId) return;
     setSavedLoading(true);
@@ -357,6 +380,17 @@ export function ChatPanel({
                 </button>
               </div>
             )}
+            <button
+              onClick={handleDownloadChat}
+              title="Скачать чат"
+              disabled={messages.length === 0}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors flex-shrink-0 disabled:opacity-30"
+              style={{ background: "rgba(255,255,255,0.10)" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.25)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; }}
+            >
+              <Download size={14} className="text-white" />
+            </button>
             <button
               onClick={onToggle}
               title="Свернуть"
