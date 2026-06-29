@@ -20,7 +20,7 @@ import { Mic, ArrowLeft, Trash2, Pause, Archive, RotateCcw } from "lucide-react"
 type Tab = "overview" | "consultations" | "history" | "observations" | "materials";
 
 const TABS: { id: Tab; label: string; tooltip: string }[] = [
-  { id: "overview",      label: "Обзор",         tooltip: "Общая сводка по клиенту: запрос, последние сессии, ключевые наблюдения.\nБыстрый обзор всей работы с клиентом в одном месте."         },
+  { id: "overview",      label: "Запрос",        tooltip: "Текущий запрос клиента и история его изменений.\nЗдесь фиксируется, с чем клиент пришёл и как это менялось."          },
   { id: "consultations", label: "Консультации",  tooltip: "Список всех сессий с транскриптами и AI-анализами.\nОткройте любую консультацию для детального разбора."                          },
   { id: "history",       label: "История",       tooltip: "Хронология важных событий и фактов жизни клиента.\nПомогает понимать контекст при подготовке к сессии."                           },
   { id: "observations",  label: "Наблюдения",    tooltip: "Личные заметки о динамике, паттернах и гипотезах.\nФиксируйте наблюдения между сессиями, пока они свежие."                        },
