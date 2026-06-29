@@ -386,6 +386,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
         <div className="flex-1 min-h-0 flex items-stretch overflow-hidden divide-x divide-[#D8CFBE]">
           <TranscriptPanel
             consultationId={c.id}
+            clientId={c.clientId ?? undefined}
             segments={segments}
             plainText={whisperText ?? undefined}
             notesText={notesText ?? undefined}
