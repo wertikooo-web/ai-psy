@@ -482,13 +482,6 @@ export default function ClientsPage() {
             <div className="w-px h-5" style={{ background: "#DDD4C6" }} />
             <h1 className="text-xl font-bold text-slate-800">Клиенты</h1>
           </div>
-          <button
-            onClick={() => setAddOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm"
-          >
-            <Plus size={16} />
-            Добавить клиента
-          </button>
         </div>
 
         {/* Search */}
