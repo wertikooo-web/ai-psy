@@ -7,26 +7,25 @@ import { Sidebar } from "@/components/Sidebar";
 import type { SidebarMode } from "@/components/Sidebar";
 import { ObservationModal } from "@/components/observation/ObservationModal";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  children: React.ReactNode;
+  initialSidebarMode?: SidebarMode;
+}
+
+export function AppShell({ children, initialSidebarMode = "full" }: AppShellProps) {
   const pathname = usePathname();
   const [sidebarOpen,     setSidebarOpen]     = useState(false);
   const [observationOpen, setObservationOpen] = useState(false);
   const [tooltip,         setTooltip]         = useState(false);
-  const [sidebarMode,     setSidebarMode]     = useState<SidebarMode>("full");
+  const [sidebarMode,     setSidebarMode]     = useState<SidebarMode>(initialSidebarMode);
 
   const onConsultation = pathname.startsWith("/consultation/");
-
-  // Read persisted sidebar mode after mount (avoids SSR mismatch)
-  useEffect(() => {
-    const stored = localStorage.getItem("app_sidebar_mode") as SidebarMode | null;
-    if (stored === "full" || stored === "decorative" || stored === "hidden") {
-      setSidebarMode(stored);
-    }
-  }, []);
 
   function handleModeChange(mode: SidebarMode) {
     setSidebarMode(mode);
     localStorage.setItem("app_sidebar_mode", mode);
+    // Cookie lets the server render the correct mode on next page load (no flash)
+    document.cookie = `app_sidebar_mode=${mode};path=/;max-age=31536000`;
   }
 
   useEffect(() => {

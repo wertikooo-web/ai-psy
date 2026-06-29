@@ -257,22 +257,24 @@ export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
         <div
           style={{
             position: "absolute", top: 0, left: 0, bottom: 0,
-            width: FULL_W,          // same width as full — no layout shift
+            width: FULL_W,
             opacity: mode === "decorative" ? 1 : 0,
             pointerEvents: mode === "decorative" ? "auto" : "none",
             transition: opTrans,
             background: D.bg,
             borderRight: `1px solid ${D.border}`,
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          {/* Logo area — identical height to full sidebar header */}
+          {/* Zone 1: Logo header — fixed height, matches full panel */}
           <div
             style={{
               height: LOGO_H,
+              flexShrink: 0,
               display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "0 16px",
               borderBottom: `1px solid ${D.border}`,
-              flexShrink: 0,
             }}
           >
             <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
@@ -283,8 +285,6 @@ export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
                 <BrainCircuit size={18} style={{ color: "#6B5D4F" }} />
               </div>
             </Link>
-
-            {/* Control buttons — right side of logo row */}
             <div style={{ display: "flex", gap: 2 }}>
               <DecoBtn
                 icon={PanelLeft}
@@ -301,11 +301,14 @@ export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
             </div>
           </div>
 
-          {/* Illustration — fills everything below the logo */}
+          {/* Zone 2: Illustration — centred, natural proportions, never stretched */}
           <div
             style={{
-              position: "absolute",
-              top: LOGO_H, left: 0, right: 0, bottom: 0,
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               overflow: "hidden",
             }}
           >
@@ -315,15 +318,28 @@ export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
               alt="Иллюстрация психолога"
               draggable={false}
               style={{
-                width: "100%",
-                height: "100%",
+                width: "auto",
+                height: "auto",
+                maxWidth: "82%",
+                maxHeight: "clamp(360px, 58dvh, 680px)",
                 objectFit: "contain",
-                objectPosition: "center bottom",
+                transform: "translateY(-2%)",
                 userSelect: "none",
                 pointerEvents: "none",
                 display: "block",
               }}
             />
+          </div>
+
+          {/* Zone 3: User profile — same as full panel footer */}
+          <div
+            style={{
+              flexShrink: 0,
+              borderTop: `1px solid ${D.border}`,
+              padding: "0 8px 8px",
+            }}
+          >
+            <UserChip />
           </div>
         </div>
       </div>
