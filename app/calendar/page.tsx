@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft, ChevronRight, Plus, Clock, MapPin, User,
   Pencil, Trash2, Check, X, LayoutGrid, CalendarDays,
-  List, Loader2, Video, Building2, CalendarX,
+  List, Loader2, Video, Building2, CalendarX, ExternalLink,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -118,6 +118,20 @@ function todayDateStr(): string {
   return dateKey(new Date());
 }
 function isoToLocalDate(iso: string): string { return dateKey(new Date(iso)); }
+function toGCalDate(iso: string): string {
+  // "2024-06-15T10:00:00.000Z" → "20240615T100000Z"
+  return iso.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+function googleCalendarUrl(event: CalendarEvent): string {
+  const params = new URLSearchParams({
+    action:   "TEMPLATE",
+    text:     event.clientName || event.title,
+    dates:    `${toGCalDate(event.startsAt)}/${toGCalDate(event.endsAt)}`,
+    ...(event.notes    && { details:  event.notes    }),
+    ...(event.location && { location: event.location }),
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
 function isoToLocalTime(iso: string): string {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
@@ -628,6 +642,17 @@ function EventDetailModal({
               </p>
             )}
           </div>
+
+          {/* Google Calendar link */}
+          <a
+            href={googleCalendarUrl(event)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 flex items-center gap-2 text-sm text-[#4285F4] hover:underline"
+          >
+            <ExternalLink size={13} />
+            Добавить в Google Calendar
+          </a>
 
           {/* Status actions */}
           {event.status === "planned" && (
