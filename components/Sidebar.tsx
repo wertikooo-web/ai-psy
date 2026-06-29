@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Home, Users, FileText, BookOpen, Bot,
   Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, BookOpenText,
-  PanelLeftClose, PanelLeft, ChevronsLeft,
+  PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
@@ -40,9 +40,10 @@ const LOGO_H = 64; // logo area height, matches full sidebar header
 
 // ── Nav data ──────────────────────────────────────────────────────────────────
 const mainNav = [
-  { href: "/",              label: "Главная",      icon: Home     },
-  { href: "/clients",       label: "Клиенты",      icon: Users    },
-  { href: "/consultations", label: "Консультации", icon: FileText },
+  { href: "/",              label: "Главная",      icon: Home        },
+  { href: "/clients",       label: "Клиенты",      icon: Users       },
+  { href: "/consultations", label: "Консультации", icon: FileText    },
+  { href: "/calendar",      label: "Календарь",    icon: CalendarDays },
 ];
 const toolsNav = [
   { href: "/ai-chat",        label: "AI сервисы",  icon: MessageSquare },
