@@ -638,14 +638,6 @@ export default function NotebookPage() {
               <option value="topic">Группировка: по теме</option>
             </select>
 
-            {/* New entry */}
-            <button
-              onClick={openNewEntry}
-              className="flex h-10 items-center gap-2 rounded-xl bg-[#503C27] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#463520]"
-            >
-              <Plus size={15} />
-              Новая запись
-            </button>
           </div>
         </div>
 
@@ -727,6 +719,17 @@ export default function NotebookPage() {
             )}
           </div>
         )}
+
+        <div className="mb-3 flex justify-end">
+          <button
+            type="button"
+            onClick={openNewEntry}
+            className="flex h-10 items-center gap-2 rounded-xl bg-[#503C27] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#463520]"
+          >
+            <Plus size={15} />
+            Новая запись
+          </button>
+        </div>
 
         {/* ── Notebook container ── */}
         <div className="notebook-vertical-wrap">
@@ -951,6 +954,7 @@ export default function NotebookPage() {
               {/* ── Pagination ── */}
               <div className="notebook-pagination">
                 <button
+                  type="button"
                   onClick={() => goToPage(1)}
                   disabled={query.page <= 1 || loading}
                   className="notebook-pagination-button notebook-pagination-button-icon"
@@ -961,6 +965,7 @@ export default function NotebookPage() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => goToPage(query.page - 1)}
                   disabled={query.page <= 1 || loading}
                   className="notebook-pagination-button"
@@ -984,6 +989,7 @@ export default function NotebookPage() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => goToPage(query.page + 1)}
                   disabled={query.page >= data.totalPages || loading}
                   className="notebook-pagination-button"
@@ -993,6 +999,7 @@ export default function NotebookPage() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => goToPage(data.totalPages)}
                   disabled={query.page >= data.totalPages || loading}
                   className="notebook-pagination-button notebook-pagination-button-icon"

@@ -576,6 +576,7 @@
 
 .notebook-page {
   position: relative;
+  z-index: 3;
   min-width: 0;
   height: 100%;
   display: flex;
@@ -606,6 +607,7 @@
 .notebook-back-page {
   position: absolute;
   z-index: 1;
+  pointer-events: none;
   right: -8px;
   bottom: -8px;
   width: calc(100% - 58px);
@@ -634,6 +636,8 @@
 }
 
 .notebook-pagination {
+  position: relative;
+  z-index: 5;
   margin-top: auto;
   padding-top: 16px;
   border-top: 1px solid #e2d8c8;
@@ -681,6 +685,8 @@
 }
 
 .notebook-pagination-button {
+  position: relative;
+  z-index: 6;
   display: inline-flex;
   height: 36px;
   align-items: center;
@@ -711,6 +717,8 @@
 }
 
 .notebook-cover-button {
+  position: relative;
+  z-index: 6;
   display: inline-flex;
   width: 38px;
   height: 38px;
