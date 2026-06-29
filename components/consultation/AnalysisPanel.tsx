@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { AnalysisSection, ModeAnalysis, DigDeeperCard, VoiceObservation } from "@/lib/mockData";
 import {
   ChevronRight, ChevronDown, BrainCircuit, User, Sparkles,
-  GitCompare, Download, ChevronsLeft, ChevronsRight, Lightbulb, CalendarClock,
+  GitCompare, Download, ChevronsLeft, ChevronsRight, Lightbulb, CalendarClock, FileText,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -94,32 +94,102 @@ export function AnalysisPanel({
     onCompare();
   }
 
-  function handleDownload() {
+  const [dlMenuOpen, setDlMenuOpen] = useState(false);
+  const dlMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (dlMenuRef.current && !dlMenuRef.current.contains(e.target as Node)) setDlMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  function buildAnalysisText(): string {
     const sects = modeAnalysis?.working ?? sections;
     const lines: string[] = [
       `AI-анализ сессии — ${clientName}`,
       `Дата: ${formattedDate}`,
-      "",
-      "═".repeat(52),
-      "",
+      "", "═".repeat(52), "",
     ];
     sects.forEach((s) => {
-      lines.push(`## ${s.title}`);
-      lines.push("");
-      lines.push(s.content);
-      lines.push("");
-      lines.push("─".repeat(40));
-      lines.push("");
+      lines.push(`${s.title}`, "", s.content, "", "─".repeat(40), "");
     });
-    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = `AI-анализ_${clientName}_${date}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    return lines.join("\n");
+  }
+
+  function buildAnalysisMd(): string {
+    const sects = modeAnalysis?.working ?? sections;
+    const lines: string[] = [
+      `# AI-анализ сессии`,
+      `**Клиент:** ${clientName}  `,
+      `**Дата:** ${formattedDate}`,
+      "", "---", "",
+    ];
+    sects.forEach((s) => {
+      lines.push(`## ${s.title}`, "", s.content, "");
+    });
+    return lines.join("\n");
+  }
+
+  function dlBlob(content: string, filename: string, mime = "text/plain;charset=utf-8") {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
+  }
+
+  async function handleDownload(fmt: "txt" | "md" | "docx" | "pdf") {
+    setDlMenuOpen(false);
+    const baseName = `AI-анализ_${clientName}_${date}`;
+    const sects = modeAnalysis?.working ?? sections;
+
+    if (fmt === "txt") {
+      dlBlob(buildAnalysisText(), `${baseName}.txt`);
+    } else if (fmt === "md") {
+      dlBlob(buildAnalysisMd(), `${baseName}.md`, "text/markdown;charset=utf-8");
+    } else if (fmt === "docx") {
+      const { Document, Paragraph, TextRun, HeadingLevel, Packer } = await import("docx");
+      const children: InstanceType<typeof Paragraph>[] = [
+        new Paragraph({ text: "AI-анализ сессии", heading: HeadingLevel.HEADING_1 }),
+        new Paragraph({ children: [new TextRun({ text: "Клиент: ", bold: true }), new TextRun(clientName)] }),
+        new Paragraph({ children: [new TextRun({ text: "Дата: ", bold: true }), new TextRun(formattedDate)] }),
+        new Paragraph({ text: "" }),
+      ];
+      sects.forEach((s) => {
+        children.push(
+          new Paragraph({ text: s.title, heading: HeadingLevel.HEADING_2 }),
+          new Paragraph({ text: s.content }),
+          new Paragraph({ text: "" }),
+        );
+      });
+      const doc = new Document({ sections: [{ children }] });
+      const buffer = await Packer.toBlob(doc);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(buffer);
+      a.download = `${baseName}.docx`;
+      document.body.appendChild(a); a.click(); a.remove();
+    } else if (fmt === "pdf") {
+      const rows = sects.map(s =>
+        `<div style="margin-bottom:20px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#1a1a1a">${s.title}</div>
+          <div style="line-height:1.7;color:#333">${s.content.replace(/\n/g, "<br>")}</div>
+        </div>`
+      ).join("");
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+        <title>AI-анализ — ${clientName}</title>
+        <style>body{font-family:Georgia,serif;font-size:13px;max-width:720px;margin:40px auto;padding:0 20px}h1{font-size:20px;margin-bottom:4px}.meta{color:#666;font-size:12px;margin-bottom:28px}@media print{body{margin:0}}</style>
+      </head><body>
+        <h1>AI-анализ сессии</h1>
+        <div class="meta">Клиент: <b>${clientName}</b> &nbsp;·&nbsp; ${formattedDate}</div>
+        ${rows}
+        <script>window.onload=()=>window.print()<\/script>
+      </body></html>`;
+      const w = window.open("", "_blank");
+      if (w) { w.document.write(html); w.document.close(); }
+    }
   }
 
   // ── Collapsed: narrow vertical tab ──────────────────────────────────────────
@@ -167,16 +237,38 @@ export function AnalysisPanel({
           <h2 className="text-lg font-bold leading-tight" style={{ color: "#FDFAF5" }}>AI-анализ</h2>
           <p className="text-xs leading-tight mt-0.5" style={{ color: "#FDFAF5" }}>Анализ актуален</p>
         </div>
-        <button
-          onClick={handleDownload}
-          title="Скачать анализ"
-          className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors flex-shrink-0"
-          style={{ background: "rgba(255,255,255,0.10)" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.20)"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; }}
-        >
-          <Download size={14} style={{ color: "#D8CFBE" }} />
-        </button>
+        <div ref={dlMenuRef} className="relative flex-shrink-0">
+          <button
+            onClick={() => setDlMenuOpen(v => !v)}
+            title="Скачать анализ"
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+            style={{ background: dlMenuOpen ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.10)" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.20)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = dlMenuOpen ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.10)"; }}
+          >
+            <Download size={14} style={{ color: "#D8CFBE" }} />
+          </button>
+          {dlMenuOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-xl border border-slate-100 shadow-lg z-30 py-1 overflow-hidden">
+              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Скачать анализ</div>
+              {([
+                { fmt: "txt", label: "Текст (.txt)" },
+                { fmt: "md",  label: "Markdown (.md)" },
+                { fmt: "docx", label: "Word (.docx)" },
+                { fmt: "pdf",  label: "PDF (печать)" },
+              ] as const).map(({ fmt, label }) => (
+                <button
+                  key={fmt}
+                  onClick={() => handleDownload(fmt)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <FileText size={12} className="text-slate-400" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           onClick={onToggle}
           title="Свернуть"
@@ -231,7 +323,7 @@ export function AnalysisPanel({
                 Сравнить с предыдущей сессией
               </button>
               <button
-                onClick={() => { setMenuOpen(false); handleDownload(); }}
+                onClick={() => { setMenuOpen(false); handleDownload("txt"); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors text-left"
               >
                 <Download size={13} className="text-slate-400" />

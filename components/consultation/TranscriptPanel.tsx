@@ -476,7 +476,7 @@ export function TranscriptPanel({
   const [obsFormOpen, setObsFormOpen]   = useState(false);
   const [obsDraft, setObsDraft]         = useState("");
   const [obsSaving, setObsSaving]       = useState(false);
-  const [obsSaved, setObsSaved]         = useState(false);
+  const [savedObsList, setSavedObsList] = useState<{ id: string; text: string; at: string }[]>([]);
 
   const seekRef    = useRef<((sec: number) => void) | null>(null);
   const menuRef    = useRef<HTMLDivElement>(null);   // wraps trigger + dropdown
@@ -710,10 +710,9 @@ export function TranscriptPanel({
       if (res.ok) {
         const obs = await res.json();
         window.dispatchEvent(new CustomEvent("observation-created", { detail: { clientId, observation: obs } }));
+        setSavedObsList(prev => [{ id: obs.id, text: obsDraft.trim(), at: new Date().toISOString() }, ...prev]);
         setObsDraft("");
         setObsFormOpen(false);
-        setObsSaved(true);
-        setTimeout(() => setObsSaved(false), 3000);
       }
     } finally {
       setObsSaving(false);
@@ -1099,26 +1098,37 @@ export function TranscriptPanel({
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
           <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{notesText}</p>
 
+          {/* Saved observations list */}
+          {savedObsList.length > 0 && (
+            <div className="space-y-2">
+              {savedObsList.map(o => (
+                <div
+                  key={o.id}
+                  className="rounded-xl px-3 py-2.5 text-sm leading-relaxed"
+                  style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A5F" }}
+                >
+                  <p className="text-xs mb-1" style={{ color: "#60A5FA" }}>
+                    👁 Наблюдение · {new Date(o.at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                  <p className="whitespace-pre-wrap">{o.text}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Add observation block */}
           {clientId && (
             <div className="pt-2 border-t" style={{ borderColor: "#E0D8CA" }}>
               {!obsFormOpen ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setObsFormOpen(true)}
-                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors"
-                    style={{ background: "#EFF6FF", borderColor: "#BFDBFE", color: "#1E40AF" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#DBEAFE"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "#EFF6FF"; }}
-                  >
-                    <Plus size={11} /> Добавить наблюдение
-                  </button>
-                  {obsSaved && (
-                    <span className="text-xs font-medium" style={{ color: "#16A34A" }}>
-                      ✓ Наблюдение сохранено
-                    </span>
-                  )}
-                </div>
+                <button
+                  onClick={() => setObsFormOpen(true)}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors"
+                  style={{ background: "#EFF6FF", borderColor: "#BFDBFE", color: "#1E40AF" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#DBEAFE"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "#EFF6FF"; }}
+                >
+                  <Plus size={11} /> Добавить наблюдение
+                </button>
               ) : (
                 <div className="space-y-2">
                   <textarea
