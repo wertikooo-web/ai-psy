@@ -386,8 +386,8 @@ export function ChatPanel({
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Открыть персональный GPTS психолога"
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-colors"
-            style={{ background: "#E8E3DA", color: "#6B5E4E", border: "1px solid #D0C7BA" }}
+            className="inline-flex items-center gap-1 px-2.5 rounded-lg text-xs font-medium transition-colors leading-none"
+            style={{ height: 26, background: "#E8E3DA", color: "#6B5E4E", border: "1px solid #D0C7BA" }}
             onMouseEnter={e => (e.currentTarget.style.background = "#DDD7CE")}
             onMouseLeave={e => (e.currentTarget.style.background = "#E8E3DA")}
           >
@@ -402,8 +402,9 @@ export function ChatPanel({
               onClick={handleSaveChat}
               disabled={!isDirty || saveState === "saving"}
               aria-label="Сохранить чат"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1 px-2.5 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed leading-none"
               style={{
+                height: 26,
                 background: !isDirty && savedCount !== null ? "#D4EDD9"
                           : saveState === "error"           ? "#FDECEA"
                           :                                   "#E8E3DA",

@@ -963,13 +963,13 @@ export function TranscriptPanel({
 
       {/* Tabs */}
       {(hasBoth || hasMaterials) && (
-        <div className="flex items-stretch justify-between overflow-x-auto flex-shrink-0" style={{ background: "#F5F0E8", borderBottom: "1px solid #E0D8CA" }}>
-          {/* Tab buttons */}
-          <div className="flex items-stretch">
+        <div className="consultation-toolbar justify-between overflow-x-auto" style={{ background: "#F5F0E8", borderBottom: "1px solid #E0D8CA" }}>
+          {/* Tab buttons — all have border-b-2 (transparent when inactive) to keep equal height */}
+          <div className="flex items-stretch h-full">
             {(!!plainText || hasFormatted || (!isNotes && segments.length > 0)) && (
               <button
                 onClick={() => setActiveTab("transcript")}
-                className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+                className={clsx("flex items-center gap-1.5 px-4 text-xs font-medium border-b-2 transition-colors whitespace-nowrap leading-none",
                   activeTab === "transcript" ? "border-brand-500 text-brand-600" : "border-transparent text-slate-400 hover:text-slate-600"
                 )}
               >
@@ -979,7 +979,7 @@ export function TranscriptPanel({
             {!!notesText && (
               <button
                 onClick={() => setActiveTab("notes")}
-                className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+                className={clsx("flex items-center gap-1.5 px-4 text-xs font-medium border-b-2 transition-colors whitespace-nowrap leading-none",
                   activeTab === "notes" ? "border-amber-500 text-amber-600" : "border-transparent text-slate-400 hover:text-slate-600"
                 )}
               >
@@ -989,7 +989,7 @@ export function TranscriptPanel({
             {hasMaterials && (
               <button
                 onClick={() => setActiveTab("materials")}
-                className={clsx("flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
+                className={clsx("flex items-center gap-1.5 px-4 text-xs font-medium border-b-2 transition-colors whitespace-nowrap leading-none",
                   activeTab === "materials" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600"
                 )}
               >
@@ -998,29 +998,31 @@ export function TranscriptPanel({
             )}
           </div>
 
-          {/* "+ Добавить" button — right side, context-aware */}
-          {activeTab === "notes" && clientId && (
-            <button
-              onClick={() => setObsFormOpen(true)}
-              className="flex items-center gap-1 px-3 py-1.5 my-1 mr-2 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap flex-shrink-0"
-              style={{ background: "#EFF6FF", borderColor: "#BFDBFE", color: "#1E40AF" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#DBEAFE"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#EFF6FF"; }}
-            >
-              <Plus size={11} /> Добавить
-            </button>
-          )}
-          {activeTab === "materials" && clientId && (
-            <button
-              onClick={() => setImportMatOpen(true)}
-              className="flex items-center gap-1 px-3 py-1.5 my-1 mr-2 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap flex-shrink-0"
-              style={{ background: "#F0FDF4", borderColor: "#BBF7D0", color: "#166534" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#DCFCE7"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#F0FDF4"; }}
-            >
-              <Plus size={11} /> Добавить
-            </button>
-          )}
+          {/* "+ Добавить" button — right side, vertically centred inside fixed-height toolbar */}
+          <div className="flex items-center pr-2">
+            {activeTab === "notes" && clientId && (
+              <button
+                onClick={() => setObsFormOpen(true)}
+                className="flex items-center gap-1 px-2.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap leading-none"
+                style={{ height: 26, background: "#EFF6FF", borderColor: "#BFDBFE", color: "#1E40AF" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#DBEAFE"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#EFF6FF"; }}
+              >
+                <Plus size={11} /> Добавить
+              </button>
+            )}
+            {activeTab === "materials" && clientId && (
+              <button
+                onClick={() => setImportMatOpen(true)}
+                className="flex items-center gap-1 px-2.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap leading-none"
+                style={{ height: 26, background: "#F0FDF4", borderColor: "#BBF7D0", color: "#166534" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#DCFCE7"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#F0FDF4"; }}
+              >
+                <Plus size={11} /> Добавить
+              </button>
+            )}
+          </div>
         </div>
       )}
 
