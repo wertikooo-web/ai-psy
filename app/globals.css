@@ -184,8 +184,9 @@
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: contain;
+  object-fit: cover;
   transform-origin: left center;
+  transform: scale(1.09);
   filter: drop-shadow(0 22px 28px rgba(73, 56, 37, 0.22));
   transition: transform 420ms ease, opacity 420ms ease, filter 180ms ease;
 }
@@ -254,7 +255,7 @@
 }
 
 .notebook-cover-stage:hover .notebook-cover-exact-image {
-  transform: translateY(-4px) rotateX(1deg);
+  transform: scale(1.09) translateY(-4px) rotateX(1deg);
   filter: drop-shadow(0 30px 34px rgba(73, 56, 37, 0.26));
 }
 
@@ -264,7 +265,7 @@
 }
 
 .notebook-cover-stage-opening .notebook-cover-exact-image {
-  transform: rotateY(-18deg) translateX(-18px);
+  transform: scale(1.09) rotateY(-18deg) translateX(-18px);
   opacity: 0;
 }
 
@@ -637,10 +638,10 @@
   padding-top: 16px;
   border-top: 1px solid #e2d8c8;
   display: grid;
-  grid-template-columns: auto auto minmax(12px, 1fr) auto minmax(12px, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto minmax(0, 1fr);
   grid-template-areas:
-    "status status status status status status status"
-    "first prev spacer-left cover spacer-right next last";
+    "status status status status status status"
+    ". first prev cover next last";
   align-items: center;
   gap: 10px 12px;
   flex-shrink: 0;
@@ -929,7 +930,7 @@
 
   .notebook-pagination {
     gap: 8px;
-    grid-template-columns: auto auto minmax(4px, 1fr) auto minmax(4px, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto minmax(0, 1fr);
   }
 
   .notebook-pagination-button {
