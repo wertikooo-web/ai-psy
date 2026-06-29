@@ -323,7 +323,7 @@ export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
                 maxWidth: "82%",
                 maxHeight: "clamp(360px, 58dvh, 680px)",
                 objectFit: "contain",
-                transform: "translateY(-2%)",
+                transform: "translateY(calc(-2% + 94px))",
                 userSelect: "none",
                 pointerEvents: "none",
                 display: "block",

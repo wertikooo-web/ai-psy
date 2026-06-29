@@ -418,35 +418,6 @@ export default function SettingsPage() {
             </div>
           </SettingsSection>
 
-          {/* 5. Knowledge Base */}
-          <SettingsSection
-            title="База знаний"
-            description="Markdown-файлы с инструкциями для AI-анализа"
-            icon={<BookOpen size={14} />}
-            isOpen={isOpen("knowledge")}
-            onToggle={() => toggleSection("knowledge")}
-          >
-            <div className="space-y-3">
-              <p className="text-sm" style={{ color: "#6B5D4F" }}>
-                База знаний содержит файлы, которые загружаются в промпт при каждом анализе.
-                Каждый режим анализа использует свой набор файлов.
-              </p>
-              <div className="space-y-1.5 text-xs" style={{ color: "#A8997F" }}>
-                <div><span className="font-mono">000_CORE_INSTRUCTIONS.md</span> — загружается всегда</div>
-                <div><span className="font-mono">00_КАРТА_БАЗЫ_ЗНАНИЙ.md</span> — загружается всегда</div>
-                <div><span className="font-mono">01–11_*.md</span> — режим-специфичные файлы</div>
-              </div>
-              <Link
-                href="/knowledge-base"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors hover:bg-[#EDE7DA]"
-                style={{ borderColor: "#D4C9B5", color: "#6B5D4F" }}
-              >
-                <BookOpen size={12} />
-                Открыть базу знаний
-              </Link>
-            </div>
-          </SettingsSection>
-
           {/* 6. Data */}
           <SettingsSection
             title="Данные"
