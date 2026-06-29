@@ -9,7 +9,7 @@ import {
   Zap, Search, UserCheck, Layers, Lightbulb, CalendarClock,
   Play, NotebookPen, FileText, Loader2, AlertCircle,
   Download, ChevronDown, ChevronUp, BrainCircuit,
-  CheckCircle2, CircleDashed, Trash2, Plus, ScanSearch,
+  CheckCircle2, CircleDashed, Trash2, Plus, ScanSearch, ChevronsLeft,
 } from "lucide-react";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
 import { AnalysisBlockRenderer } from "@/components/analysis/AnalysisBlockRenderer";
@@ -329,7 +329,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const hasWhisper     = !!c.transcript?.text;
   const notesText      = c.notes ?? null;
   const whisperText    = c.transcript?.text ?? null;
-  const [panelCollapsed, setPanelCollapsed] = useState({ transcript: false, chat: false });
+  const [panelCollapsed, setPanelCollapsed] = useState({ transcript: false, analysis: false, chat: false });
 
   const clientHref  = c.clientId ? `/client/${c.clientId}` : "/";
   const displayTitle = cleanTitle(c.title);
@@ -355,20 +355,29 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
     return (
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-[#FAF8F5]">
         <header className="border-b px-5 py-3 flex items-center gap-4 flex-shrink-0" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
-          <Link href={clientHref} className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
-            <ArrowLeft size={15} />{c.clientName || "Назад"}
+          <Link
+            href={clientHref}
+            className="flex items-center gap-1.5 text-sm font-medium transition-colors flex-shrink-0 hover:opacity-70"
+            style={{ color: "#6B5D4F" }}
+            title="Вернуться к карточке клиента"
+          >
+            <ArrowLeft size={16} /> Назад
           </Link>
-          <div className="h-5 w-px" style={{ background: "#D8CFBE" }} />
+          <div className="h-5 w-px flex-shrink-0" style={{ background: "#D8CFBE" }} />
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <Avatar initials={c.clientInitials} color={c.clientColor} size="sm" />
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-800">{c.clientName}</span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-brand-50 text-brand-500 border-brand-100">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-semibold text-slate-800 truncate">{c.clientName}</span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-brand-50 text-brand-500 border-brand-100 flex-shrink-0">
                   Проанализировано
                 </span>
               </div>
-              <p className="text-xs text-slate-400 truncate">{cleanTitle(c.title)}</p>
+              {dateStr && (
+                <p className="text-xs text-slate-400 truncate">
+                  {new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              )}
             </div>
           </div>
         </header>
@@ -394,6 +403,25 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
           />
 
           {/* Analysis panel */}
+          {panelCollapsed.analysis ? (
+            <div className="w-10 flex-shrink-0 flex flex-col min-h-0 overflow-hidden bg-[#FAF8F5]" style={{ borderRight: "1px solid #D8CFBE" }}>
+              <button
+                onClick={() => setPanelCollapsed(p => ({ ...p, analysis: false }))}
+                title="Развернуть AI-анализ"
+                className="flex-1 flex flex-col items-center justify-start pt-4 gap-3 hover:bg-stone-100 transition-colors w-full group"
+              >
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow-sm" style={{ background: "#9C9289" }}>
+                  <BrainCircuit size={15} className="text-white" />
+                </div>
+                <span
+                  className="text-xs font-semibold select-none"
+                  style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", color: "#9C9289" }}
+                >
+                  AI-анализ
+                </span>
+              </button>
+            </div>
+          ) : (
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[#FAF8F5]">
             {/* Analysis header */}
             <div
@@ -500,6 +528,15 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                     </div>
                   )}
                 </div>
+
+                {/* Collapse analysis panel */}
+                <button
+                  onClick={() => setPanelCollapsed(p => ({ ...p, analysis: true }))}
+                  title="Свернуть"
+                  className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors flex-shrink-0"
+                >
+                  <ChevronsLeft size={15} className="text-white" />
+                </button>
               </div>
             </div>
 
@@ -569,6 +606,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               )}
             </div>
           </div>
+          )}
 
           <ChatPanel
             collapsed={panelCollapsed.chat}
@@ -587,10 +625,11 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
       <header className="border-b px-5 py-3 flex items-center gap-4 flex-shrink-0" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
         <Link
           href={clientHref}
-          className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"
+          className="flex items-center gap-1.5 text-sm font-medium transition-colors flex-shrink-0 hover:opacity-70"
+          style={{ color: "#6B5D4F" }}
+          title="Вернуться к карточке клиента"
         >
-          <ArrowLeft size={15} />
-          {c.clientName || "Назад"}
+          <ArrowLeft size={16} /> Назад
         </Link>
 
         <div className="h-5 w-px" style={{ background: "#D8CFBE" }} />
@@ -604,7 +643,11 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                 {headerBadgeText}
               </span>
             </div>
-            <p className="text-xs text-slate-400 truncate">{displayTitle}</p>
+            {dateStr && (
+              <p className="text-xs text-slate-400 truncate">
+                {new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+              </p>
+            )}
           </div>
         </div>
 

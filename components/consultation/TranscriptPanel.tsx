@@ -747,6 +747,22 @@ export function TranscriptPanel({
                       <Trash2 size={12} /> Удалить аудиозапись
                     </button>
                   )}
+
+                  {/* Empty state — when all materials are deleted */}
+                  {!(hasFormatted || (hasTranscriptRaw && !!plainText)) &&
+                   !hasRealTimecodes &&
+                   !hasTranscriptRaw &&
+                   !hasFormatted &&
+                   audioDeleted && (
+                    <div className="px-4 py-3 space-y-2">
+                      <p className="text-xs font-medium" style={{ color: "#6B5D4F" }}>Все действия выполнены</p>
+                      <div className="space-y-0.5">
+                        <p className="text-[11px]" style={{ color: "#A8997F" }}>✓ Аудиозапись удалена</p>
+                        <p className="text-[11px]" style={{ color: "#A8997F" }}>✓ Исходный транскрипт удалён</p>
+                        <p className="text-[11px]" style={{ color: "#A8997F" }}>✓ Разобранный транскрипт удалён</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
