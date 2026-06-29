@@ -544,19 +544,6 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               </div>
             )}
 
-            {/* Stale banner */}
-            {analysisStale && selectedAnalysis && (
-              <div className="consultation-toolbar justify-between px-4 overflow-hidden" style={{ background: "#FEF3DC", borderBottom: "1px solid #E8C97A" }}>
-                <p className="text-xs min-w-0 truncate leading-none" style={{ color: "#7A5420" }}>Данные изменились — обновите анализ</p>
-                <button
-                  onClick={() => displayedMode && runAnalysis(displayedMode, true)}
-                  className="flex-shrink-0 flex items-center text-xs font-medium px-2.5 rounded-lg whitespace-nowrap leading-none"
-                  style={{ height: 26, background: "#C9A96E", color: "#1A0F05" }}
-                >
-                  Обновить
-                </button>
-              </div>
-            )}
 
             {/* Error banner */}
             {analysisError && (
