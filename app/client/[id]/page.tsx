@@ -221,13 +221,8 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
             </div>
             {(() => {
               const age = "age" in client ? (client as { age?: number }).age : undefined;
-              const concern = isMock ? client.concern : (currentRequestText ?? client.concern);
               return age ? (
-                <p className="text-sm text-slate-400 mt-0.5">
-                  {age} лет{concern ? ` · ${concern}` : ""}
-                </p>
-              ) : concern ? (
-                <p className="text-sm text-slate-400 mt-0.5">{concern}</p>
+                <p className="text-sm text-slate-400 mt-0.5">{age} лет</p>
               ) : null;
             })()}
             <p className="text-xs text-slate-400 mt-1">
