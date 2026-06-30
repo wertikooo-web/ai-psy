@@ -15,6 +15,7 @@ export type NotebookDateFilter = "all" | "today" | "7d" | "30d" | "custom";
 
 export interface NotebookQuery {
   page: number;
+  pageSize?: number;
   search?: string;
   client?: string;
   topic?: string;
@@ -222,10 +223,11 @@ async function getClientIdsByName(search: string): Promise<string[]> {
 
 export async function getEntries(query: NotebookQuery): Promise<NotebookPageResult> {
   const page = Math.max(1, query.page || 1);
+  const pageSize = Math.max(1, Math.min(500, query.pageSize ?? NOTEBOOK_PAGE_SIZE));
 
   if (isSupabaseConfigured()) {
-    const from = (page - 1) * NOTEBOOK_PAGE_SIZE;
-    const to = from + NOTEBOOK_PAGE_SIZE - 1;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
     const search = sanitizeFilterText((query.search ?? "").trim());
     const clientIds = search ? await getClientIdsByName(search) : [];
     let request = supabaseServer!
@@ -276,9 +278,9 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
     return {
       entries: await enrichLegacyClientData((data ?? []).map(rowToEntry)),
       page,
-      pageSize: NOTEBOOK_PAGE_SIZE,
+      pageSize,
       total,
-      totalPages: Math.max(1, Math.ceil(total / NOTEBOOK_PAGE_SIZE)),
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
     };
   }
 
@@ -299,11 +301,11 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
   entries = applyDateFilter(entries, query);
   entries = sortEntries(entries, query.sort);
   const total = entries.length;
-  const totalPages = Math.max(1, Math.ceil(total / NOTEBOOK_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return {
-    entries: await enrichLegacyClientData(entries.slice((page - 1) * NOTEBOOK_PAGE_SIZE, page * NOTEBOOK_PAGE_SIZE)),
+    entries: await enrichLegacyClientData(entries.slice((page - 1) * pageSize, page * pageSize)),
     page,
-    pageSize: NOTEBOOK_PAGE_SIZE,
+    pageSize,
     total,
     totalPages,
   };
@@ -311,8 +313,9 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
 
 async function getLegacyEntries(query: NotebookQuery): Promise<NotebookPageResult> {
   const page = Math.max(1, query.page || 1);
-  const from = (page - 1) * NOTEBOOK_PAGE_SIZE;
-  const to = from + NOTEBOOK_PAGE_SIZE - 1;
+  const pageSize = Math.max(1, Math.min(500, query.pageSize ?? NOTEBOOK_PAGE_SIZE));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
   let request = supabaseServer!
     .from("notebook")
     .select("id,text,created_at", { count: "exact" });
@@ -329,9 +332,9 @@ async function getLegacyEntries(query: NotebookQuery): Promise<NotebookPageResul
   return {
     entries: await enrichLegacyClientData((data ?? []).map(rowToEntry)),
     page,
-    pageSize: NOTEBOOK_PAGE_SIZE,
+    pageSize,
     total,
-    totalPages: Math.max(1, Math.ceil(total / NOTEBOOK_PAGE_SIZE)),
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
   };
 }
 

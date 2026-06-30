@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowUpDown,
   BookOpen,
   CalendarDays,
   Check,
@@ -15,6 +16,7 @@ import {
   FilePlus2,
   Filter,
   Loader2,
+  Layers,
   MoreVertical,
   Plus,
   Search,
@@ -38,10 +40,14 @@ const TOPICS = [
   "Другое",
 ];
 
+const NOTEBOOK_FETCH_PAGE_SIZE = 500;
+const NOTEBOOK_FALLBACK_ENTRIES_PER_PAGE = 3;
+
 type SortMode  = "newest" | "oldest" | "updated" | "client" | "topic";
 type GroupMode = "none" | "date" | "client" | "topic";
 type DateMode  = "all" | "today" | "7d" | "30d" | "custom";
 type NotebookView = "closed" | "open";
+type NotebookToolSection = "search" | "filters" | "sorting" | "grouping";
 
 interface ClientOption {
   id:   string;
@@ -54,6 +60,11 @@ interface NotebookResponse {
   pageSize:   number;
   total:      number;
   totalPages: number;
+}
+
+interface NotebookPageEntry {
+  entry: NotebookEntry;
+  index: number;
 }
 
 interface QueryState {
@@ -84,6 +95,9 @@ const DEFAULT_QUERY: QueryState = {
   page: 1, search: "", client: "", topic: "", tags: "",
   sort: "newest", group: "none", date: "all", from: "", to: "",
 };
+
+const NOTEBOOK_TOOLS_STORAGE_KEY = "notebook_tools_open_sections";
+const DEFAULT_TOOL_SECTIONS: NotebookToolSection[] = ["search", "filters", "sorting", "grouping"];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -173,6 +187,26 @@ function initialsFromName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   return name.slice(0, 2).toUpperCase();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function highlightSearchMatches(text: string, search: string) {
+  const terms = search.trim().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return text;
+
+  const pattern = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "gi");
+  return text.split(pattern).map((part, index) =>
+    terms.some((term) => part.toLowerCase() === term.toLowerCase()) ? (
+      <mark key={`${part}-${index}`} className="notebook-search-highlight">
+        {part}
+      </mark>
+    ) : (
+      part
+    ),
+  );
 }
 
 // ── Decorative spiral binding strip ──────────────────────────────────────────
@@ -283,11 +317,14 @@ function NotebookCover({
       onClick={onOpen}
       aria-label="Открыть блокнот психолога"
     >
-      <img
-        src="/Bloknote Main 1.png"
-        alt="Обложка блокнота психолога"
-        className="notebook-cover-exact-image"
-      />
+      <div className="notebook-cover-stationary-bg" aria-hidden="true" />
+      <div className="notebook-cover-object">
+        <img
+          src="/Bloknote Main 1.png"
+          alt="Обложка блокнота психолога"
+          className="notebook-cover-exact-image"
+        />
+      </div>
     </button>
   );
 }
@@ -353,15 +390,105 @@ export default function NotebookPage() {
   const [notebookView, setNotebookView]       = useState<NotebookView>("closed");
   const [notebookOpening, setNotebookOpening] = useState(false);
   const [expandedEntries, setExpandedEntries] = useState<Set<string>>(() => new Set());
+  const [toolSectionsOpen, setToolSectionsOpen] =
+    useState<NotebookToolSection[]>(DEFAULT_TOOL_SECTIONS);
   const [reloadKey, setReloadKey]             = useState(0);
   const [deleteTarget, setDeleteTarget]       = useState<string | null>(null);
+  const searchInputRef                         = useRef<HTMLInputElement>(null);
+  const notebookTurnRef                        = useRef<HTMLDivElement>(null);
+  const measureEntryRefs                       = useRef<Map<string, HTMLElement>>(new Map());
+  const [notebookTurnHeight, setNotebookTurnHeight] = useState(0);
+  const [notebookPages, setNotebookPages]      = useState<NotebookPageEntry[][]>([]);
 
   useEffect(() => { setQuery(readInitialQuery()); }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(NOTEBOOK_TOOLS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      const valid = parsed.filter((item): item is NotebookToolSection =>
+        DEFAULT_TOOL_SECTIONS.includes(item),
+      );
+      if (valid.length) setToolSectionsOpen(valid);
+    } catch {
+      setToolSectionsOpen(DEFAULT_TOOL_SECTIONS);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(NOTEBOOK_TOOLS_STORAGE_KEY, JSON.stringify(toolSectionsOpen));
+  }, [toolSectionsOpen]);
+
+  useEffect(() => {
+    const element = notebookTurnRef.current;
+    if (!element) return;
+
+    const updateHeight = () => {
+      const nextHeight = Math.floor(element.getBoundingClientRect().height);
+      setNotebookTurnHeight((prev) => (Math.abs(prev - nextHeight) > 2 ? nextHeight : prev));
+    };
+
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(element);
+    window.addEventListener("resize", updateHeight);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateHeight);
+    };
+  }, [notebookView]);
+
+  useEffect(() => {
+    if (!data.entries.length) {
+      setNotebookPages([]);
+      return;
+    }
+
+    const fallbackPages: NotebookPageEntry[][] = [];
+    data.entries.forEach((entry, index) => {
+      const pageIndex = Math.floor(index / NOTEBOOK_FALLBACK_ENTRIES_PER_PAGE);
+      if (!fallbackPages[pageIndex]) fallbackPages[pageIndex] = [];
+      fallbackPages[pageIndex].push({ entry, index });
+    });
+
+    if (!notebookTurnHeight) {
+      setNotebookPages(fallbackPages);
+      return;
+    }
+
+    const nextPages: NotebookPageEntry[][] = [];
+    let currentPage: NotebookPageEntry[] = [];
+    let usedHeight = 0;
+    const pageHeight = Math.max(120, notebookTurnHeight - 2);
+
+    data.entries.forEach((entry, index) => {
+      const measured = measureEntryRefs.current.get(entry.id);
+      const entryHeight = Math.ceil(measured?.getBoundingClientRect().height ?? 160);
+      if (currentPage.length > 0 && usedHeight + entryHeight > pageHeight) {
+        nextPages.push(currentPage);
+        currentPage = [];
+        usedHeight = 0;
+      }
+      currentPage.push({ entry, index });
+      usedHeight += entryHeight;
+    });
+
+    if (currentPage.length) nextPages.push(currentPage);
+    setNotebookPages(nextPages.length ? nextPages : fallbackPages);
+  }, [data.entries, expandedEntries, notebookTurnHeight, query.group]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(query.search), 300);
     return () => window.clearTimeout(timer);
   }, [query.search]);
+
+  useEffect(() => {
+    if (!query.search.trim() || notebookView !== "closed") return;
+    setNotebookView("open");
+    setNotebookOpening(false);
+  }, [notebookView, query.search]);
 
   useEffect(() => {
     fetch("/api/clients")
@@ -374,7 +501,8 @@ export default function NotebookPage() {
 
   const requestParams = useMemo(() => {
     const sp = new URLSearchParams();
-    sp.set("page", String(query.page));
+    sp.set("page", "1");
+    sp.set("pageSize", String(NOTEBOOK_FETCH_PAGE_SIZE));
     if (debouncedSearch) sp.set("search", debouncedSearch);
     if (query.client)    sp.set("client", query.client);
     if (query.topic)     sp.set("topic",  query.topic);
@@ -397,7 +525,7 @@ export default function NotebookPage() {
       .then((json: NotebookResponse) => { if (!cancelled) setData(json); })
       .catch(() => {
         if (!cancelled)
-          setData({ entries: [], page: query.page, pageSize: 3, total: 0, totalPages: 1 });
+          setData({ entries: [], page: query.page, pageSize: NOTEBOOK_FETCH_PAGE_SIZE, total: 0, totalPages: 1 });
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -424,6 +552,38 @@ export default function NotebookPage() {
       ...patch,
       page: resetPage ? 1 : patch.page ?? prev.page,
     }));
+  }
+
+  function buildNotebookParams(nextQuery: QueryState, page: number) {
+    const sp = new URLSearchParams();
+    sp.set("page", String(page));
+    sp.set("pageSize", String(NOTEBOOK_FETCH_PAGE_SIZE));
+    if (nextQuery.search) sp.set("search", nextQuery.search);
+    if (nextQuery.client) sp.set("client", nextQuery.client);
+    if (nextQuery.topic) sp.set("topic", nextQuery.topic);
+    if (nextQuery.tags) sp.set("tags", nextQuery.tags);
+    if (nextQuery.sort) sp.set("sort", nextQuery.sort);
+    if (nextQuery.group) sp.set("group", nextQuery.group);
+    if (nextQuery.date) sp.set("date", nextQuery.date);
+    if (nextQuery.from) sp.set("from", nextQuery.from);
+    if (nextQuery.to) sp.set("to", nextQuery.to);
+    return sp;
+  }
+
+  async function findEntryPage(entryId: string, nextQuery: QueryState) {
+    const firstRes = await fetch(`/api/notebook?${buildNotebookParams(nextQuery, 1).toString()}`);
+    if (!firstRes.ok) return null;
+    const firstPage = await firstRes.json() as NotebookResponse;
+    if (firstPage.entries.some((entry) => entry.id === entryId)) return 1;
+
+    for (let page = 2; page <= firstPage.totalPages; page += 1) {
+      const res = await fetch(`/api/notebook?${buildNotebookParams(nextQuery, page).toString()}`);
+      if (!res.ok) return null;
+      const pageData = await res.json() as NotebookResponse;
+      if (pageData.entries.some((entry) => entry.id === entryId)) return page;
+    }
+
+    return null;
   }
 
   function openNewEntry() { setForm(emptyForm); setFormOpen(true); setOpenMenu(null); }
@@ -454,6 +614,7 @@ export default function NotebookPage() {
         },
       );
       if (!res.ok) return;
+      const savedEntry = await res.json() as NotebookEntry;
       setFormOpen(false);
       setToast(form.id ? "Запись сохранена" : "Запись добавлена");
       if (form.id) {
@@ -467,7 +628,22 @@ export default function NotebookPage() {
         }));
         setReloadKey((v) => v + 1);
       } else {
-        updateQuery({ page: 1 }, false);
+        const fallbackQuery: QueryState = {
+          ...query,
+          page: 1,
+          search: "",
+          client: "",
+          topic: "",
+          tags: "",
+          date: "all",
+          from: "",
+          to: "",
+        };
+        const currentPage = await findEntryPage(savedEntry.id, { ...query, page: 1 });
+        const nextQuery = currentPage
+          ? { ...query, page: currentPage }
+          : { ...fallbackQuery, page: await findEntryPage(savedEntry.id, fallbackQuery) ?? 1 };
+        setQuery(nextQuery);
         setReloadKey((v) => v + 1);
       }
     } finally {
@@ -484,7 +660,7 @@ export default function NotebookPage() {
     const res = await fetch(`/api/notebook/${id}`, { method: "DELETE" });
     if (!res.ok) return;
     setToast("Запись удалена");
-    if (data.entries.length === 1 && query.page > 1) {
+    if (visibleEntries.length === 1 && query.page > 1) {
       updateQuery({ page: query.page - 1 }, false);
     } else {
       setData((prev) => ({
@@ -513,7 +689,7 @@ export default function NotebookPage() {
   }
 
   function goToPage(nextPage: number) {
-    if (nextPage < 1 || nextPage > data.totalPages || nextPage === query.page) return;
+    if (nextPage < 1 || nextPage > notebookTotalPages || nextPage === query.page) return;
     setTurnDirection(nextPage > query.page ? "next" : "prev");
     updateQuery({ page: nextPage }, false);
     window.setTimeout(() => setTurnDirection("none"), 360);
@@ -541,14 +717,53 @@ export default function NotebookPage() {
     setFiltersOpen(false);
   }
 
+  function isToolSectionOpen(section: NotebookToolSection) {
+    return toolSectionsOpen.includes(section);
+  }
+
+  function toggleToolSection(section: NotebookToolSection) {
+    setToolSectionsOpen((prev) =>
+      prev.includes(section)
+        ? prev.filter((item) => item !== section)
+        : [...prev, section],
+    );
+  }
+
+  function handleSearchChange(value: string) {
+    updateQuery({ search: value });
+    setDebouncedSearch(value);
+    if (value.trim()) {
+      setNotebookView("open");
+      setNotebookOpening(false);
+    }
+  }
+
+  function submitSearch(value = query.search) {
+    setDebouncedSearch(value);
+    updateQuery({ search: value });
+    setNotebookView("open");
+    setNotebookOpening(false);
+  }
+
+  const notebookTotalPages = Math.max(1, notebookPages.length || data.totalPages);
+  const currentPageEntries = notebookPages[query.page - 1] ?? [];
+  const visibleEntries = currentPageEntries.map((item) => item.entry);
   const isFiltered = activeFilters > 0 || !!query.search;
-  const heading    = groupTitle(data.entries[0], query.group);
+  const heading    = groupTitle(visibleEntries[0], query.group);
+
+  useEffect(() => {
+    if (query.page > notebookTotalPages) {
+      updateQuery({ page: notebookTotalPages }, false);
+    }
+  }, [notebookTotalPages, query.page]);
 
   return (
     <div className="flex-1 h-full min-h-0 overflow-hidden bg-[#F7F3EA]">
-      <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden px-4 py-6 sm:px-8 sm:py-8">
+      <div className="mx-auto flex h-full max-w-[1500px] flex-col overflow-visible px-4 py-6 sm:px-8 sm:py-8">
 
         {/* ── Page header ── */}
+        <div className="notebook-layout">
+        <section className="notebook-main-column">
         <div className="notebook-top-zone">
           <div className="notebook-header-row">
           <div className="notebook-heading">
@@ -557,7 +772,7 @@ export default function NotebookPage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-xl font-bold text-[#3D3228]">Блокнот психолога</h1>
-              <p className="text-sm text-[#8F7F69]">Личные записи, идеи, наблюдения и напоминания</p>
+              <p className="whitespace-nowrap text-sm text-[#8F7F69]">Личные записи, идеи, мысли...</p>
             </div>
           </div>
 
@@ -577,7 +792,10 @@ export default function NotebookPage() {
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A8A72]" />
               <input
                 value={query.search}
-                onChange={(e) => updateQuery({ search: e.target.value })}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitSearch(e.currentTarget.value);
+                }}
                 placeholder="Поиск по тексту, клиенту, теме, тегам"
                 className="notebook-toolbar-input pl-9 pr-3"
               />
@@ -762,7 +980,7 @@ export default function NotebookPage() {
         )}
 
         {/* ── Notebook container ── */}
-        <div className="notebook-vertical-wrap">
+        <div className={`notebook-vertical-wrap ${notebookView === "open" ? "notebook-vertical-wrap-open" : ""}`}>
           {notebookView === "closed" ? (
             <NotebookCover isOpening={notebookOpening} onOpen={openNotebook} />
           ) : (
@@ -784,13 +1002,13 @@ export default function NotebookPage() {
               <div className="notebook-page-content">
 
               {/* Inner notebook header */}
-              <div className="mb-5 flex items-center justify-between gap-3 border-b border-[#E2D8C8] pb-4">
+              <div className="notebook-inner-header mb-5 flex items-center justify-between gap-3 pb-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9A8A72]">
-                    Личный блокнот
-                  </p>
-                  <p className="mt-0.5 text-sm text-[#6B5D4F]">
-                    {pluralNotes(data.total)}
+                  <p className="text-[20px] font-bold uppercase tracking-[0.2em] text-[#9A8A72]">
+                    Личный блокнот{" "}
+                    <span className="text-[12px] font-semibold italic normal-case tracking-normal text-[#6B5D4F]">
+                      ({pluralNotes(data.total)})
+                    </span>
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -813,7 +1031,7 @@ export default function NotebookPage() {
                     <span className="text-xs font-semibold text-[#6B5D4F]">{heading}</span>
                     <span className="text-[10px] text-[#9A8A72]">·</span>
                     <span className="text-xs text-[#9A8A72]">
-                      {pluralNotes(data.entries.length)} на этой странице
+                      {pluralNotes(visibleEntries.length)} на этой странице
                     </span>
                   </div>
                 </div>
@@ -821,6 +1039,7 @@ export default function NotebookPage() {
 
               {/* Entry list with page-turn animation wrapper */}
               <div
+                ref={notebookTurnRef}
                 className={`notebook-turn ${
                   turnDirection === "next"
                     ? "notebook-turn-next"
@@ -833,14 +1052,14 @@ export default function NotebookPage() {
                   <div className="flex min-h-[380px] items-center justify-center">
                     <Loader2 size={26} className="animate-spin text-[#8F7F69]" />
                   </div>
-                ) : data.entries.length === 0 ? (
+                ) : visibleEntries.length === 0 ? (
                   /* ── Empty state ── */
                   <div className="flex min-h-[380px] flex-col items-center justify-center text-center">
                     <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-dashed border-[#C6B69B] bg-[#F1E9DC]">
                       <BookOpen size={28} className="text-[#B0997D]" />
                     </div>
                     <p className="text-base font-semibold text-[#3D3228]">
-                      {isFiltered ? "Записей с такими параметрами нет" : "Ваш блокнот пока пуст"}
+                      {isFiltered ? "Таких записей нет" : "Ваш блокнот пока пуст"}
                     </p>
                     <p className="mt-2 max-w-xs text-sm text-[#8F7F69]">
                       {isFiltered
@@ -858,13 +1077,17 @@ export default function NotebookPage() {
                 ) : (
                   /* ── Entries ── */
                   <div className="divide-y divide-dashed divide-[#D9CDB9]">
-                    {data.entries.map((entry) => {
+                    {currentPageEntries.map(({ entry, index }) => {
                       const isExpanded = expandedEntries.has(entry.id);
                       const canExpand = entry.text.length > 260 || entry.text.split(/\r?\n/).length > 4;
+                      const entryNumber = index + 1;
 
                       return (
                       <article key={entry.id} className="py-4 first:pt-0 last:pb-1">
                         <div className="flex items-start gap-3">
+                          <span className="notebook-entry-number" aria-label={`Запись номер ${entryNumber}`}>
+                            {entryNumber}
+                          </span>
                           <div className="min-w-0 flex-1">
                             {/* Metadata row */}
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#9A8A72]">
@@ -887,13 +1110,13 @@ export default function NotebookPage() {
                             {/* Title */}
                             {entry.title && (
                               <h2 className="mt-1.5 text-[15px] font-semibold leading-snug text-[#2E2520]">
-                                {entry.title}
+                                {highlightSearchMatches(entry.title, query.search)}
                               </h2>
                             )}
 
                             {/* Body text */}
                             <p className={`mt-1.5 whitespace-pre-wrap text-sm leading-[1.7] text-[#463A2F] ${!isExpanded && canExpand ? "max-h-[112px] overflow-hidden" : ""}`}>
-                              {entry.text}
+                              {highlightSearchMatches(entry.text, query.search)}
                             </p>
 
                             {canExpand && (
@@ -982,6 +1205,79 @@ export default function NotebookPage() {
               </div>
 
               {/* ── Pagination ── */}
+              <div className="notebook-measure-list" aria-hidden="true">
+                {data.entries.map((entry, index) => {
+                  const isExpanded = expandedEntries.has(entry.id);
+                  const canExpand = entry.text.length > 260 || entry.text.split(/\r?\n/).length > 4;
+
+                  return (
+                    <article
+                      key={entry.id}
+                      ref={(node) => {
+                        if (node) measureEntryRefs.current.set(entry.id, node);
+                        else measureEntryRefs.current.delete(entry.id);
+                      }}
+                      className="py-4 first:pt-0 last:pb-1"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="notebook-entry-number">{index + 1}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#9A8A72]">
+                            <span className="inline-flex items-center gap-1.5">
+                              <CalendarDays size={12} />
+                              {formatDate(entry.createdAt)}
+                            </span>
+                            {entry.clientName && (
+                              <span className="inline-flex items-center gap-1.5 text-[#7B6F60]">
+                                <Avatar
+                                  initials={entry.clientInitials ?? initialsFromName(entry.clientName)}
+                                  color={entry.clientColor ?? "#6088ff"}
+                                  size="xs"
+                                />
+                                {entry.clientName}
+                              </span>
+                            )}
+                          </div>
+                          {entry.title && (
+                            <h2 className="mt-1.5 text-[15px] font-semibold leading-snug text-[#2E2520]">
+                              {entry.title}
+                            </h2>
+                          )}
+                          <p className={`mt-1.5 whitespace-pre-wrap text-sm leading-[1.7] text-[#463A2F] ${!isExpanded && canExpand ? "max-h-[112px] overflow-hidden" : ""}`}>
+                            {entry.text}
+                          </p>
+                          {canExpand && (
+                            <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#D8CFBE] bg-white/70 px-2.5 py-1 text-xs font-medium text-[#6B5D4F]">
+                              {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                              {isExpanded ? "Свернуть" : "Показать полностью"}
+                            </div>
+                          )}
+                          {(entry.topic || entry.tags.length > 0) && (
+                            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                              {entry.topic && (
+                                <span className="rounded-full bg-[#E8EEF9] px-2 py-0.5 text-xs font-medium text-[#355E9C]">
+                                  {entry.topic}
+                                </span>
+                              )}
+                              {entry.tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-0.5 text-xs text-[#6B5D4F] ring-1 ring-[#D8CFBE]"
+                                >
+                                  <Tag size={10} />
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="h-8 w-8 flex-shrink-0" />
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
               <div className="notebook-pagination">
                 <button
                   type="button"
@@ -1005,7 +1301,7 @@ export default function NotebookPage() {
                 </button>
 
                 <span className="text-sm font-semibold text-[#6B5D4F]">
-                  Страница {data.page} из {data.totalPages}
+                  Страница {query.page} из {notebookTotalPages}
                 </span>
 
                 <button
@@ -1021,7 +1317,7 @@ export default function NotebookPage() {
                 <button
                   type="button"
                   onClick={() => goToPage(query.page + 1)}
-                  disabled={query.page >= data.totalPages || loading}
+                  disabled={query.page >= notebookTotalPages || loading}
                   className="notebook-pagination-button"
                 >
                   Следующая
@@ -1030,8 +1326,8 @@ export default function NotebookPage() {
 
                 <button
                   type="button"
-                  onClick={() => goToPage(data.totalPages)}
-                  disabled={query.page >= data.totalPages || loading}
+                  onClick={() => goToPage(notebookTotalPages)}
+                  disabled={query.page >= notebookTotalPages || loading}
                   className="notebook-pagination-button notebook-pagination-button-icon"
                   aria-label="В конец"
                   title="В конец"
@@ -1046,17 +1342,164 @@ export default function NotebookPage() {
             </>
           )}
         </div>
+        </section>
+
+        <aside className="notebook-control-sidebar" aria-label="Инструменты блокнота">
+          <section className="notebook-control-card notebook-search-card">
+            <span className="notebook-control-title">
+              <Search size={16} />
+              <span>Поиск</span>
+            </span>
+            <div className="notebook-control-search">
+              <input
+                value={query.search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitSearch(e.currentTarget.value);
+                }}
+                placeholder="ПОИСК"
+                aria-label="Поиск по записям"
+              />
+            </div>
+          </section>
+
+          <section className="notebook-control-card">
+            <button
+              type="button"
+              onClick={() => toggleToolSection("filters")}
+              className="notebook-control-card-toggle"
+            >
+              <span className="notebook-control-title">
+                <Filter size={16} />
+                <span>Фильтры{activeFilters > 0 ? ` · ${activeFilters}` : ""}</span>
+              </span>
+              <ChevronDown size={16} className={isToolSectionOpen("filters") ? "rotate-180" : ""} />
+            </button>
+            {isToolSectionOpen("filters") && (
+              <div className="notebook-control-content">
+                <label className="notebook-control-row">
+                  <span>Клиент</span>
+                  <select value={query.client} onChange={(e) => updateQuery({ client: e.target.value })}>
+                    <option value="">Все записи</option>
+                    <option value="none">Без клиента</option>
+                    {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </label>
+                <label className="notebook-control-row">
+                  <span>Тема</span>
+                  <select value={query.topic} onChange={(e) => updateQuery({ topic: e.target.value })}>
+                    <option value="">Все темы</option>
+                    {TOPICS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </label>
+                <label className="notebook-control-row">
+                  <span>Дата</span>
+                  <select value={query.date} onChange={(e) => updateQuery({ date: e.target.value as DateMode })}>
+                    <option value="all">За все время</option>
+                    <option value="today">Сегодня</option>
+                    <option value="7d">7 дней</option>
+                    <option value="30d">30 дней</option>
+                    <option value="custom">Период</option>
+                  </select>
+                </label>
+                {query.date === "custom" && (
+                  <div className="notebook-control-date-row">
+                    <input type="date" value={query.from} onChange={(e) => updateQuery({ from: e.target.value })} />
+                    <input type="date" value={query.to} onChange={(e) => updateQuery({ to: e.target.value })} />
+                  </div>
+                )}
+                <label className="notebook-control-row">
+                  <span>Теги</span>
+                  <input value={query.tags} onChange={(e) => updateQuery({ tags: e.target.value })} placeholder="Все теги" />
+                </label>
+                <button type="button" onClick={resetFilters} className="notebook-control-reset">
+                  Сбросить
+                </button>
+              </div>
+            )}
+          </section>
+
+          <section className="notebook-control-card">
+            <button
+              type="button"
+              onClick={() => toggleToolSection("sorting")}
+              className="notebook-control-card-toggle"
+            >
+              <span className="notebook-control-title">
+                <ArrowUpDown size={16} />
+                <span>Сортировка</span>
+              </span>
+              <ChevronDown size={16} className={isToolSectionOpen("sorting") ? "rotate-180" : ""} />
+            </button>
+            {isToolSectionOpen("sorting") && (
+              <div className="notebook-control-content">
+                {[
+                  ["newest", "Сначала новые"],
+                  ["oldest", "Сначала старые"],
+                  ["updated", "Недавно измененные"],
+                  ["client", "По клиенту"],
+                  ["topic", "По теме"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => updateQuery({ sort: value as SortMode })}
+                    className={`notebook-control-option ${query.sort === value ? "notebook-control-option-active" : ""}`}
+                  >
+                    <span>{label}</span>
+                    {query.sort === value && <Check size={14} />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="notebook-control-card">
+            <button
+              type="button"
+              onClick={() => toggleToolSection("grouping")}
+              className="notebook-control-card-toggle"
+            >
+              <span className="notebook-control-title">
+                <Layers size={16} />
+                <span>Группировка</span>
+              </span>
+              <ChevronDown size={16} className={isToolSectionOpen("grouping") ? "rotate-180" : ""} />
+            </button>
+            {isToolSectionOpen("grouping") && (
+              <div className="notebook-control-content">
+                {[
+                  ["none", "Без группировки"],
+                  ["date", "По дате"],
+                  ["client", "По клиенту"],
+                  ["topic", "По теме"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => updateQuery({ group: value as GroupMode })}
+                    className={`notebook-control-option ${query.group === value ? "notebook-control-option-active" : ""}`}
+                  >
+                    <span>{label}</span>
+                    {query.group === value && <Check size={14} />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        </aside>
+        </div>
       </div>
 
       {/* ── Create / Edit modal ── */}
       {formOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#2D241C]/35 p-0 sm:items-center sm:p-6">
-          <div className="notebook-paper max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[26px] border border-[#CFC0A9] shadow-2xl sm:rounded-[26px]">
+          <div className="notebook-paper notebook-entry-modal">
             {/* Modal binding strip — sticky so it stays visible while scrolling */}
             <div className="sticky top-0 z-10">
               <BindingStrip count={9} small />
             </div>
-            <div className="p-5 sm:p-7">
+            <div className="notebook-entry-modal-body">
               <div className="mb-5 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9A8A72]">
@@ -1073,7 +1516,7 @@ export default function NotebookPage() {
                 </button>
               </div>
 
-              <div className="space-y-3">
+              <div className="notebook-entry-form">
                 <input
                   value={form.title}
                   onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
@@ -1084,10 +1527,10 @@ export default function NotebookPage() {
                   value={form.text}
                   onChange={(e) => setForm((prev) => ({ ...prev, text: e.target.value }))}
                   placeholder="Текст записи"
-                  rows={8}
+                  rows={12}
                   className="w-full resize-none rounded-xl border border-[#D8CFBE] bg-white/75 px-3 py-3 text-sm leading-[1.7] text-[#3D3228] outline-none focus:border-[#6088ff] focus:ring-2 focus:ring-[#6088ff]/10"
                 />
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="notebook-entry-meta">
                   <select
                     value={form.clientId}
                     onChange={(e) => setForm((prev) => ({ ...prev, clientId: e.target.value }))}
@@ -1113,7 +1556,7 @@ export default function NotebookPage() {
                 />
               </div>
 
-              <div className="mt-5 flex justify-end gap-2">
+              <div className="notebook-entry-actions">
                 <button
                   onClick={() => setFormOpen(false)}
                   className="rounded-xl border border-[#D8CFBE] bg-white/75 px-4 py-2 text-sm font-medium text-[#4D4034] hover:bg-[#F5F0E6]"

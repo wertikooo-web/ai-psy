@@ -19,8 +19,10 @@ export async function GET(req: NextRequest) {
     const sort = sp.get("sort") as NotebookSort | null;
     const group = sp.get("group") as NotebookGroup | null;
     const date = sp.get("date") as NotebookDateFilter | null;
+    const pageSize = Math.max(1, Math.min(500, Number(sp.get("pageSize") ?? 3) || 3));
     const result = await getEntries({
       page:   Math.max(1, Number(sp.get("page") ?? 1) || 1),
+      pageSize,
       search: sp.get("search")?.trim() || undefined,
       client: sp.get("client")?.trim() || undefined,
       topic:  sp.get("topic")?.trim() || undefined,
