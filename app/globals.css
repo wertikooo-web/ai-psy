@@ -201,6 +201,7 @@
   position: absolute;
   inset: 0;
   z-index: 1;
+  pointer-events: none;
   transform-origin: left center;
   transform: translateY(0) scale(1);
   filter: drop-shadow(0 22px 28px rgba(73, 56, 37, 0.2));
@@ -216,6 +217,7 @@
   height: 100%;
   display: block;
   object-fit: cover;
+  pointer-events: none;
   transform-origin: left center;
   transform: scale(1.2);
   transition: transform 420ms ease, opacity 420ms ease;
