@@ -349,6 +349,7 @@ export default function NotebookPage() {
   const [turnDirection, setTurnDirection]     = useState<"next" | "prev" | "none">("none");
   const [openMenu, setOpenMenu]               = useState<string | null>(null);
   const [sortOpen, setSortOpen]               = useState(false);
+  const [groupOpen, setGroupOpen]             = useState(false);
   const [notebookView, setNotebookView]       = useState<NotebookView>("closed");
   const [notebookOpening, setNotebookOpening] = useState(false);
   const [expandedEntries, setExpandedEntries] = useState<Set<string>>(() => new Set());
@@ -638,16 +639,45 @@ export default function NotebookPage() {
             </div>
 
             {/* Group */}
-            <select
-              value={query.group}
-              onChange={(e) => updateQuery({ group: e.target.value as GroupMode })}
-              className="notebook-toolbar-select"
-            >
-              <option value="none">Группировка: нет</option>
-              <option value="date">Группировка: по дате</option>
-              <option value="client">Группировка: по клиенту</option>
-              <option value="topic">Группировка: по теме</option>
-            </select>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setGroupOpen((v) => !v)}
+                className={`notebook-toolbar-button notebook-sort-button ${
+                  groupOpen
+                    ? "border-[#6088ff] bg-white text-[#3D3228]"
+                    : "border-[#D8CFBE] bg-white/80 text-[#4D4034] hover:bg-white"
+                }`}
+              >
+                Группировка
+                <ChevronDown size={15} />
+              </button>
+              {groupOpen && (
+                <div className="absolute right-0 top-11 z-30 w-56 overflow-hidden rounded-xl border border-[#D8CFBE] bg-white shadow-xl">
+                  {[
+                    ["none", "Нет"],
+                    ["date", "По дате"],
+                    ["client", "По клиенту"],
+                    ["topic", "По теме"],
+                  ].map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        updateQuery({ group: value as GroupMode });
+                        setGroupOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm hover:bg-[#F7F3EA] ${
+                        query.group === value ? "font-semibold text-[#355E9C]" : "text-[#4D4034]"
+                      }`}
+                    >
+                      {label}
+                      {query.group === value && <Check size={14} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
           </div>
         </div>
