@@ -163,6 +163,20 @@ function groupTitle(entry: NotebookEntry | undefined, group: GroupMode) {
   return entry.topic ?? "Без темы";
 }
 
+function groupKey(entry: NotebookEntry, group: GroupMode) {
+  if (group === "date") return formatDateGroup(entry.createdAt);
+  if (group === "client") return entry.clientId ?? "none";
+  if (group === "topic") return entry.topic ?? "none";
+  return "none";
+}
+
+function pageGroupTitle(entries: NotebookEntry[], group: GroupMode) {
+  if (group === "none" || entries.length === 0) return "";
+  const firstKey = groupKey(entries[0], group);
+  const hasSingleGroup = entries.every((entry) => groupKey(entry, group) === firstKey);
+  return hasSingleGroup ? groupTitle(entries[0], group) : "";
+}
+
 function tagsToArray(tags: string) {
   const seen = new Set<string>();
   tags.split(",").forEach((raw) => {
@@ -705,6 +719,10 @@ export default function NotebookPage() {
   }
 
   function closeNotebook() {
+    if (query.search) {
+      setDebouncedSearch("");
+      updateQuery({ search: "" });
+    }
     setNotebookView("closed");
     setOpenMenu(null);
   }
@@ -749,7 +767,7 @@ export default function NotebookPage() {
   const currentPageEntries = notebookPages[query.page - 1] ?? [];
   const visibleEntries = currentPageEntries.map((item) => item.entry);
   const isFiltered = activeFilters > 0 || !!query.search;
-  const heading    = groupTitle(visibleEntries[0], query.group);
+  const heading = pageGroupTitle(visibleEntries, query.group);
 
   useEffect(() => {
     if (query.page > notebookTotalPages) {
@@ -1004,9 +1022,9 @@ export default function NotebookPage() {
               {/* Inner notebook header */}
               <div className="notebook-inner-header mb-5 flex items-center justify-between gap-3 pb-4">
                 <div>
-                  <p className="text-[20px] font-bold uppercase tracking-[0.2em] text-[#9A8A72]">
+                  <p className="notebook-inner-title font-bold uppercase text-[#9A8A72]">
                     Личный блокнот{" "}
-                    <span className="text-[12px] font-semibold italic normal-case tracking-normal text-[#6B5D4F]">
+                    <span className="notebook-inner-count font-semibold italic normal-case tracking-normal text-[#6B5D4F]">
                       ({pluralNotes(data.total)})
                     </span>
                   </p>
@@ -1360,6 +1378,16 @@ export default function NotebookPage() {
                 placeholder="ПОИСК"
                 aria-label="Поиск по записям"
               />
+              {query.search && (
+                <button
+                  type="button"
+                  onClick={() => handleSearchChange("")}
+                  className="notebook-control-search-clear"
+                  aria-label="Очистить поиск"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           </section>
 

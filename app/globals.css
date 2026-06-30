@@ -615,7 +615,7 @@
   justify-content: center;
   gap: 8px;
   border-radius: 11px;
-  background: #6a5136;
+  background: #8a6b4b;
   padding-inline: 16px;
   color: #fffaf2;
   font-size: 13px;
@@ -626,7 +626,7 @@
 }
 
 .notebook-primary-action:hover {
-  background: #5c452f;
+  background: #75593d;
 }
 
 .notebook-control-sidebar {
@@ -678,6 +678,7 @@
   width: 100%;
   height: 42px;
   padding-left: 42px;
+  padding-right: 8px;
 }
 
 .notebook-control-card-toggle {
@@ -696,6 +697,13 @@
 .notebook-control-card-toggle svg {
   flex: 0 0 auto;
   transition: transform 160ms ease;
+}
+
+.notebook-control-card-toggle > svg {
+  width: 18px;
+  height: 18px;
+  color: #2f251d;
+  stroke-width: 3.25;
 }
 
 .notebook-control-title {
@@ -736,6 +744,24 @@
   color: #3d3228;
   font-size: 14px;
   outline: none;
+}
+
+.notebook-control-search-clear {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(107, 93, 79, 0.62);
+}
+
+.notebook-control-search-clear:hover {
+  background: rgba(216, 207, 190, 0.35);
+  color: #4d4034;
 }
 
 .notebook-control-search input::placeholder {
@@ -1126,6 +1152,19 @@
   border-bottom: 2px solid #d6c9b8;
 }
 
+.notebook-inner-title {
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+}
+
+.notebook-inner-count {
+  display: inline-block;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .notebook-entry-number {
   display: inline-flex;
   min-width: 38px;
@@ -1186,7 +1225,9 @@
 .notebook-pagination {
   position: relative;
   z-index: 5;
+  width: calc(100% + 54px);
   margin-top: auto;
+  margin-left: -22px;
   padding-top: 16px;
   border-top: 1px solid #e2d8c8;
   display: grid;
