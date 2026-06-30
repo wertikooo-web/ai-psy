@@ -642,10 +642,10 @@
   padding-top: 16px;
   border-top: 1px solid #e2d8c8;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto auto minmax(0, 1fr);
   grid-template-areas:
-    "status status status status status status"
-    ". first prev cover next last";
+    "status status status status status status status"
+    ". first prev cover next last .";
   align-items: center;
   gap: 10px 12px;
   flex-shrink: 0;
@@ -653,12 +653,12 @@
 
 .notebook-pagination > :nth-child(1) {
   grid-area: first;
-  justify-self: start;
+  justify-self: center;
 }
 
 .notebook-pagination > :nth-child(2) {
   grid-area: prev;
-  justify-self: start;
+  justify-self: center;
 }
 
 .notebook-pagination > :nth-child(3) {
@@ -676,12 +676,12 @@
 
 .notebook-pagination > :nth-child(5) {
   grid-area: next;
-  justify-self: end;
+  justify-self: center;
 }
 
 .notebook-pagination > :nth-child(6) {
   grid-area: last;
-  justify-self: end;
+  justify-self: center;
 }
 
 .notebook-pagination-button {
@@ -938,7 +938,7 @@
 
   .notebook-pagination {
     gap: 8px;
-    grid-template-columns: minmax(0, 1fr) auto auto auto auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto auto minmax(0, 1fr);
   }
 
   .notebook-pagination-button {
