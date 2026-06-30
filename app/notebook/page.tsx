@@ -1102,11 +1102,11 @@ export default function NotebookPage() {
 
                       return (
                       <article key={entry.id} className="py-4 first:pt-0 last:pb-1">
-                        <div className="flex items-start gap-3">
+                        <div className="flex flex-wrap items-start gap-x-2 gap-y-0">
                           <span className="notebook-entry-number" aria-label={`Запись номер ${entryNumber}`}>
                             {entryNumber}
                           </span>
-                          <div className="min-w-0 flex-1">
+                          <div className="notebook-entry-main min-w-0 flex-1">
                             {/* Metadata row */}
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#9A8A72]">
                               <span className="inline-flex items-center gap-1.5">
