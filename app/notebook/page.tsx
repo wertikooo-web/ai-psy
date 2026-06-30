@@ -548,33 +548,44 @@ export default function NotebookPage() {
       <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden px-4 py-6 sm:px-8 sm:py-8">
 
         {/* ── Page header ── */}
-        <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#D8CFBE] bg-[#E9DCC7]">
+        <div className="notebook-top-zone">
+          <div className="notebook-header-row">
+          <div className="notebook-heading">
+            <div className="notebook-heading-icon">
               <BookOpen size={18} className="text-[#6B5D4F]" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-xl font-bold text-[#3D3228]">Блокнот психолога</h1>
               <p className="text-sm text-[#8F7F69]">Личные записи, идеи, наблюдения и напоминания</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={openNewEntry}
+              className="notebook-primary-action"
+            >
+              <Plus size={15} />
+              Новая запись
+            </button>
+          </div>
+
+          <div className="notebook-toolbar">
             {/* Search */}
-            <div className="relative min-w-[240px] flex-1 sm:flex-none">
+            <div className="notebook-search-control">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A8A72]" />
               <input
                 value={query.search}
                 onChange={(e) => updateQuery({ search: e.target.value })}
                 placeholder="Поиск по тексту, клиенту, теме, тегам"
-                className="h-10 w-full rounded-xl border border-[#D8CFBE] bg-white/80 pl-9 pr-3 text-sm text-[#3D3228] outline-none focus:border-[#6088ff] focus:ring-2 focus:ring-[#6088ff]/15"
+                className="notebook-toolbar-input pl-9 pr-3"
               />
             </div>
 
             {/* Filters toggle */}
             <button
               onClick={() => setFiltersOpen((v) => !v)}
-              className={`flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors ${
+              className={`notebook-toolbar-button ${
                 filtersOpen || activeFilters > 0
                   ? "border-[#6088ff] bg-[#EEF2FF] text-[#355E9C]"
                   : "border-[#D8CFBE] bg-white/80 text-[#4D4034] hover:bg-white"
@@ -589,7 +600,7 @@ export default function NotebookPage() {
               <button
                 type="button"
                 onClick={() => setSortOpen((v) => !v)}
-                className={`flex h-10 min-w-[150px] items-center justify-between gap-3 rounded-xl border px-3 text-sm font-medium transition-colors ${
+                className={`notebook-toolbar-button notebook-sort-button ${
                   sortOpen
                     ? "border-[#6088ff] bg-white text-[#3D3228]"
                     : "border-[#D8CFBE] bg-white/80 text-[#4D4034] hover:bg-white"
@@ -630,7 +641,7 @@ export default function NotebookPage() {
             <select
               value={query.group}
               onChange={(e) => updateQuery({ group: e.target.value as GroupMode })}
-              className="h-10 rounded-xl border border-[#D8CFBE] bg-white/80 px-3 text-sm text-[#4D4034] outline-none focus:border-[#6088ff]"
+              className="notebook-toolbar-select"
             >
               <option value="none">Группировка: нет</option>
               <option value="date">Группировка: по дате</option>
@@ -643,7 +654,7 @@ export default function NotebookPage() {
 
         {/* ── Filter panel ── */}
         {filtersOpen && (
-          <div className="mb-5 grid gap-3 rounded-2xl border border-[#D8CFBE] bg-[#FBF8F2] p-4 shadow-sm md:grid-cols-5">
+          <div className="notebook-filter-panel grid gap-3 rounded-2xl border border-[#D8CFBE] bg-[#FBF8F2] p-4 shadow-sm md:grid-cols-5">
             <label className="text-xs font-semibold uppercase tracking-wide text-[#8F7F69]">
               Клиент
               <select
@@ -719,17 +730,6 @@ export default function NotebookPage() {
             )}
           </div>
         )}
-
-        <div className="mb-3 flex justify-end">
-          <button
-            type="button"
-            onClick={openNewEntry}
-            className="flex h-10 items-center gap-2 rounded-xl bg-[#503C27] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#463520]"
-          >
-            <Plus size={15} />
-            Новая запись
-          </button>
-        </div>
 
         {/* ── Notebook container ── */}
         <div className="notebook-vertical-wrap">
