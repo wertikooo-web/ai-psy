@@ -544,8 +544,8 @@ export default function NotebookPage() {
   const heading    = groupTitle(data.entries[0], query.group);
 
   return (
-    <div className="flex-1 min-h-0 overflow-hidden bg-[#F7F3EA]">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8">
+    <div className="flex-1 h-full min-h-0 overflow-hidden bg-[#F7F3EA]">
+      <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden px-4 py-6 sm:px-8 sm:py-8">
 
         {/* ── Page header ── */}
         <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -638,14 +638,6 @@ export default function NotebookPage() {
               <option value="topic">Группировка: по теме</option>
             </select>
 
-            {/* New entry */}
-            <button
-              onClick={openNewEntry}
-              className="flex h-10 items-center gap-2 rounded-xl bg-[#503C27] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#463520]"
-            >
-              <Plus size={15} />
-              Новая запись
-            </button>
           </div>
         </div>
 
@@ -728,6 +720,17 @@ export default function NotebookPage() {
           </div>
         )}
 
+        <div className="mb-3 flex justify-end">
+          <button
+            type="button"
+            onClick={openNewEntry}
+            className="flex h-10 items-center gap-2 rounded-xl bg-[#503C27] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#463520]"
+          >
+            <Plus size={15} />
+            Новая запись
+          </button>
+        </div>
+
         {/* ── Notebook container ── */}
         <div className="notebook-vertical-wrap">
           {notebookView === "closed" ? (
@@ -761,15 +764,6 @@ export default function NotebookPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={closeNotebook}
-                    className="notebook-close-button"
-                    aria-label="Закрыть блокнот"
-                    title="Закрыть блокнот"
-                  >
-                    <BookOpen size={15} />
-                  </button>
                   {/* Small decorative dots mirroring binder holes from the side */}
                   <div className="flex gap-1.5 opacity-50">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -960,6 +954,7 @@ export default function NotebookPage() {
               {/* ── Pagination ── */}
               <div className="notebook-pagination">
                 <button
+                  type="button"
                   onClick={() => goToPage(1)}
                   disabled={query.page <= 1 || loading}
                   className="notebook-pagination-button notebook-pagination-button-icon"
@@ -970,6 +965,7 @@ export default function NotebookPage() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => goToPage(query.page - 1)}
                   disabled={query.page <= 1 || loading}
                   className="notebook-pagination-button"
@@ -993,6 +989,7 @@ export default function NotebookPage() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => goToPage(query.page + 1)}
                   disabled={query.page >= data.totalPages || loading}
                   className="notebook-pagination-button"
@@ -1002,6 +999,7 @@ export default function NotebookPage() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => goToPage(data.totalPages)}
                   disabled={query.page >= data.totalPages || loading}
                   className="notebook-pagination-button notebook-pagination-button-icon"
