@@ -1086,7 +1086,7 @@ export default function NotebookPage() {
                     </p>
                     <button
                       onClick={isFiltered ? resetFilters : openNewEntry}
-                      className="mt-5 flex items-center gap-2 rounded-xl bg-[#503C27] px-4 py-2 text-sm font-semibold text-white hover:bg-[#463520]"
+                      className="notebook-primary-action mt-5"
                     >
                       {isFiltered ? <X size={14} /> : <Plus size={14} />}
                       {isFiltered ? "Сбросить фильтры" : "+ Новая запись"}
@@ -1102,7 +1102,7 @@ export default function NotebookPage() {
 
                       return (
                       <article key={entry.id} className="py-4 first:pt-0 last:pb-1">
-                        <div className="flex flex-wrap items-start gap-x-2 gap-y-0">
+                        <div className="notebook-entry-row flex flex-wrap items-start gap-x-2 gap-y-0">
                           <span className="notebook-entry-number" aria-label={`Запись номер ${entryNumber}`}>
                             {entryNumber}
                           </span>
@@ -1169,7 +1169,7 @@ export default function NotebookPage() {
                           </div>
 
                           {/* Context menu */}
-                          <div className="relative flex-shrink-0">
+                          <div className="notebook-entry-menu relative flex-shrink-0">
                             <button
                               onClick={() =>
                                 setOpenMenu(openMenu === entry.id ? null : entry.id)
@@ -1237,9 +1237,9 @@ export default function NotebookPage() {
                       }}
                       className="py-4 first:pt-0 last:pb-1"
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="notebook-entry-row flex flex-wrap items-start gap-x-2 gap-y-0">
                         <span className="notebook-entry-number">{index + 1}</span>
-                        <div className="min-w-0 flex-1">
+                        <div className="notebook-entry-main min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#9A8A72]">
                             <span className="inline-flex items-center gap-1.5">
                               <CalendarDays size={12} />
@@ -1289,7 +1289,7 @@ export default function NotebookPage() {
                             </div>
                           )}
                         </div>
-                        <div className="h-8 w-8 flex-shrink-0" />
+                        <div className="notebook-entry-menu h-8 w-8 flex-shrink-0" />
                       </div>
                     </article>
                   );

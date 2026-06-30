@@ -1171,29 +1171,53 @@
   min-width: 22px;
   height: 22px;
   flex: 0 0 auto;
+  order: 0;
   align-items: center;
   justify-content: center;
   border: 1px solid #d8cfbe;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.66);
+  background: #fffaf2;
   color: #8f7f69;
   font-size: 10px;
   font-weight: 700;
   line-height: 1;
-  margin-left: -8px;
+  position: absolute;
+  left: 6px;
+  top: 0;
+  z-index: 1;
+}
+
+.notebook-entry-row {
+  position: relative;
+  display: block !important;
+  padding-left: 6px;
+  padding-right: 36px;
+  min-height: 28px;
 }
 
 .notebook-entry-main {
-  display: contents;
-}
-
-.notebook-entry-main > :first-child {
-  flex: 1 1 0;
+  display: block;
+  width: 100%;
   min-width: 0;
 }
 
+.notebook-entry-main > :first-child {
+  min-width: 0;
+  min-height: 22px;
+  padding-left: 30px;
+  padding-right: 4px;
+}
+
 .notebook-entry-main > :not(:first-child) {
-  flex: 0 0 100%;
+  width: 100%;
+}
+
+.notebook-entry-menu {
+  position: absolute !important;
+  right: 0;
+  top: 0;
+  z-index: 2;
+  margin-top: -3px;
 }
 
 .notebook-back-page {
