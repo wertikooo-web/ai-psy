@@ -83,11 +83,19 @@ export async function handleTelegramMessage(message: TelegramMessage): Promise<v
 
   if (parsed.command === "/link") {
     const code = parsed.args.trim();
-    const result = await linkTelegramAccount(code, identity);
-    await sendTelegramMessage(
-      chatId,
-      result.ok ? "Telegram успешно подключён к TRANSCRIPT AI · PSY." : linkErrorText(result.reason),
-    );
+    try {
+      const result = await linkTelegramAccount(code, identity);
+      await sendTelegramMessage(
+        chatId,
+        result.ok ? "Telegram успешно подключён к TRANSCRIPT AI · PSY." : linkErrorText(result.reason),
+      );
+    } catch (error) {
+      console.error("[telegram/link command]", error);
+      await sendTelegramMessage(
+        chatId,
+        "Не удалось подключить Telegram. Создайте новый код в настройках и попробуйте ещё раз.",
+      );
+    }
     return;
   }
 
