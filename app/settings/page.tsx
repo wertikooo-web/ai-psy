@@ -88,6 +88,7 @@ export default function SettingsPage() {
   const [telegramStatus, setTelegramStatus] = useState<TelegramStatus | null>(null);
   const [telegramCode, setTelegramCode] = useState<TelegramLinkCodeState | null>(null);
   const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramChecking, setTelegramChecking] = useState(false);
   const [telegramMessage, setTelegramMessage] = useState("");
 
   // City animation state
@@ -195,6 +196,19 @@ export default function SettingsPage() {
       setTelegramStatus({ connected: false, account: null, botUsername: null });
     }
   }, []);
+
+  async function handleRefreshTelegramStatus() {
+    setTelegramChecking(true);
+    setTelegramMessage("");
+    try {
+      await loadTelegramStatus();
+      setTelegramMessage("Статус Telegram обновлён");
+    } catch {
+      setTelegramMessage("Не удалось проверить Telegram");
+    } finally {
+      setTelegramChecking(false);
+    }
+  }
 
   useEffect(() => {
     void loadTelegramStatus();
@@ -468,10 +482,11 @@ export default function SettingsPage() {
               status={telegramStatus}
               code={telegramCode}
               loading={telegramLoading}
+              checking={telegramChecking}
               message={telegramMessage}
               onCreateCode={handleCreateTelegramCode}
               onCopyCommand={handleCopyTelegramCommand}
-              onRefresh={loadTelegramStatus}
+              onRefresh={handleRefreshTelegramStatus}
               onDisconnect={handleDisconnectTelegram}
             />
           </SettingsSection>
@@ -679,6 +694,7 @@ function TelegramSettingsContent({
   status,
   code,
   loading,
+  checking,
   message,
   onCreateCode,
   onCopyCommand,
@@ -688,6 +704,7 @@ function TelegramSettingsContent({
   status: TelegramStatus | null;
   code: TelegramLinkCodeState | null;
   loading: boolean;
+  checking: boolean;
   message: string;
   onCreateCode: () => void;
   onCopyCommand: () => void;
@@ -726,10 +743,11 @@ function TelegramSettingsContent({
           </div>
           <button
             onClick={onRefresh}
-            disabled={loading}
-            className="rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+            disabled={checking}
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60"
             style={{ borderColor: "#D4C9B5", color: "#6B5D4F", background: "#FFFFFF" }}
           >
+            {checking ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
             Проверить
           </button>
         </div>
