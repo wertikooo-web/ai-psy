@@ -763,7 +763,8 @@ export default function NotebookPage() {
       body: JSON.stringify({ attentionStatus }),
     });
     if (!res.ok) {
-      setToast("Не удалось изменить отметку");
+      const payload = await res.json().catch(() => null) as { error?: string } | null;
+      setToast(payload?.error ?? "Не удалось изменить отметку");
       return;
     }
     const updated = await res.json() as NotebookEntry;

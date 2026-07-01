@@ -475,14 +475,36 @@ export async function updateEntryAttentionStatus(
   }
 
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabaseServer!
+    let { data, error } = await supabaseServer!
       .from("notebook")
       .update({ attention_status: attentionStatus })
       .eq("id", id)
       .is("deleted_at", null)
       .select("*, clients:client_id(full_name,initials,color)")
       .single();
-    if (error) throw new Error(`[DAL/notebook/updateEntryAttentionStatus] ${error.message}`);
+
+    if (error && error.message.includes("deleted_at")) {
+      const legacy = await supabaseServer!
+        .from("notebook")
+        .update({ attention_status: attentionStatus })
+        .eq("id", id)
+        .select("*, clients:client_id(full_name,initials,color)")
+        .single();
+      data = legacy.data;
+      error = legacy.error;
+    }
+
+    if (error) {
+      if (
+        error.message.includes("attention_status") ||
+        error.message.includes("Could not find the 'attention_status'")
+      ) {
+        throw new Error(
+          "Supabase migration is missing: add public.notebook.attention_status before changing note marks.",
+        );
+      }
+      throw new Error(`[DAL/notebook/updateEntryAttentionStatus] ${error.message}`);
+    }
     return data ? rowToEntry(data as Record<string, unknown>) : null;
   }
 

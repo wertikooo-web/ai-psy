@@ -38,6 +38,13 @@ export async function PATCH(
     return NextResponse.json(entry);
   } catch (err) {
     console.error("[notebook PATCH]", err);
+    const message = err instanceof Error ? err.message : "";
+    if (message.includes("attention_status")) {
+      return NextResponse.json(
+        { error: "В Supabase не добавлено поле attention_status для отметок заметок" },
+        { status: 500 },
+      );
+    }
     return NextResponse.json({ error: "Ошибка сохранения" }, { status: 500 });
   }
 }
