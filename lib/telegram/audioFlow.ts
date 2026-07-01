@@ -79,6 +79,16 @@ function audioFromMessage(message: TelegramMessage): AudioPayload | null {
       durationSeconds: message.audio.duration,
     };
   }
+  if (message.video_note) {
+    return {
+      fileId: message.video_note.file_id,
+      fileUniqueId: message.video_note.file_unique_id,
+      fileName: `telegram-video-note-${message.message_id}.mp4`,
+      mimeType: message.video_note.mime_type || "video/mp4",
+      fileSize: message.video_note.file_size,
+      durationSeconds: message.video_note.duration,
+    };
+  }
   const doc = message.document as TelegramDocumentLike | undefined;
   if (doc) {
     const fileName = doc.file_name || `telegram-document-${message.message_id}`;

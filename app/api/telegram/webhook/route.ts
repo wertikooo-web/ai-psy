@@ -10,6 +10,19 @@ function validateSecret(req: NextRequest): boolean {
   return req.headers.get("x-telegram-bot-api-secret-token") === expected;
 }
 
+function telegramMessageTypes(update: TelegramUpdate): string {
+  const message = update.message;
+  if (!message) return update.callback_query ? "callback_query" : "unknown";
+  const types = [
+    message.text ? "text" : "",
+    message.voice ? "voice" : "",
+    message.audio ? "audio" : "",
+    message.video_note ? "video_note" : "",
+    message.document ? "document" : "",
+  ].filter(Boolean);
+  return types.join(",") || "message";
+}
+
 export async function POST(req: NextRequest) {
   if (!validateSecret(req)) {
     return NextResponse.json({ ok: false }, { status: 401 });
@@ -25,6 +38,8 @@ export async function POST(req: NextRequest) {
   try {
     const firstDelivery = await markTelegramUpdateProcessed(update.update_id);
     if (!firstDelivery) return NextResponse.json({ ok: true, duplicate: true });
+
+    console.info(`[telegram/webhook] update=${update.update_id} type=${telegramMessageTypes(update)}`);
 
     if (update.callback_query) {
       await handleTelegramAudioCallback(update.callback_query);

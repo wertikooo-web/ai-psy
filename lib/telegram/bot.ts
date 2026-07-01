@@ -18,6 +18,7 @@ export interface TelegramMessage {
   text?: string;
   voice?: TelegramAudioLike;
   audio?: TelegramAudioLike;
+  video_note?: TelegramAudioLike;
   document?: TelegramDocumentLike;
   chat: {
     id: number;
