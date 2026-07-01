@@ -458,6 +458,17 @@ export default function NotebookPage() {
   }, [attentionMenu]);
 
   useEffect(() => {
+    if (!toolSectionsOpen.length) return;
+    const closeToolsOnOutside = (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest(".notebook-control-sidebar")) return;
+      setToolSectionsOpen([]);
+    };
+    document.addEventListener("mousedown", closeToolsOnOutside);
+    return () => document.removeEventListener("mousedown", closeToolsOnOutside);
+  }, [toolSectionsOpen.length]);
+
+  useEffect(() => {
     try {
       const raw = window.localStorage.getItem(NOTEBOOK_TOOLS_STORAGE_KEY);
       if (!raw) return;
@@ -1178,11 +1189,12 @@ export default function NotebookPage() {
                 ) : (
                   /* ── Entries ── */
                   <div className="divide-y divide-dashed divide-[#D9CDB9]">
-                    {currentPageEntries.map(({ entry, index }) => {
+                    {currentPageEntries.map(({ entry, index }, pageEntryIndex) => {
                       const isExpanded = expandedEntries.has(entry.id);
                       const canExpand = entry.text.length > 260 || entry.text.split(/\r?\n/).length > 4;
                       const entryNumber = index + 1;
                       const isOversized = oversizedEntryIds.has(entry.id);
+                      const shouldOpenAttentionUp = pageEntryIndex >= Math.max(0, currentPageEntries.length - 2);
 
                       return (
                       <article
@@ -1204,7 +1216,11 @@ export default function NotebookPage() {
                             {entryNumber}
                           </button>
                           {attentionMenu === entry.id && (
-                            <div className="notebook-attention-popover" role="menu" aria-label="Отметить заметку">
+                            <div
+                              className={`notebook-attention-popover ${shouldOpenAttentionUp ? "notebook-attention-popover-up" : ""}`}
+                              role="menu"
+                              aria-label="Отметить заметку"
+                            >
                               <p className="notebook-attention-title">Отметить заметку</p>
                               {ATTENTION_STATUSES.map((status) => {
                                 const active = (entry.attentionStatus ?? "none") === status.value;

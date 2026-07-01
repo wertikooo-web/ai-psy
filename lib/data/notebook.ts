@@ -244,7 +244,7 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
     const clientIds = search ? await getClientIdsByName(search) : [];
     let request = supabaseServer!
       .from("notebook")
-      .select("*, clients:client_id(full_name,initials,color)", { count: "exact" })
+      .select("*", { count: "exact" })
       .is("deleted_at", null);
 
     if (search) {

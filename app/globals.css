@@ -1301,6 +1301,11 @@
   box-shadow: 0 16px 34px rgba(72, 53, 34, 0.18);
 }
 
+.notebook-attention-popover-up {
+  top: auto;
+  bottom: 24px;
+}
+
 .notebook-attention-title {
   margin: 0 0 8px;
   color: #4d4034;
