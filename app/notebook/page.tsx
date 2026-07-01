@@ -437,6 +437,7 @@ export default function NotebookPage() {
   const [notebookTurnHeight, setNotebookTurnHeight] = useState(0);
   const [notebookPages, setNotebookPages]      = useState<NotebookPageEntry[][]>([]);
   const [oversizedEntryIds, setOversizedEntryIds] = useState<Set<string>>(() => new Set());
+  const [pendingExpandedEntryId, setPendingExpandedEntryId] = useState<string | null>(null);
 
   useEffect(() => { setQuery(readInitialQuery()); }, []);
 
@@ -791,11 +792,31 @@ export default function NotebookPage() {
   function toggleEntryExpanded(id: string) {
     setExpandedEntries((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        setPendingExpandedEntryId(null);
+      } else {
+        next.add(id);
+        setPendingExpandedEntryId(id);
+      }
       return next;
     });
   }
+
+  useEffect(() => {
+    if (!pendingExpandedEntryId || !notebookPages.length) return;
+    const nextPageIndex = notebookPages.findIndex((page) =>
+      page.some(({ entry }) => entry.id === pendingExpandedEntryId),
+    );
+    if (nextPageIndex < 0) return;
+    const nextPage = nextPageIndex + 1;
+    if (nextPage !== query.page) {
+      setTurnDirection(nextPage > query.page ? "next" : "prev");
+      updateQuery({ page: nextPage }, false);
+      window.setTimeout(() => setTurnDirection("none"), 360);
+    }
+    setPendingExpandedEntryId(null);
+  }, [notebookPages, pendingExpandedEntryId, query.page]);
 
   function goToPage(nextPage: number) {
     if (nextPage < 1 || nextPage > notebookTotalPages || nextPage === query.page) return;
