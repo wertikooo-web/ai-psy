@@ -421,6 +421,7 @@ export default function NotebookPage() {
   const [turnDirection, setTurnDirection]     = useState<"next" | "prev" | "none">("none");
   const [openMenu, setOpenMenu]               = useState<string | null>(null);
   const [attentionMenu, setAttentionMenu]     = useState<string | null>(null);
+  const [attentionMenuPlacement, setAttentionMenuPlacement] = useState<"down" | "up">("down");
   const [sortOpen, setSortOpen]               = useState(false);
   const [groupOpen, setGroupOpen]             = useState(false);
   const [notebookView, setNotebookView]       = useState<NotebookView>("closed");
@@ -1194,7 +1195,6 @@ export default function NotebookPage() {
                       const canExpand = entry.text.length > 260 || entry.text.split(/\r?\n/).length > 4;
                       const entryNumber = index + 1;
                       const isOversized = oversizedEntryIds.has(entry.id);
-                      const shouldOpenAttentionUp = pageEntryIndex >= Math.max(0, currentPageEntries.length - 2);
 
                       return (
                       <article
@@ -1206,8 +1206,13 @@ export default function NotebookPage() {
                           <button
                             type="button"
                             className={`notebook-entry-number notebook-entry-number-${entry.attentionStatus ?? "none"}`}
-                            onClick={() => {
+                            onClick={(event) => {
                               setOpenMenu(null);
+                              const buttonRect = event.currentTarget.getBoundingClientRect();
+                              const pageRect = notebookTurnRef.current?.getBoundingClientRect();
+                              const topSpace = pageRect ? buttonRect.top - pageRect.top : buttonRect.top;
+                              const bottomSpace = pageRect ? pageRect.bottom - buttonRect.bottom : window.innerHeight - buttonRect.bottom;
+                              setAttentionMenuPlacement(topSpace < 230 || bottomSpace >= 280 ? "down" : "up");
                               setAttentionMenu((current) => (current === entry.id ? null : entry.id));
                             }}
                             aria-label={`Изменить отметку заметки ${entryNumber}. Сейчас: ${attentionLabel(entry.attentionStatus)}`}
@@ -1217,7 +1222,7 @@ export default function NotebookPage() {
                           </button>
                           {attentionMenu === entry.id && (
                             <div
-                              className={`notebook-attention-popover ${shouldOpenAttentionUp ? "notebook-attention-popover-up" : ""}`}
+                              className={`notebook-attention-popover ${attentionMenuPlacement === "up" ? "notebook-attention-popover-up" : ""}`}
                               role="menu"
                               aria-label="Отметить заметку"
                             >

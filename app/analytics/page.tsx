@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   BarChart3, CalendarDays, Check, ChevronDown, Clipboard, Download,
   FileSpreadsheet, Loader2, Printer, RefreshCw, Search, Users,
   UserPlus, CalendarClock, AlertTriangle, WalletCards, FileText,
+  ImageDown,
 } from "lucide-react";
 import type { AnalyticsResponse } from "@/lib/data/analytics";
 
@@ -60,6 +61,35 @@ function downloadText(filename: string, content: string, type = "text/plain;char
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function escapeHtml(value: string | number | undefined) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function copyFormatted(html: string, plainText: string) {
+  if ("ClipboardItem" in window && navigator.clipboard.write) {
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([plainText], { type: "text/plain" }),
+      }),
+    ]);
+    return;
+  }
+  await navigator.clipboard.writeText(plainText);
+}
+
+function inlineComputedStyles(source: HTMLElement, target: HTMLElement) {
+  const style = window.getComputedStyle(source);
+  target.setAttribute("style", Array.from(style).map((name) => `${name}:${style.getPropertyValue(name)};`).join(""));
+  const sourceChildren = Array.from(source.children) as HTMLElement[];
+  const targetChildren = Array.from(target.children) as HTMLElement[];
+  sourceChildren.forEach((child, index) => inlineComputedStyles(child, targetChildren[index]));
 }
 
 function SummaryCard({
@@ -194,6 +224,7 @@ function AnalysisDonut({ data }: { data: AnalyticsResponse["analysisTypes"] }) {
 }
 
 export default function AnalyticsPage() {
+  const dashboardRef = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState<PeriodPreset>("month");
   const [client, setClient] = useState<ClientMode>("all");
   const [from, setFrom] = useState("");
@@ -243,7 +274,7 @@ export default function AnalyticsPage() {
     return data?.clients.filter((row) => !q || row.name.toLowerCase().includes(q)) ?? [];
   }, [data, clientSearch]);
 
-  function copySummary() {
+  async function copySummary() {
     if (!data) return;
     const text = [
       `Аналитика за ${data.filters.from} - ${data.filters.to}`,
@@ -255,16 +286,72 @@ export default function AnalyticsPage() {
       `Начислено: ${money.format(data.finance.charged)} MDL`,
       `Получено: ${money.format(data.finance.received)} MDL`,
     ].join("\n");
-    navigator.clipboard.writeText(text);
-    setToast("Сводка скопирована");
+    const cards = [
+      ["Всего клиентов", data.summary.totalClients, `${data.summary.activeClients} активных · ${data.summary.archivedClients} в архиве`, "#F5F0FF"],
+      ["Консультаций за период", data.summary.consultations, `${data.filters.from} — ${data.filters.to}`, "#EEF6FF"],
+      ["Новых клиентов", data.summary.newClients, "По дате создания клиента", "#EFFAF3"],
+      ["Предстоящих консультаций", data.summary.upcomingConsultations, data.summary.nearestUpcoming ? `Ближайшая ${formatDateTime(data.summary.nearestUpcoming)}` : "Будущих встреч нет", "#FFF6EA"],
+      ["Незавершённые консультации", data.summary.incompleteConsultations, "Без транскрипта, анализа или с ошибкой", "#FFF1F1"],
+    ];
+    const html = `
+      <div style="font-family:Arial,sans-serif;color:#2F261F;background:#F7F3EA;padding:16px;border-radius:14px;">
+        <h2 style="margin:0 0 12px;font-size:22px;">Аналитика</h2>
+        <table style="border-collapse:separate;border-spacing:10px;width:100%;">
+          <tr>
+            ${cards.map(([title, value, note, bg]) => `
+              <td style="background:#fff;border:1px solid #E6DDD0;border-radius:12px;padding:12px;vertical-align:top;">
+                <div style="display:inline-block;background:${bg};border-radius:9px;padding:8px 10px;margin-bottom:8px;font-weight:700;">${escapeHtml(value)}</div>
+                <div style="font-size:13px;font-weight:700;">${escapeHtml(title)}</div>
+                <div style="font-size:12px;color:#7B6F60;margin-top:4px;">${escapeHtml(note)}</div>
+              </td>
+            `).join("")}
+          </tr>
+        </table>
+      </div>
+    `;
+    try {
+      await copyFormatted(html, text);
+      setToast("Сводка скопирована с форматированием");
+    } catch {
+      setToast("Не удалось скопировать");
+    }
   }
 
-  function copyClients() {
+  async function copyClients() {
     if (!data) return;
-    const rows = [["Клиент", "Статус", "Консультаций", "Последняя встреча", "Следующая встреча", "Текущий запрос"]];
-    for (const row of data.clients) rows.push([row.name, statusLabels[row.status] ?? row.status, String(row.consultations), formatDate(row.lastMeeting), formatDateTime(row.nextMeeting), row.currentRequest]);
-    navigator.clipboard.writeText(toTsv(rows));
-    setToast("Таблица клиентов скопирована");
+    const rows = [["Клиент", "Статус", "Консультаций", "Последняя встреча", "Следующая встреча", "Текущий запрос", "Последняя активность"]];
+    for (const row of data.clients) rows.push([row.name, statusLabels[row.status] ?? row.status, String(row.consultations), formatDate(row.lastMeeting), formatDateTime(row.nextMeeting), row.currentRequest, formatDate(row.lastActivity)]);
+    const html = `
+      <table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;color:#2F261F;min-width:760px;">
+        <thead>
+          <tr style="background:#F7F3EA;color:#8A7A66;">
+            ${rows[0].map((cell) => `<th style="border:1px solid #E6DDD0;padding:8px;text-align:left;">${escapeHtml(cell)}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${data.clients.map((row) => `
+            <tr>
+              <td style="border:1px solid #E6DDD0;padding:8px;font-weight:700;">
+                <span style="display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;border-radius:50%;background:${row.color};color:#fff;font-size:11px;margin-right:8px;">${escapeHtml(row.initials)}</span>
+                ${escapeHtml(row.name)}
+              </td>
+              <td style="border:1px solid #E6DDD0;padding:8px;"><span style="background:#EFFAF3;color:#2C7A4B;border-radius:999px;padding:4px 8px;font-weight:700;font-size:12px;">${escapeHtml(statusLabels[row.status] ?? row.status)}</span></td>
+              <td style="border:1px solid #E6DDD0;padding:8px;font-weight:700;">${escapeHtml(row.consultations)}</td>
+              <td style="border:1px solid #E6DDD0;padding:8px;">${escapeHtml(formatDate(row.lastMeeting))}</td>
+              <td style="border:1px solid #E6DDD0;padding:8px;">${escapeHtml(formatDateTime(row.nextMeeting))}</td>
+              <td style="border:1px solid #E6DDD0;padding:8px;">${escapeHtml(row.currentRequest)}</td>
+              <td style="border:1px solid #E6DDD0;padding:8px;">${escapeHtml(formatDate(row.lastActivity))}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+    try {
+      await copyFormatted(html, toTsv(rows));
+      setToast("Таблица скопирована с форматированием");
+    } catch {
+      setToast("Не удалось скопировать таблицу");
+    }
   }
 
   function exportCsv() {
@@ -279,10 +366,57 @@ export default function AnalyticsPage() {
     downloadText("analytics-report.json", JSON.stringify(data, null, 2), "application/json;charset=utf-8");
   }
 
+  async function exportJpg() {
+    const source = dashboardRef.current;
+    if (!source) return;
+    try {
+      const rect = source.getBoundingClientRect();
+      const width = Math.ceil(rect.width);
+      const height = Math.ceil(rect.height);
+      const clone = source.cloneNode(true) as HTMLElement;
+      inlineComputedStyles(source, clone);
+      clone.style.width = `${width}px`;
+      clone.style.height = `${height}px`;
+      clone.style.background = "#F7F3EA";
+      const html = new XMLSerializer().serializeToString(clone);
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+          <foreignObject width="100%" height="100%">
+            <div xmlns="http://www.w3.org/1999/xhtml">${html}</div>
+          </foreignObject>
+        </svg>
+      `;
+      const image = new Image();
+      const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("image export failed"));
+        image.src = url;
+      });
+      const canvas = document.createElement("canvas");
+      const scale = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("canvas unavailable");
+      ctx.fillStyle = "#F7F3EA";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/jpeg", 0.92);
+      a.download = `analytics-${data?.filters.from ?? "report"}-${data?.filters.to ?? "today"}.jpg`;
+      a.click();
+      setToast("JPG сохранён");
+    } catch {
+      setToast("Не удалось сохранить JPG");
+    }
+  }
+
   const maxIncome = Math.max(1, ...(data?.incomeTimeline.map((item) => item.received) ?? [0]));
 
   return (
-    <div className="h-full overflow-hidden bg-[#F7F3EA] p-4 text-[#2F261F] print:bg-white">
+    <div ref={dashboardRef} className="h-full overflow-hidden bg-[#F7F3EA] p-4 text-[#2F261F] print:bg-white">
       <div className="mx-auto flex h-full max-w-[1540px] flex-col gap-3">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -324,6 +458,7 @@ export default function AnalyticsPage() {
               <div className="invisible absolute right-0 z-20 mt-1 w-44 rounded-lg border border-[#E6DDD0] bg-white p-1 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100">
                 <button onClick={exportCsv} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-[#F7F3EA]"><FileSpreadsheet size={14} /> CSV</button>
                 <button onClick={exportJson} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-[#F7F3EA]"><FileText size={14} /> JSON</button>
+                <button onClick={exportJpg} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-[#F7F3EA]"><ImageDown size={14} /> JPG</button>
               </div>
             </div>
             <button onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-lg border border-[#E6DDD0] bg-white px-3 py-2 text-sm font-semibold hover:bg-[#FBF8F5]">
@@ -423,11 +558,6 @@ export default function AnalyticsPage() {
                     <p className="mt-1 text-xl font-bold">{money.format(data.finance.received)} <span className="text-sm">MDL</span></p>
                   </div>
                 </div>
-                {!data.finance.paymentsConfigured && (
-                  <p className="mt-3 rounded-lg bg-[#FFF8EA] p-2 text-xs leading-snug text-[#8A6432]">
-                    Поля оплаты в текущей схеме не настроены, поэтому суммы не выдумываются.
-                  </p>
-                )}
               </Panel>
             </div>
 
