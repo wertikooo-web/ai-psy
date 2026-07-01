@@ -51,7 +51,16 @@ export async function handleTelegramMessage(message: TelegramMessage): Promise<v
   const identity = identityFromMessage(message);
   if (!identity) return;
 
-  if (await handleTelegramAudioMessage(message)) return;
+  try {
+    if (await handleTelegramAudioMessage(message)) return;
+  } catch (error) {
+    console.error("[telegram/audio command]", error);
+    await sendTelegramMessage(
+      chatId,
+      "Голосовое сообщение получено, но не удалось подготовить загрузку. Проверьте подключение Telegram на сайте и попробуйте ещё раз.",
+    );
+    return;
+  }
 
   const parsed = parseTelegramCommand(message.text);
   if (!parsed) {
