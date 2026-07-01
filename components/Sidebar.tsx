@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Home, Users, FileText, BookOpen, Bot,
   Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, BookOpenText,
-  PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays,
+  PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays, BarChart3,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
@@ -51,6 +51,7 @@ const toolsNav = [
   { href: "/notebook", label: "Блокнот психолога", icon: BookOpenText  },
 ];
 const systemNav = [
+  { href: "/analytics",      label: "Аналитика",   icon: BarChart3  },
   { href: "/knowledge-base", label: "База знаний", icon: BookOpen   },
   { href: "/settings",       label: "Настройки",   icon: Settings   },
   { href: "/help",     label: "Помощь",             icon: HelpCircle  },
