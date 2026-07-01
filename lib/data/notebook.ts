@@ -480,7 +480,7 @@ export async function updateEntryAttentionStatus(
       .update({ attention_status: attentionStatus })
       .eq("id", id)
       .is("deleted_at", null)
-      .select("*, clients:client_id(full_name,initials,color)")
+      .select("*")
       .single();
 
     if (error && error.message.includes("deleted_at")) {
@@ -488,7 +488,7 @@ export async function updateEntryAttentionStatus(
         .from("notebook")
         .update({ attention_status: attentionStatus })
         .eq("id", id)
-        .select("*, clients:client_id(full_name,initials,color)")
+        .select("*")
         .single();
       data = legacy.data;
       error = legacy.error;
@@ -505,7 +505,8 @@ export async function updateEntryAttentionStatus(
       }
       throw new Error(`[DAL/notebook/updateEntryAttentionStatus] ${error.message}`);
     }
-    return data ? rowToEntry(data as Record<string, unknown>) : null;
+    const enriched = await enrichLegacyClientData(data ? [rowToEntry(data as Record<string, unknown>)] : []);
+    return enriched[0] ?? null;
   }
 
   return memStore.updateNotebookEntry(id, { attentionStatus });
