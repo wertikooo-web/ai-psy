@@ -136,6 +136,14 @@ git push
 
 Commit messages should be short and practical.
 
+If the user writes `КПД` on a new line, treat it as an explicit command:
+
+```text
+Коммит - Пуш - Деплой
+```
+
+For `КПД`, finish the current changes, run the necessary verification, commit, push to the deployment branch, trigger/allow deploy, and report what was done.
+
 Examples:
 
 ```text
