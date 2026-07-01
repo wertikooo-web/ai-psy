@@ -607,7 +607,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="mt-2 flex items-center gap-2 text-xs text-[#7B6F60]">
                   <WalletCards size={14} />
-                  Реальные платежи появятся после добавления полей оплаты.
+                  Доход считается по сохранённым оплатам консультаций.
                 </div>
               </Panel>
             </div>

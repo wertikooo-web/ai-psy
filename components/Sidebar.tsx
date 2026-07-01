@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Home, Users, FileText, BookOpen, Bot,
   Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, BookOpenText,
-  PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays, BarChart3,
+  PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays, BarChart3, WalletCards,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
@@ -43,9 +43,10 @@ const mainNav = [
   { href: "/",              label: "Главная",      icon: Home        },
   { href: "/clients",       label: "Клиенты",      icon: Users       },
   { href: "/consultations", label: "Консультации", icon: FileText    },
-  { href: "/calendar",      label: "Календарь",    icon: CalendarDays },
 ];
 const toolsNav = [
+  { href: "/payments", label: "Оплаты",            icon: WalletCards  },
+  { href: "/calendar", label: "Календарь",         icon: CalendarDays },
   { href: "/ai-chat",  label: "AI сервисы",       icon: MessageSquare },
   { href: "/psy-gpts", label: "PSY-GPTs",          icon: Bot           },
   { href: "/notebook", label: "Блокнот психолога", icon: BookOpenText  },

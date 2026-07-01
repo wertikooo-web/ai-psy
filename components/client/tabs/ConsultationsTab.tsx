@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Trash2, CheckCircle2, CircleDashed } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Trash2, CheckCircle2, CircleDashed, WalletCards } from "lucide-react";
 import Link from "next/link";
 import type { StoredConsultation } from "@/lib/consultationStore";
+import { PaymentDialog, type PaymentRow } from "@/components/payments/PaymentDialog";
 
 // ── Craft palette ─────────────────────────────────────────────────────────────
 const S = {
@@ -70,6 +71,28 @@ export function ConsultationsTab({
 }: Props) {
   const [openCompare, setOpenCompare] = useState<string | null>(null);
   const [deletingId, setDeletingId]   = useState<string | null>(null);
+  const [paymentFor, setPaymentFor]   = useState<StoredConsultation | null>(null);
+  const [payments, setPayments]       = useState<Record<string, PaymentRow>>({});
+
+  useEffect(() => {
+    if (!realSessions.length) return;
+    fetch("/api/payments")
+      .then((res) => res.ok ? res.json() : [])
+      .then((rows: PaymentRow[]) => {
+        const map: Record<string, PaymentRow> = {};
+        for (const row of rows) map[row.consultationId] = row;
+        setPayments(map);
+      })
+      .catch(() => {});
+  }, [realSessions.length]);
+
+  const paymentConsultations = useMemo(() => realSessions.map((session) => ({
+    id: session.id,
+    title: session.title || "Консультация",
+    clientId: session.clientId,
+    clientName: session.clientName,
+    createdAt: session.createdAt,
+  })), [realSessions]);
 
   async function handleDelete(id: string) {
     if (!confirm("Удалить эту запись консультации?")) return;
@@ -169,6 +192,19 @@ export function ConsultationsTab({
                 Открыть <ArrowRight size={12} />
               </Link>
               <button
+                onClick={() => setPaymentFor(c)}
+                className="flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors flex-shrink-0"
+                style={{
+                  borderColor: "#D8CFBE",
+                  color: "#6B5D4F",
+                  background: payments[c.id]?.paymentStatus === "paid" ? "#EFFAF3" : "#FFF8EA",
+                }}
+                title="Внести оплату"
+              >
+                <WalletCards size={12} />
+                {payments[c.id]?.paymentStatus === "paid" ? "Оплачено" : "Оплата"}
+              </button>
+              <button
                 onClick={() => handleDelete(c.id)}
                 disabled={deletingId === c.id}
                 className="flex items-center justify-center rounded-lg transition-colors flex-shrink-0 disabled:opacity-40"
@@ -183,6 +219,14 @@ export function ConsultationsTab({
           </div>
         );
       })}
+      <PaymentDialog
+        open={Boolean(paymentFor)}
+        onClose={() => setPaymentFor(null)}
+        fixedConsultationId={paymentFor?.id}
+        consultations={paymentConsultations}
+        initial={paymentFor ? payments[paymentFor.id] ?? null : null}
+        onSaved={(row) => setPayments((prev) => ({ ...prev, [row.consultationId]: row }))}
+      />
     </div>
   );
 }

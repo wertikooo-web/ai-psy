@@ -2,6 +2,7 @@ import { getCalendarEvents } from "@/lib/data/calendarEvents";
 import { getAllCurrentRequests } from "@/lib/data/clientRequests";
 import { getClients } from "@/lib/data/clients";
 import { getConsultations } from "@/lib/data/consultations";
+import { getPayments, type ConsultationPayment } from "@/lib/data/payments";
 import type { CalendarEvent } from "@/lib/data/calendarEvents";
 import type { StoredClient } from "@/lib/clientStore";
 import type { StoredConsultation } from "@/lib/consultationStore";
@@ -249,7 +250,7 @@ function analysisTypes(consultations: StoredConsultation[]): AnalyticsAnalysisTy
     .sort((a, b) => b.count - a.count);
 }
 
-function incomeTimeline(from: Date, to: Date): AnalyticsIncomeItem[] {
+function incomeTimeline(from: Date, to: Date, payments: ConsultationPayment[] = []): AnalyticsIncomeItem[] {
   const months: AnalyticsIncomeItem[] = [];
   const cursor = new Date(from.getFullYear(), from.getMonth(), 1);
   const last = new Date(to.getFullYear(), to.getMonth(), 1);
@@ -257,7 +258,14 @@ function incomeTimeline(from: Date, to: Date): AnalyticsIncomeItem[] {
     months.push({ label: monthLabel(cursor), received: 0 });
     cursor.setMonth(cursor.getMonth() + 1);
   }
-  return months.length ? months : [{ label: monthLabel(new Date()), received: 0 }];
+  const timeline = months.length ? months : [{ label: monthLabel(new Date()), received: 0 }];
+  for (const payment of payments) {
+    const date = new Date(payment.paymentDate ?? payment.updatedAt);
+    const label = monthLabel(date);
+    const bucket = timeline.find((item) => item.label === label);
+    if (bucket) bucket.received += payment.paidAmount;
+  }
+  return timeline;
 }
 
 async function safeCurrentRequests() {
@@ -295,16 +303,26 @@ async function safeCalendarEvents(from: Date, to: Date) {
   }
 }
 
+async function safePayments(): Promise<{ rows: ConsultationPayment[]; configured: boolean }> {
+  try {
+    return { rows: await getPayments(), configured: true };
+  } catch (error) {
+    console.error("[analytics] payments source failed", error);
+    return { rows: [], configured: false };
+  }
+}
+
 export async function getAnalytics(filters: AnalyticsFilters): Promise<AnalyticsResponse> {
   const { from, to } = resolvePeriod(filters);
   const now = new Date();
   const futureTo = new Date(now.getTime() + 180 * MS_DAY);
-  const [clients, consultations, periodEvents, futureEvents, currentRequests] = await Promise.all([
+  const [clients, consultations, periodEvents, futureEvents, currentRequests, paymentsResult] = await Promise.all([
     safeClients(),
     safeConsultations(),
     safeCalendarEvents(from, to),
     safeCalendarEvents(now, futureTo),
     safeCurrentRequests(),
+    safePayments(),
   ]);
 
   const filteredClients = clients.filter((client) => clientMatchesFilter(client, filters.client));
@@ -362,6 +380,31 @@ export async function getAnalytics(filters: AnalyticsFilters): Promise<Analytics
     return consultation.status === "error" || consultation.status !== "done" || !hasTranscript || !hasAnalysis;
   }).length;
 
+  const consultationMap = new Map(consultations.map((item) => [item.id, item]));
+  const filteredPayments = paymentsResult.rows
+    .filter((payment) => !payment.clientId || clientIds.has(payment.clientId))
+    .filter((payment) => {
+      const consultation = consultationMap.get(payment.consultationId);
+      return inPeriod(consultation?.createdAt ?? payment.createdAt, from, to)
+        || inPeriod(payment.paymentDate ?? payment.updatedAt, from, to);
+    });
+  const paymentRows: AnalyticsPaymentRow[] = filteredPayments.map((payment) => {
+    const consultation = consultationMap.get(payment.consultationId);
+    return {
+      id: payment.id,
+      consultationDate: consultation?.createdAt ?? payment.createdAt,
+      client: rows.find((row) => row.id === payment.clientId)?.name ?? consultation?.clientName ?? "Без клиента",
+      consultation: consultation?.title || "Консультация",
+      charged: payment.chargedAmount,
+      paid: payment.paidAmount,
+      status: payment.paymentStatus,
+      paymentDate: payment.paymentDate,
+      comment: payment.comment,
+    };
+  });
+  const charged = filteredPayments.reduce((sum, payment) => sum + payment.chargedAmount, 0);
+  const received = filteredPayments.reduce((sum, payment) => sum + payment.paidAmount, 0);
+
   return {
     filters: { ...filters, from: isoDate(from), to: isoDate(to) },
     summary: {
@@ -379,12 +422,12 @@ export async function getAnalytics(filters: AnalyticsFilters): Promise<Analytics
     workloadByWeekday: workload(filteredConsultations, from, to),
     analysisTypes: analysisTypes(filteredConsultations),
     finance: {
-      charged: 0,
-      received: 0,
-      paymentsConfigured: false,
+      charged,
+      received,
+      paymentsConfigured: paymentsResult.configured,
     },
-    payments: [],
-    incomeTimeline: incomeTimeline(from, to),
+    payments: paymentRows,
+    incomeTimeline: incomeTimeline(from, to, filteredPayments),
     generatedAt: new Date().toISOString(),
   };
 }

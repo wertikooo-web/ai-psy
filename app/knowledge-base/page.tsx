@@ -63,6 +63,8 @@ export default function KnowledgeBasePage() {
   const [internalOpen, setInternalOpen]   = useState(false);
   const [externalOpen, setExternalOpen]   = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const internalRef = useRef<HTMLElement>(null);
+  const externalRef = useRef<HTMLElement>(null);
 
   async function loadFiles() {
     setLoading(true);
@@ -75,6 +77,19 @@ export default function KnowledgeBasePage() {
   }
 
   useEffect(() => { loadFiles(); }, []);
+
+  useEffect(() => {
+    if (!internalOpen && !externalOpen) return;
+    const closeOnOutside = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (target && internalRef.current?.contains(target)) return;
+      if (target && externalRef.current?.contains(target)) return;
+      setInternalOpen(false);
+      setExternalOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutside);
+    return () => document.removeEventListener("mousedown", closeOnOutside);
+  }, [internalOpen, externalOpen]);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -132,7 +147,7 @@ export default function KnowledgeBasePage() {
         </div>
 
         {/* Block 1: Internal KB */}
-        <section className="mb-4">
+        <section ref={internalRef} className="mb-4">
           <button
             onClick={() => setInternalOpen((v) => !v)}
             aria-expanded={internalOpen}
@@ -266,7 +281,7 @@ export default function KnowledgeBasePage() {
         </section>
 
         {/* Block 2: External KB */}
-        <section className="mb-4">
+        <section ref={externalRef} className="mb-4">
           <button
             onClick={() => setExternalOpen((v) => !v)}
             aria-expanded={externalOpen}

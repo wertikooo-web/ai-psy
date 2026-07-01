@@ -93,6 +93,17 @@ export default function SettingsPage() {
     });
   }
 
+  useEffect(() => {
+    if (!openSections.size) return;
+    const closeOnOutside = (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest(".settings-section")) return;
+      setOpenSections(new Set());
+    };
+    document.addEventListener("mousedown", closeOnOutside);
+    return () => document.removeEventListener("mousedown", closeOnOutside);
+  }, [openSections.size]);
+
   // Scroll to the target section after mount
   const targetSectionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -490,7 +501,7 @@ function SettingsSection({ title, description, icon, isOpen, onToggle, children 
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F7F4EF", borderColor: "#E5DDD2" }}>
+    <div className="settings-section rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F7F4EF", borderColor: "#E5DDD2" }}>
       <button
         aria-expanded={isOpen}
         onClick={onToggle}

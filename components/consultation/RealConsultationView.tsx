@@ -10,9 +10,11 @@ import {
   Play, NotebookPen, FileText, Loader2, AlertCircle,
   Download, ChevronDown, ChevronUp, BrainCircuit,
   CheckCircle2, CircleDashed, Trash2, Plus, ScanSearch, ChevronsLeft,
+  WalletCards,
 } from "lucide-react";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
 import { AnalysisBlockRenderer } from "@/components/analysis/AnalysisBlockRenderer";
+import { PaymentDialog, type PaymentRow } from "@/components/payments/PaymentDialog";
 import Link from "next/link";
 
 // ── Analysis mode definitions ─────────────────────────────────────────────────
@@ -187,6 +189,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const [addMenuOpen, setAddMenuOpen]       = useState(false);
   const addMenuRef                          = useRef<HTMLDivElement>(null);
   const [analysisError, setAnalysisError]   = useState<string | null>(null);
+  const [paymentOpen, setPaymentOpen]       = useState(false);
+  const [payment, setPayment]               = useState<PaymentRow | null>(null);
 
   // Client context: materials (full objects) + history count
   const [clientMaterials, setClientMaterials] = useState<import("@/lib/types").ClientMaterial[]>([]);
@@ -212,6 +216,13 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
       }
     }).catch(() => {});
   }, [c.clientId, lastAnalysisAt]);
+
+  useEffect(() => {
+    fetch(`/api/payments?consultationId=${encodeURIComponent(c.id)}`)
+      .then((res) => res.ok ? res.json() : [])
+      .then((rows) => setPayment(Array.isArray(rows) ? rows[0] ?? null : null))
+      .catch(() => {});
+  }, [c.id]);
 
   // Listen for real-time observations/materials added via FAB while on this page
   useEffect(() => {
@@ -626,6 +637,15 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => setPaymentOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors hover:bg-white"
+            style={{ borderColor: "#D8CFBE", color: "#6B5D4F", background: payment?.paymentStatus === "paid" ? "#EFFAF3" : "#FFF8EA" }}
+            title="Внести или изменить оплату"
+          >
+            <WalletCards size={14} />
+            {payment?.paymentStatus === "paid" ? "Оплачено" : "Оплата"}
+          </button>
           {dateStr && (
             <span className="text-xs text-slate-400">
               {new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
@@ -903,6 +923,21 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
 
         </div>
       </div>
+
+      <PaymentDialog
+        open={paymentOpen}
+        onClose={() => setPaymentOpen(false)}
+        fixedConsultationId={c.id}
+        consultations={[{
+          id: c.id,
+          title: c.title || "Консультация",
+          clientId: c.clientId,
+          clientName: c.clientName,
+          createdAt: c.createdAt,
+        }]}
+        initial={payment}
+        onSaved={setPayment}
+      />
     </div>
   );
 }
