@@ -25,7 +25,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import type { NotebookEntry } from "@/lib/notebookStore";
+import type { NotebookEntry, NoteAttentionStatus } from "@/lib/notebookStore";
 import { Avatar } from "@/components/ui/Avatar";
 
 export const dynamic = "force-dynamic";
@@ -42,10 +42,12 @@ const TOPICS = [
 
 const NOTEBOOK_FETCH_PAGE_SIZE = 500;
 const NOTEBOOK_FALLBACK_ENTRIES_PER_PAGE = 3;
+const NOTEBOOK_BOTTOM_SAFE_GAP = 20;
 
 type SortMode  = "newest" | "oldest" | "updated" | "client" | "topic";
 type GroupMode = "none" | "date" | "client" | "topic";
 type DateMode  = "all" | "today" | "7d" | "30d" | "custom";
+type StatusMode = "all" | NoteAttentionStatus;
 type NotebookView = "closed" | "open";
 type NotebookToolSection = "search" | "filters" | "sorting" | "grouping";
 
@@ -76,6 +78,7 @@ interface QueryState {
   sort:   SortMode;
   group:  GroupMode;
   date:   DateMode;
+  status: StatusMode;
   from:   string;
   to:     string;
 }
@@ -93,8 +96,24 @@ const emptyForm: FormState = { title: "", text: "", clientId: "", topic: "", tag
 
 const DEFAULT_QUERY: QueryState = {
   page: 1, search: "", client: "", topic: "", tags: "",
-  sort: "newest", group: "none", date: "all", from: "", to: "",
+  sort: "newest", group: "none", date: "all", status: "all", from: "", to: "",
 };
+
+const ATTENTION_STATUSES: Array<{
+  value: NoteAttentionStatus;
+  label: string;
+  hint: string;
+}> = [
+  { value: "none", label: "Без отметки", hint: "Обычная заметка" },
+  { value: "later", label: "Вернуться позже", hint: "Нужно вернуться без срочности" },
+  { value: "important", label: "Важно", hint: "Значимая мысль или решение" },
+  { value: "urgent", label: "Срочно", hint: "Требует действия в ближайшее время" },
+  { value: "done", label: "Выполнено", hint: "Уже обработано" },
+];
+
+function attentionLabel(status?: NoteAttentionStatus) {
+  return ATTENTION_STATUSES.find((item) => item.value === (status ?? "none"))?.label ?? "Без отметки";
+}
 
 const NOTEBOOK_TOOLS_STORAGE_KEY = "notebook_tools_open_sections";
 const DEFAULT_TOOL_SECTIONS: NotebookToolSection[] = ["search", "filters", "sorting", "grouping"];
@@ -113,6 +132,7 @@ function readInitialQuery(): QueryState {
     sort:   (sp.get("sort")  as SortMode)  || "newest",
     group:  (sp.get("group") as GroupMode) || "none",
     date:   (sp.get("date")  as DateMode)  || "all",
+    status: (sp.get("status") as StatusMode) || "all",
     from:   sp.get("from")   ?? "",
     to:     sp.get("to")     ?? "",
   };
@@ -129,6 +149,7 @@ function writeUrl(query: QueryState) {
   if (query.sort  !== "newest") sp.set("sort",   query.sort);
   if (query.group !== "none")   sp.set("group",  query.group);
   if (query.date  !== "all")    sp.set("date",   query.date);
+  if (query.status !== "all")   sp.set("status", query.status);
   if (query.from)               sp.set("from",   query.from);
   if (query.to)                 sp.set("to",     query.to);
   const next = sp.toString() ? `/notebook?${sp.toString()}` : "/notebook";
@@ -399,6 +420,7 @@ export default function NotebookPage() {
   const [toast, setToast]                     = useState("");
   const [turnDirection, setTurnDirection]     = useState<"next" | "prev" | "none">("none");
   const [openMenu, setOpenMenu]               = useState<string | null>(null);
+  const [attentionMenu, setAttentionMenu]     = useState<string | null>(null);
   const [sortOpen, setSortOpen]               = useState(false);
   const [groupOpen, setGroupOpen]             = useState(false);
   const [notebookView, setNotebookView]       = useState<NotebookView>("closed");
@@ -413,8 +435,27 @@ export default function NotebookPage() {
   const measureEntryRefs                       = useRef<Map<string, HTMLElement>>(new Map());
   const [notebookTurnHeight, setNotebookTurnHeight] = useState(0);
   const [notebookPages, setNotebookPages]      = useState<NotebookPageEntry[][]>([]);
+  const [oversizedEntryIds, setOversizedEntryIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => { setQuery(readInitialQuery()); }, []);
+
+  useEffect(() => {
+    if (!attentionMenu) return;
+    const closeOnOutside = (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest(".notebook-attention-popover, .notebook-entry-number")) return;
+      setAttentionMenu(null);
+    };
+    const closeOnEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAttentionMenu(null);
+    };
+    document.addEventListener("mousedown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEsc);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEsc);
+    };
+  }, [attentionMenu]);
 
   useEffect(() => {
     try {
@@ -473,24 +514,38 @@ export default function NotebookPage() {
     }
 
     const nextPages: NotebookPageEntry[][] = [];
+    const nextOversized = new Set<string>();
     let currentPage: NotebookPageEntry[] = [];
     let usedHeight = 0;
-    const pageHeight = Math.max(120, notebookTurnHeight - 2);
+    const pageHeight = Math.max(120, notebookTurnHeight - NOTEBOOK_BOTTOM_SAFE_GAP);
 
     data.entries.forEach((entry, index) => {
       const measured = measureEntryRefs.current.get(entry.id);
       const entryHeight = Math.ceil(measured?.getBoundingClientRect().height ?? 160);
+      const isOversized = entryHeight > pageHeight;
+      if (isOversized) nextOversized.add(entry.id);
+      if (isOversized && currentPage.length > 0) {
+        nextPages.push(currentPage);
+        currentPage = [];
+        usedHeight = 0;
+      }
       if (currentPage.length > 0 && usedHeight + entryHeight > pageHeight) {
         nextPages.push(currentPage);
         currentPage = [];
         usedHeight = 0;
       }
       currentPage.push({ entry, index });
-      usedHeight += entryHeight;
+      usedHeight += Math.min(entryHeight, pageHeight);
+      if (isOversized) {
+        nextPages.push(currentPage);
+        currentPage = [];
+        usedHeight = 0;
+      }
     });
 
     if (currentPage.length) nextPages.push(currentPage);
     setNotebookPages(nextPages.length ? nextPages : fallbackPages);
+    setOversizedEntryIds(nextOversized);
   }, [data.entries, expandedEntries, notebookTurnHeight, query.group]);
 
   useEffect(() => {
@@ -524,6 +579,7 @@ export default function NotebookPage() {
     if (query.sort)      sp.set("sort",   query.sort);
     if (query.group)     sp.set("group",  query.group);
     if (query.date)      sp.set("date",   query.date);
+    if (query.status)    sp.set("status", query.status);
     if (query.from)      sp.set("from",   query.from);
     if (query.to)        sp.set("to",     query.to);
     return sp;
@@ -556,6 +612,7 @@ export default function NotebookPage() {
     query.topic,
     query.tags,
     query.date !== "all" ? query.date : "",
+    query.status !== "all" ? query.status : "",
     query.from,
     query.to,
   ].filter(Boolean).length;
@@ -579,6 +636,7 @@ export default function NotebookPage() {
     if (nextQuery.sort) sp.set("sort", nextQuery.sort);
     if (nextQuery.group) sp.set("group", nextQuery.group);
     if (nextQuery.date) sp.set("date", nextQuery.date);
+    if (nextQuery.status) sp.set("status", nextQuery.status);
     if (nextQuery.from) sp.set("from", nextQuery.from);
     if (nextQuery.to) sp.set("to", nextQuery.to);
     return sp;
@@ -650,6 +708,7 @@ export default function NotebookPage() {
           topic: "",
           tags: "",
           date: "all",
+          status: "all",
           from: "",
           to: "",
         };
@@ -693,6 +752,29 @@ export default function NotebookPage() {
     setOpenMenu(null);
   }
 
+  async function updateAttentionStatus(entry: NotebookEntry, attentionStatus: NoteAttentionStatus) {
+    if ((entry.attentionStatus ?? "none") === attentionStatus) {
+      setAttentionMenu(null);
+      return;
+    }
+    const res = await fetch(`/api/notebook/${entry.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attentionStatus }),
+    });
+    if (!res.ok) {
+      setToast("Не удалось изменить отметку");
+      return;
+    }
+    const updated = await res.json() as NotebookEntry;
+    setData((prev) => ({
+      ...prev,
+      entries: prev.entries.map((item) => (item.id === updated.id ? updated : item)),
+    }));
+    setAttentionMenu(null);
+    setToast(attentionStatus === "none" ? "Отметка снята" : `Заметка отмечена как «${attentionLabel(attentionStatus)}»`);
+  }
+
   function toggleEntryExpanded(id: string) {
     setExpandedEntries((prev) => {
       const next = new Set(prev);
@@ -730,7 +812,7 @@ export default function NotebookPage() {
   function resetFilters() {
     updateQuery({
       search: "", client: "", topic: "", tags: "",
-      date: "all", from: "", to: "", group: "none", sort: "newest",
+      date: "all", status: "all", from: "", to: "", group: "none", sort: "newest",
     });
     setFiltersOpen(false);
   }
@@ -1099,13 +1181,52 @@ export default function NotebookPage() {
                       const isExpanded = expandedEntries.has(entry.id);
                       const canExpand = entry.text.length > 260 || entry.text.split(/\r?\n/).length > 4;
                       const entryNumber = index + 1;
+                      const isOversized = oversizedEntryIds.has(entry.id);
 
                       return (
-                      <article key={entry.id} className="py-4 first:pt-0 last:pb-1">
+                      <article
+                        key={entry.id}
+                        className={`notebook-entry-note py-4 first:pt-0 last:pb-1 ${isOversized ? "notebook-entry-note-oversized" : ""}`}
+                        style={isOversized && notebookTurnHeight ? { maxHeight: notebookTurnHeight - NOTEBOOK_BOTTOM_SAFE_GAP } : undefined}
+                      >
                         <div className="notebook-entry-row flex flex-wrap items-start gap-x-2 gap-y-0">
-                          <span className="notebook-entry-number" aria-label={`Запись номер ${entryNumber}`}>
+                          <button
+                            type="button"
+                            className={`notebook-entry-number notebook-entry-number-${entry.attentionStatus ?? "none"}`}
+                            onClick={() => {
+                              setOpenMenu(null);
+                              setAttentionMenu((current) => (current === entry.id ? null : entry.id));
+                            }}
+                            aria-label={`Изменить отметку заметки ${entryNumber}. Сейчас: ${attentionLabel(entry.attentionStatus)}`}
+                            title={entry.attentionStatus === "none" || !entry.attentionStatus ? "Добавить отметку" : attentionLabel(entry.attentionStatus)}
+                          >
                             {entryNumber}
-                          </span>
+                          </button>
+                          {attentionMenu === entry.id && (
+                            <div className="notebook-attention-popover" role="menu" aria-label="Отметить заметку">
+                              <p className="notebook-attention-title">Отметить заметку</p>
+                              {ATTENTION_STATUSES.map((status) => {
+                                const active = (entry.attentionStatus ?? "none") === status.value;
+                                return (
+                                  <button
+                                    key={status.value}
+                                    type="button"
+                                    role="menuitemradio"
+                                    aria-checked={active}
+                                    onClick={() => updateAttentionStatus(entry, status.value)}
+                                    className="notebook-attention-option"
+                                  >
+                                    <span className={`notebook-attention-dot notebook-attention-dot-${status.value}`} />
+                                    <span className="notebook-attention-text">
+                                      <span>{status.label}</span>
+                                      <small>{status.hint}</small>
+                                    </span>
+                                    {active && <Check size={14} />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                           <div className="notebook-entry-main min-w-0 flex-1">
                             {/* Metadata row */}
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#9A8A72]">
@@ -1238,7 +1359,7 @@ export default function NotebookPage() {
                       className="py-4 first:pt-0 last:pb-1"
                     >
                       <div className="notebook-entry-row flex flex-wrap items-start gap-x-2 gap-y-0">
-                        <span className="notebook-entry-number">{index + 1}</span>
+                        <span className={`notebook-entry-number notebook-entry-number-${entry.attentionStatus ?? "none"}`}>{index + 1}</span>
                         <div className="notebook-entry-main min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#9A8A72]">
                             <span className="inline-flex items-center gap-1.5">
@@ -1440,6 +1561,36 @@ export default function NotebookPage() {
                   <span>Теги</span>
                   <input value={query.tags} onChange={(e) => updateQuery({ tags: e.target.value })} placeholder="Все теги" />
                 </label>
+                <div className="notebook-control-row">
+                  <span>Статус заметки</span>
+                  <div className="notebook-status-filter-list">
+                    <button
+                      type="button"
+                      onClick={() => updateQuery({ status: "all" })}
+                      className={`notebook-control-option ${query.status === "all" ? "notebook-control-option-active" : ""}`}
+                    >
+                      <span className="notebook-status-filter-label">
+                        <span className="notebook-attention-dot notebook-attention-dot-all" />
+                        Все
+                      </span>
+                      {query.status === "all" && <Check size={14} />}
+                    </button>
+                    {ATTENTION_STATUSES.map((status) => (
+                      <button
+                        key={status.value}
+                        type="button"
+                        onClick={() => updateQuery({ status: status.value })}
+                        className={`notebook-control-option ${query.status === status.value ? "notebook-control-option-active" : ""}`}
+                      >
+                        <span className="notebook-status-filter-label">
+                          <span className={`notebook-attention-dot notebook-attention-dot-${status.value}`} />
+                          {status.label}
+                        </span>
+                        {query.status === status.value && <Check size={14} />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <button type="button" onClick={resetFilters} className="notebook-control-reset">
                   Сбросить
                 </button>

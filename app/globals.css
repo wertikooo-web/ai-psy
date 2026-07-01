@@ -1220,6 +1220,180 @@
   margin-top: -3px;
 }
 
+.notebook-entry-note {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  flex-shrink: 0;
+}
+
+.notebook-entry-note-oversized {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 10px;
+}
+
+.notebook-entry-note-oversized::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notebook-entry-note-oversized::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(154, 138, 114, 0.35);
+}
+
+.notebook-entry-number {
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.notebook-entry-number:hover,
+.notebook-entry-number:focus-visible {
+  border-color: #b9a78c;
+  box-shadow: 0 3px 8px rgba(80, 60, 40, 0.12);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.notebook-entry-number-none {
+  border-color: #d8cfbe;
+  background: #fffaf2;
+  color: #8f7f69;
+}
+
+.notebook-entry-number-later {
+  border-color: #6d8eaa;
+  background: #7f9fba;
+  color: #fffaf2;
+}
+
+.notebook-entry-number-important {
+  border-color: #d5a648;
+  background: #f0cf77;
+  color: #3d3228;
+}
+
+.notebook-entry-number-urgent {
+  border-color: #d56f64;
+  background: #e9857b;
+  color: #fffaf2;
+}
+
+.notebook-entry-number-done {
+  border-color: #6f9a74;
+  background: #7fad82;
+  color: #fffaf2;
+}
+
+.notebook-attention-popover {
+  position: absolute;
+  z-index: 30;
+  left: 34px;
+  top: 26px;
+  width: min(260px, calc(100vw - 48px));
+  border: 1px solid #d8cfbe;
+  border-radius: 12px;
+  background: #fffaf2;
+  padding: 10px;
+  box-shadow: 0 16px 34px rgba(72, 53, 34, 0.18);
+}
+
+.notebook-attention-title {
+  margin: 0 0 8px;
+  color: #4d4034;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.notebook-attention-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  padding: 8px;
+  color: #3d3228;
+  text-align: left;
+}
+
+.notebook-attention-option:hover,
+.notebook-attention-option:focus-visible {
+  background: rgba(216, 207, 190, 0.28);
+  outline: none;
+}
+
+.notebook-attention-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.notebook-attention-text small {
+  color: #8f7f69;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.notebook-attention-dot {
+  display: inline-flex;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border: 1px solid #d8cfbe;
+  border-radius: 999px;
+  background: #fffaf2;
+}
+
+.notebook-attention-dot-all {
+  background: linear-gradient(135deg, #7f9fba 0 25%, #f0cf77 25% 50%, #e9857b 50% 75%, #7fad82 75% 100%);
+}
+
+.notebook-attention-dot-none {
+  background: #fffaf2;
+}
+
+.notebook-attention-dot-later {
+  border-color: #6d8eaa;
+  background: #7f9fba;
+}
+
+.notebook-attention-dot-important {
+  border-color: #d5a648;
+  background: #f0cf77;
+}
+
+.notebook-attention-dot-urgent {
+  border-color: #d56f64;
+  background: #e9857b;
+}
+
+.notebook-attention-dot-done {
+  border-color: #6f9a74;
+  background: #7fad82;
+}
+
+.notebook-status-filter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notebook-status-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .notebook-back-page {
   position: absolute;
   z-index: 1;

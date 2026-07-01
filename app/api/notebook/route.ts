@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEntries, addEntry, type NotebookDateFilter, type NotebookGroup, type NotebookSort } from "@/lib/data/notebook";
+import {
+  getEntries,
+  addEntry,
+  type NotebookDateFilter,
+  type NotebookGroup,
+  type NotebookSort,
+  type NotebookStatusFilter,
+} from "@/lib/data/notebook";
 import { randomUUID } from "crypto";
 
 const SORTS: NotebookSort[] = ["newest", "oldest", "updated", "client", "topic"];
 const GROUPS: NotebookGroup[] = ["none", "date", "client", "topic"];
 const DATES: NotebookDateFilter[] = ["all", "today", "7d", "30d", "custom"];
+const STATUSES: NotebookStatusFilter[] = ["all", "none", "later", "important", "urgent", "done"];
 
 function splitTags(value: string | null): string[] {
   return (value ?? "")
@@ -19,6 +27,7 @@ export async function GET(req: NextRequest) {
     const sort = sp.get("sort") as NotebookSort | null;
     const group = sp.get("group") as NotebookGroup | null;
     const date = sp.get("date") as NotebookDateFilter | null;
+    const status = sp.get("status") as NotebookStatusFilter | null;
     const pageSize = Math.max(1, Math.min(500, Number(sp.get("pageSize") ?? 3) || 3));
     const result = await getEntries({
       page:   Math.max(1, Number(sp.get("page") ?? 1) || 1),
@@ -30,6 +39,7 @@ export async function GET(req: NextRequest) {
       sort:   sort && SORTS.includes(sort) ? sort : "newest",
       group:  group && GROUPS.includes(group) ? group : "none",
       date:   date && DATES.includes(date) ? date : "all",
+      status: status && STATUSES.includes(status) ? status : "all",
       from:   sp.get("from") ?? undefined,
       to:     sp.get("to") ?? undefined,
     });

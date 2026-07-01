@@ -5,6 +5,7 @@ export interface NotebookEntry {
   id:         string;
   title:      string;
   text:       string;
+  attentionStatus: NoteAttentionStatus;
   clientId?:  string;
   clientName?: string;
   clientInitials?: string;
@@ -15,6 +16,8 @@ export interface NotebookEntry {
   updatedAt:  string;
   deletedAt?: string;
 }
+
+export type NoteAttentionStatus = "none" | "later" | "important" | "urgent" | "done";
 
 const store: NotebookEntry[] = [];
 

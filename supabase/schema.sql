@@ -189,7 +189,10 @@ create table if not exists public.notebook (
   text        text        not null    default '',
   client_id   uuid        references public.clients(id) on delete set null,
   topic       text,
-  tags        text[]      not null    default '{}'
+  tags        text[]      not null    default '{}',
+  attention_status text   not null    default 'none',
+  constraint notebook_attention_status_check
+    check (attention_status in ('none', 'later', 'important', 'urgent', 'done'))
 );
 
 drop trigger if exists notebook_updated_at on public.notebook;
@@ -211,6 +214,8 @@ create index if not exists notebook_client_id_idx on public.notebook (client_id)
 create index if not exists notebook_topic_idx on public.notebook (topic)
   where deleted_at is null;
 create index if not exists notebook_tags_gin_idx on public.notebook using gin (tags);
+create index if not exists notebook_attention_status_active_idx on public.notebook (attention_status)
+  where deleted_at is null;
 
 -- ── user_profile ──────────────────────────────────────────────────────────────
 -- Single row per installation, id = 'default'

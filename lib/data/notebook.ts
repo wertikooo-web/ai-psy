@@ -5,13 +5,16 @@
 
 import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 import * as memStore from "@/lib/notebookStore";
-import type { NotebookEntry } from "@/lib/notebookStore";
+import type { NotebookEntry, NoteAttentionStatus } from "@/lib/notebookStore";
 
 export const NOTEBOOK_PAGE_SIZE = 3;
 
 export type NotebookSort = "newest" | "oldest" | "updated" | "client" | "topic";
 export type NotebookGroup = "none" | "date" | "client" | "topic";
 export type NotebookDateFilter = "all" | "today" | "7d" | "30d" | "custom";
+export type NotebookStatusFilter = "all" | NoteAttentionStatus;
+
+const NOTE_ATTENTION_STATUSES: NoteAttentionStatus[] = ["none", "later", "important", "urgent", "done"];
 
 export interface NotebookQuery {
   page: number;
@@ -23,6 +26,7 @@ export interface NotebookQuery {
   sort: NotebookSort;
   group: NotebookGroup;
   date: NotebookDateFilter;
+  status?: NotebookStatusFilter;
   from?: string;
   to?: string;
 }
@@ -47,6 +51,12 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
+function asAttentionStatus(value: unknown): NoteAttentionStatus {
+  return typeof value === "string" && NOTE_ATTENTION_STATUSES.includes(value as NoteAttentionStatus)
+    ? value as NoteAttentionStatus
+    : "none";
+}
+
 function rowToEntry(row: Record<string, unknown>): NotebookEntry {
   const client = row.clients as Record<string, unknown> | null | undefined;
   const hasTitleColumn = Object.prototype.hasOwnProperty.call(row, "title");
@@ -64,6 +74,7 @@ function rowToEntry(row: Record<string, unknown>): NotebookEntry {
     id:         row.id as string,
     title:      legacy.title,
     text:       legacy.text,
+    attentionStatus: asAttentionStatus(row.attention_status),
     clientId:   legacy.clientId,
     clientName: (client?.full_name as string | undefined) ?? undefined,
     clientInitials: (client?.initials as string | undefined) ?? undefined,
@@ -174,6 +185,7 @@ function isMissingNotebookV2Schema(message: string): boolean {
     message.includes("topic") ||
     message.includes("tags") ||
     message.includes("title") ||
+    message.includes("attention_status") ||
     message.includes("Could not find") ||
     message.includes("does not exist")
   );
@@ -250,6 +262,7 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
     else if (query.client) request = request.eq("client_id", query.client);
     if (query.topic) request = request.eq("topic", query.topic);
     if (query.tags?.length) request = request.contains("tags", query.tags);
+    if (query.status && query.status !== "all") request = request.eq("attention_status", query.status);
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -291,6 +304,7 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
     if (query.client && query.client !== "none" && entry.clientId !== query.client) return false;
     if (query.topic && entry.topic !== query.topic) return false;
     if (query.tags?.length && !query.tags.every((tag) => entry.tags.includes(tag))) return false;
+    if (query.status && query.status !== "all" && entry.attentionStatus !== query.status) return false;
     if (!search) return true;
     return [entry.title, entry.text, entry.clientName, entry.topic, ...entry.tags]
       .filter(Boolean)
@@ -373,6 +387,7 @@ export async function addEntry(input: NotebookInput & { id: string }): Promise<N
     clientId:  input.clientId || undefined,
     topic:     input.topic?.trim() || undefined,
     tags:      normalizeTags(input.tags),
+    attentionStatus: "none",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -449,6 +464,29 @@ export async function updateEntry(id: string, input: NotebookInput): Promise<Not
     topic:    input.topic?.trim() || undefined,
     tags:     normalizeTags(input.tags),
   });
+}
+
+export async function updateEntryAttentionStatus(
+  id: string,
+  attentionStatus: NoteAttentionStatus,
+): Promise<NotebookEntry | null> {
+  if (!NOTE_ATTENTION_STATUSES.includes(attentionStatus)) {
+    throw new Error("[DAL/notebook/updateEntryAttentionStatus] invalid attention status");
+  }
+
+  if (isSupabaseConfigured()) {
+    const { data, error } = await supabaseServer!
+      .from("notebook")
+      .update({ attention_status: attentionStatus })
+      .eq("id", id)
+      .is("deleted_at", null)
+      .select("*, clients:client_id(full_name,initials,color)")
+      .single();
+    if (error) throw new Error(`[DAL/notebook/updateEntryAttentionStatus] ${error.message}`);
+    return data ? rowToEntry(data as Record<string, unknown>) : null;
+  }
+
+  return memStore.updateNotebookEntry(id, { attentionStatus });
 }
 
 export async function deleteEntry(id: string): Promise<void> {
