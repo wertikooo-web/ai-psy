@@ -23,21 +23,52 @@ function formatChatMessage(text: string): string {
   const t = text.trim();
   if (!t) return t;
 
-  // 1. Already has paragraph breaks → fine as-is
-  if (t.includes("\n\n")) return t;
+  function isList(s: string) { return /^[-*•]\s/.test(s) || /^\d+[.)]\s/.test(s); }
+  function sentenceCount(s: string) {
+    // Count sentence-ending punctuation followed by space+uppercase — rough but good enough
+    return (s.match(/[.!?]\s+[А-ЯЁA-Z]/g) ?? []).length + 1;
+  }
 
-  // 2. Has single line breaks — group prose lines into 2-sentence paragraphs,
-  //    list items (-, *, 1.) stay as one block
+  // 1. Has double line breaks (paragraph breaks)
+  if (t.includes("\n\n")) {
+    const blocks = t.split(/\n\n+/).map((b) => b.trim()).filter(Boolean);
+
+    // If most blocks are single short sentences → regroup into 3-sentence paragraphs
+    const shortSingleBlocks = blocks.filter((b) => !b.includes("\n") && sentenceCount(b) <= 1 && !isList(b));
+    if (shortSingleBlocks.length > Math.ceil(blocks.length * 0.55) && blocks.length >= 3) {
+      const out: string[] = [];
+      const proseBuf: string[] = [];
+
+      function flush() {
+        if (!proseBuf.length) return;
+        for (let i = 0; i < proseBuf.length; i += 3) {
+          out.push(proseBuf.slice(i, i + 3).join(" "));
+        }
+        proseBuf.length = 0;
+      }
+
+      for (const block of blocks) {
+        if (block.includes("\n") || isList(block)) { flush(); out.push(block); }
+        else { proseBuf.push(block); }
+      }
+      flush();
+      return out.join("\n\n");
+    }
+
+    return t;
+  }
+
+  // 2. Single line breaks — group prose lines into 3-sentence paragraphs,
+  //    list items stay separate
   if (t.includes("\n")) {
-    const lines = t.split("\n");
+    const lines    = t.split("\n");
     const proseBuf: string[] = [];
-    const out: string[] = [];
+    const out:      string[] = [];
 
     function flushProse() {
       if (!proseBuf.length) return;
-      // group every 2 lines into one paragraph
-      for (let i = 0; i < proseBuf.length; i += 2) {
-        out.push(proseBuf.slice(i, i + 2).join(" "));
+      for (let i = 0; i < proseBuf.length; i += 3) {
+        out.push(proseBuf.slice(i, i + 3).join(" "));
       }
       proseBuf.length = 0;
     }
@@ -45,12 +76,8 @@ function formatChatMessage(text: string): string {
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) { flushProse(); continue; }
-      if (/^[-*•]\s/.test(trimmed) || /^\d+[.)]\s/.test(trimmed)) {
-        flushProse();
-        out.push(trimmed);
-      } else {
-        proseBuf.push(trimmed);
-      }
+      if (isList(trimmed)) { flushProse(); out.push(trimmed); }
+      else { proseBuf.push(trimmed); }
     }
     flushProse();
     return out.join("\n\n");
@@ -71,16 +98,16 @@ function formatChatMessage(text: string): string {
     if (/[.!?]/.test(ch) && /\s/.test(next) && /[А-ЯЁA-Z]/.test(after)) {
       sentences.push(cur.trim());
       cur = "";
-      i++; // skip the space separator
+      i++;
     }
   }
   if (cur.trim()) sentences.push(cur.trim());
   if (sentences.length <= 2) return t;
 
-  // Group 2 sentences per paragraph
+  // Group 3 sentences per paragraph
   const paras: string[] = [];
-  for (let i = 0; i < sentences.length; i += 2) {
-    paras.push(sentences.slice(i, i + 2).join(" "));
+  for (let i = 0; i < sentences.length; i += 3) {
+    paras.push(sentences.slice(i, i + 3).join(" "));
   }
   return paras.join("\n\n");
 }
