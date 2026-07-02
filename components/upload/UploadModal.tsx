@@ -396,9 +396,9 @@ export function UploadModal({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold" style={{ color: "#3D2E1E" }}>{s.label}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "#9C8E80" }}>{s.sub}</p>
+                    <p className="hidden lg:block text-xs mt-0.5" style={{ color: "#9C8E80" }}>{s.sub}</p>
                   </div>
-                  <div className="text-right flex-shrink-0">
+                  <div className="hidden lg:block text-right flex-shrink-0">
                     <p className="text-xs" style={{ color: "#9C8E80" }}>{s.path}</p>
                   </div>
                   <ChevronRight size={14} style={{ color: "#C8BBAA" }} className="flex-shrink-0 ml-1" />
