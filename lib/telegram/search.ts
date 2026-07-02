@@ -5,6 +5,7 @@ import { getPayments } from "@/lib/data/payments";
 import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 import { requireLinkedTelegramAccount } from "@/lib/telegram/auth";
 import { sendTelegramMessage, type TelegramInlineKeyboardButton, type TelegramMessage } from "@/lib/telegram/bot";
+import { parseTelegramIntentWithLlm } from "@/lib/telegram/intent";
 import type { StoredClient } from "@/lib/clientStore";
 import type { StoredConsultation } from "@/lib/consultationStore";
 
@@ -26,6 +27,8 @@ type ParsedRequest = {
   clientName?: string;
   query?: string;
   period?: "month" | "week" | "today" | "all";
+  dateFrom?: string;
+  dateTo?: string;
 };
 
 type SearchResult = {
@@ -173,7 +176,7 @@ function parseTextRequest(text: string): ParsedRequest {
 }
 
 export function isTelegramNaturalLanguageEnabled(): boolean {
-  return process.env.TELEGRAM_NATURAL_LANGUAGE_SEARCH === "true";
+  return process.env.TELEGRAM_NATURAL_LANGUAGE_SEARCH !== "false";
 }
 
 export function isTelegramSearchCommand(text: string | undefined): boolean {
@@ -401,16 +404,18 @@ function renderSearchResults(query: string, results: SearchResult[]): string {
   ].join("\n\n");
 }
 
-async function sendSearch(chatId: number, query: string | undefined, onlyNotebook = false): Promise<void> {
+async function sendSearch(chatId: number, query: string | undefined, onlyNotebook = false, clientName?: string): Promise<void> {
   const cleaned = cleanupSearchQuery(query ?? "");
   if (!cleaned) {
     await sendTelegramMessage(chatId, "Напишите, что искать. Например: /search тревога");
     return;
   }
+  const client = clientName?.trim() ? await resolveSingleClient(chatId, clientName) : null;
+  if (clientName?.trim() && !client) return;
   const results = onlyNotebook
     ? await searchNotebook(cleaned)
     : [
-      ...(await searchConsultations(cleaned)),
+      ...(await searchConsultations(cleaned, client?.id)),
       ...(await searchNotebook(cleaned)),
       ...(await searchSupabaseTextTables(cleaned)),
     ].slice(0, 5);
@@ -438,14 +443,54 @@ async function sendPaymentTotal(chatId: number, period: ParsedRequest["period"])
   await sendTelegramMessage(chatId, `Оплаты ${range.label}:\nНачислено: ${charged} MDL\nПолучено: ${paid} MDL`, keyboardFromButtons([urlButton("Открыть оплаты", appUrl("/payments"))]));
 }
 
+async function sendUpcomingConsultation(chatId: number, clientName?: string): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    await sendTelegramMessage(chatId, "Календарь сейчас не настроен.");
+    return;
+  }
+  const client = clientName?.trim() ? await resolveSingleClient(chatId, clientName) : null;
+  if (clientName?.trim() && !client) return;
+  let query = supabaseServer!
+    .from("calendar_events")
+    .select("id,client_id,client_name,title,notes,starts_at")
+    .gte("starts_at", new Date().toISOString())
+    .is("deleted_at", null)
+    .order("starts_at", { ascending: true })
+    .limit(1);
+  if (client?.id) query = query.eq("client_id", client.id);
+  const { data, error } = await query;
+  if (error) {
+    console.error("[telegram/upcoming consultation]", error);
+    await sendTelegramMessage(chatId, "Не удалось прочитать ближайшую встречу.");
+    return;
+  }
+  const item = data?.[0];
+  if (!item) {
+    await sendTelegramMessage(chatId, client ? `У ${client.name} нет ближайших встреч.` : "Ближайших встреч не найдено.");
+    return;
+  }
+  await sendTelegramMessage(
+    chatId,
+    [
+      "Ближайшая встреча:",
+      `Дата: ${formatDate(item.starts_at as string)}`,
+      item.client_name ? `Клиент: ${item.client_name}` : "",
+      item.title ? `Тема: ${item.title}` : "",
+      item.notes ? `Заметка: ${snippet(item.notes, 120)}` : "",
+    ].filter(Boolean).join("\n"),
+    keyboardFromButtons([urlButton("Открыть календарь", appUrl("/calendar"))]),
+  );
+}
+
 async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedRequest): Promise<void> {
   const chatId = message.chat.id;
   if (parsed.intent === "unknown") return sendTelegramMessage(chatId, UNKNOWN_TEXT);
   if (parsed.intent === "find_client" || parsed.intent === "get_client_summary") return sendClientSummary(chatId, parsed.clientName || parsed.query);
   if (parsed.intent === "get_consultations") return sendClientConsultations(chatId, parsed.clientName);
   if (parsed.intent === "get_last_consultation") return sendLastConsultation(chatId, parsed.clientName);
-  if (parsed.intent === "search_notebook") return sendSearch(chatId, parsed.query, true);
-  if (parsed.intent === "search_consultations" || parsed.intent === "search_analyses") return sendSearch(chatId, parsed.query);
+  if (parsed.intent === "search_notebook") return sendSearch(chatId, parsed.query, true, parsed.clientName);
+  if (parsed.intent === "search_consultations" || parsed.intent === "search_analyses") return sendSearch(chatId, parsed.query, false, parsed.clientName);
+  if (parsed.intent === "get_upcoming_consultation") return sendUpcomingConsultation(chatId, parsed.clientName);
   if (parsed.intent === "get_consultation_count") return sendConsultationCount(chatId, parsed.period);
   if (parsed.intent === "get_payment_total") return sendPaymentTotal(chatId, parsed.period);
   return sendTelegramMessage(chatId, UNKNOWN_TEXT);
@@ -471,6 +516,9 @@ export async function handleTelegramReadOnlySearch(message: TelegramMessage, tex
     );
     return true;
   }
-  await dispatchSearchRequest(message, parseTextRequest(text));
+  const parsed = isTelegramSearchCommand(text)
+    ? parseTextRequest(text)
+    : (await parseTelegramIntentWithLlm(text)) ?? parseTextRequest(text);
+  await dispatchSearchRequest(message, parsed);
   return true;
 }
