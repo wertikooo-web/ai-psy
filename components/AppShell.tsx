@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, Eye, ChevronRight } from "lucide-react";
+import { Eye, ChevronRight } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import type { SidebarMode } from "@/components/Sidebar";
+import { BottomNav } from "@/components/BottomNav";
 import { ObservationModal } from "@/components/observation/ObservationModal";
 import { GlobalSearch } from "@/components/GlobalSearch";
 
@@ -110,24 +111,16 @@ export function AppShell({ children, initialSidebarMode = "full" }: AppShellProp
         className="flex-1 overflow-hidden flex flex-col min-h-0 relative"
         style={{ zIndex: 10 }}
       >
-        {/* Mobile hamburger */}
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="lg:hidden absolute top-4 left-4 z-30 w-9 h-9 rounded-xl flex items-center justify-center shadow-sm border transition-colors"
-          style={{ background: "#F0EBE1", borderColor: "#D8CFBE", color: "#6B5D4F" }}
-          aria-label="Открыть меню"
-        >
-          <Menu size={18} />
-        </button>
-
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col pb-16 lg:pb-0">
           {children}
         </div>
 
+        {/* Bottom nav — mobile only */}
+        <BottomNav onMoreClick={() => setSidebarOpen(true)} />
+
         {/* Observation FAB */}
         <div
-          className="fixed right-6 z-40"
-          style={{ bottom: onConsultation ? "109px" : "43px" }}
+          className={`fixed right-4 lg:right-6 z-40 ${onConsultation ? "bottom-[76px] lg:bottom-[109px]" : "bottom-[76px] lg:bottom-[43px]"}`}
         >
           {tooltip && (
             <div

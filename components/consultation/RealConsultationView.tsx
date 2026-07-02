@@ -10,7 +10,7 @@ import {
   Play, NotebookPen, FileText, Loader2, AlertCircle,
   Download, ChevronDown, ChevronUp, BrainCircuit,
   CheckCircle2, CircleDashed, Trash2, Plus, ScanSearch, ChevronsLeft,
-  WalletCards, LayoutPanelLeft,
+  WalletCards, LayoutPanelLeft, MessageSquare, Scroll,
 } from "lucide-react";
 import { Group, Panel, Separator, useDefaultLayout, usePanelCallbackRef } from "react-resizable-panels";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
@@ -435,6 +435,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const notesText      = c.notes ?? null;
   const whisperText    = c.transcript?.text ?? null;
   const [panelCollapsed, setPanelCollapsed] = useState({ transcript: false, analysis: false, chat: false });
+  const [mobileTab, setMobileTab] = useState<"transcript" | "analysis" | "chat">("transcript");
 
   // ── Resizable panels refs ─────────────────────────────────────────────────
   const [transcriptPanelRef, setTranscriptPanelRef] = usePanelCallbackRef();
@@ -541,6 +542,145 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             Сбросить колонки
           </button>
         </header>
+
+        {/* ── MOBILE: tab bar + single panel ──────────────────────────────── */}
+        <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* Tab bar */}
+          <div className="flex flex-shrink-0 border-b" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
+            {([
+              { id: "transcript", label: "Транскрипт", icon: <Scroll size={13} /> },
+              { id: "analysis",   label: "AI-анализ",  icon: <BrainCircuit size={13} /> },
+              { id: "chat",       label: "Чат",        icon: <MessageSquare size={13} /> },
+            ] as const).map(t => (
+              <button
+                key={t.id}
+                onClick={() => setMobileTab(t.id)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs border-b-2 border-t-0 border-l-0 border-r-0 bg-transparent cursor-pointer"
+                style={{
+                  color: mobileTab === t.id ? "#3a5ff8" : "#9C8E80",
+                  borderBottomColor: mobileTab === t.id ? "#3a5ff8" : "transparent",
+                  fontWeight: mobileTab === t.id ? 600 : 400,
+                }}
+              >
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Transcript tab */}
+          {mobileTab === "transcript" && (
+            <TranscriptPanel
+              consultationId={c.id}
+              clientId={c.clientId ?? undefined}
+              segments={[]}
+              plainText={whisperText ?? undefined}
+              notesText={notesText ?? undefined}
+              isNotes={isNotesOnly}
+              materials={clientMaterials}
+              transcriptFormatted={c.transcriptFormatted}
+              hasTranscriptRaw={!!c.transcript?.text}
+              hasWhisperSegments={!!c.transcriptSegments?.length}
+              audioDeletedAt={c.audioDeletedAt}
+              clientName={c.clientName}
+              consultationDate={c.createdAt}
+              collapsed={false}
+              onToggle={() => {}}
+              onRefresh={() => router.refresh()}
+              onFormattedCreated={() => setAnalysisStale(true)}
+            />
+          )}
+
+          {/* Analysis tab */}
+          {mobileTab === "analysis" && (
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-[#FAF8F5]">
+              {/* Simplified analysis header */}
+              <div className="px-4 flex-shrink-0 flex items-center gap-2" style={{ height: 56, background: "#9C9289", borderBottom: "1px solid #8A8079" }}>
+                <BrainCircuit size={15} style={{ color: "#D8CFBE" }} />
+                <span className="text-sm font-bold flex-1 min-w-0 truncate" style={{ color: "#FDFAF5" }}>
+                  {displayedMode ? (ANALYSIS_MODES.find(m => m.id === displayedMode)?.label ?? "AI-анализ") : "AI-анализ"}
+                </span>
+                <div className="relative" ref={addMenuRef}>
+                  <button
+                    onClick={() => setAddMenuOpen(o => !o)}
+                    disabled={!!generatingMode || !hasText}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg whitespace-nowrap"
+                    style={{ background: "rgba(255,255,255,0.18)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.40)" }}
+                  >
+                    <Plus size={12} /> АНАЛИЗ
+                  </button>
+                  {addMenuOpen && (
+                    <div className="absolute right-0 top-full mt-1 rounded-xl border shadow-xl z-50 py-1 overflow-hidden" style={{ background: "#FAF8F5", borderColor: "#D8CFBE", minWidth: 260 }}>
+                      {ANALYSIS_MODES.map(m => {
+                        const exists    = analysesByMode.has(m.id);
+                        const isGenerat = generatingMode === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            onClick={() => { runAnalysis(m.id); setAddMenuOpen(false); }}
+                            disabled={!!generatingMode}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-stone-100"
+                            style={{ color: "#4A3C2E" }}
+                          >
+                            <span className="flex-1">{m.label}</span>
+                            {isGenerat && <Loader2 size={10} className="animate-spin text-violet-500" />}
+                            {exists && !isGenerat && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Mode tabs */}
+              {analyses.length > 1 && (
+                <div className="flex overflow-x-auto flex-shrink-0 border-b" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
+                  {ANALYSIS_MODES.filter(m => analysesByMode.has(m.id)).map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setDisplayedMode(m.id)}
+                      className={`px-3 py-2 text-xs font-medium border-b-2 border-t-0 border-l-0 border-r-0 bg-transparent cursor-pointer whitespace-nowrap flex-shrink-0 ${
+                        displayedMode === m.id ? "border-stone-600 text-stone-700" : "border-transparent text-slate-400"
+                      }`}
+                    >
+                      {m.shortLabel}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Content */}
+              <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
+                {generatingMode !== null && generatingMode === displayedMode ? (
+                  <AnalysisProgress transcriptLen={(whisperText ?? notesText ?? "").length} />
+                ) : selectedAnalysis ? (
+                  <AnalysisBlockRenderer
+                    result={selectedAnalysis.result}
+                    blocks={selectedAnalysis.blocks}
+                    showLupa={false}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full gap-3">
+                    <BrainCircuit size={32} style={{ color: "#C9BBAA" }} />
+                    <p className="text-sm text-center" style={{ color: "#9C8E80" }}>
+                      Нажмите «+ АНАЛИЗ» для запуска
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Chat tab */}
+          {mobileTab === "chat" && (
+            <ChatPanel
+              collapsed={false}
+              onToggle={() => {}}
+              consultationId={c.id}
+            />
+          )}
+        </div>
+
+        {/* ── DESKTOP: resizable columns ───────────────────────────────────── */}
+        <div className="hidden lg:flex flex-1 min-h-0 overflow-hidden items-stretch">
 
         {/* Resize handle styles */}
         <style>{`
@@ -878,6 +1018,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             />
           </Panel>
         </Group>
+        </div> {/* end hidden lg:flex desktop wrapper */}
       </div>
     );
   }
