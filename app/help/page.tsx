@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle2, AlertCircle, Loader2, BookOpen, Zap, HelpCircle, Database, BrainCircuit } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, BookOpen, Zap, HelpCircle, Database, BrainCircuit, ChevronDown } from "lucide-react";
 
 interface SystemStatus {
   label:  string;
@@ -172,13 +172,19 @@ function Section({ icon, title, children }: {
   title: string;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
   return (
     <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
-      <div className="px-6 py-4 border-b flex items-center gap-3" style={{ background: "#E8E0D0", borderColor: "#DDD4C6" }}>
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#DDD4C6" }}>{icon}</div>
-        <h2 className="text-sm font-semibold" style={{ color: "#4A3C2E" }}>{title}</h2>
-      </div>
-      <div className="px-6 py-5">{children}</div>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full px-6 py-4 flex items-center gap-3 text-left"
+        style={{ background: "#E8E0D0", borderBottom: open ? "1px solid #DDD4C6" : "none" }}
+      >
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#DDD4C6" }}>{icon}</div>
+        <h2 className="text-sm font-semibold flex-1" style={{ color: "#4A3C2E" }}>{title}</h2>
+        <ChevronDown size={16} style={{ color: "#9C8E80", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+      </button>
+      {open && <div className="px-6 py-5">{children}</div>}
     </section>
   );
 }

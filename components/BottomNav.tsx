@@ -20,7 +20,7 @@ export function BottomNav({ onMoreClick }: { onMoreClick: () => void }) {
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex border-t"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex border-t"
       style={{
         background: "#F7F7F8",
         borderColor: "#E5E5E5",
