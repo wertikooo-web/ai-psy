@@ -113,7 +113,7 @@ export function AppShell({ children, initialSidebarMode = "full" }: AppShellProp
         {/* Observation FAB */}
         <div
           className="fixed right-6 z-40"
-          style={{ bottom: onConsultation ? "90px" : "24px" }}
+          style={{ bottom: onConsultation ? "109px" : "43px" }}
         >
           {tooltip && (
             <div
