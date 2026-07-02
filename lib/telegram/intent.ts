@@ -118,22 +118,31 @@ const SYSTEM_PROMPT = `
 - Месяцы: "июнь" → период "month" с датой июня; если не указан месяц — текущий месяц
 - Имена в разных падежах: Кирилл/Кирилла/Кириллом, Анна/Анны/Анной — нормализуй в именительный падеж
 - НЕ возвращай unknown, если запрос явно про клиентов/консультации/оплаты/заметки
+- Если ТЕКУЩИЙ запрос — короткое уточнение (начинается с "а", "ещё", "тоже", "а что", "а в", "а за", "предыдущая", "прошлая" и т.п.) — прочитай КОНТЕКСТ РАЗГОВОРА и определи intent на основе предыдущих сообщений
 
 JSON SHAPE (верни только это):
 {"intent":"list_clients","client_name":null,"client_status":"all","query":null,"period":null,"date_from":null,"date_to":null}
 `.trim();
 
-export async function parseTelegramIntentWithLlm(text: string): Promise<TelegramLlmIntentResult | null> {
+export async function parseTelegramIntentWithLlm(
+  text: string,
+  priorMessages?: string[],
+): Promise<TelegramLlmIntentResult | null> {
   if (!hasOpenAiKey()) return null;
 
   const today = new Date().toISOString().slice(0, 10);
+  const contextBlock =
+    priorMessages && priorMessages.length > 0
+      ? `\n\nКОНТЕКСТ РАЗГОВОРА (предыдущие сообщения пользователя, от ранних к поздним):\n${priorMessages.map((m) => `— ${m}`).join("\n")}\n\nТЕКУЩИЙ ЗАПРОС:`
+      : "";
+
   try {
     const result = await openaiProvider.generateText({
       model: process.env.TELEGRAM_INTENT_MODEL || "gpt-4o-mini",
       temperature: 0,
       maxTokens: 300,
       systemPrompt: `${SYSTEM_PROMPT}\n\nToday: ${today}`,
-      userPrompt: text,
+      userPrompt: contextBlock ? `${contextBlock} ${text}` : text,
     });
     return parseIntentJson(result.text);
   } catch (error) {

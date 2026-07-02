@@ -42,6 +42,26 @@ type SearchResult = {
   url?: string;
 };
 
+// In-memory conversation history per chat (last 3 messages, TTL 10 min)
+const MAX_HISTORY = 3;
+const HISTORY_TTL_MS = 10 * 60 * 1000;
+type HistoryEntry = { text: string; ts: number };
+const chatHistory = new Map<number, HistoryEntry[]>();
+
+function getChatHistory(chatId: number): string[] {
+  const now = Date.now();
+  const entries = (chatHistory.get(chatId) ?? []).filter((e) => now - e.ts < HISTORY_TTL_MS);
+  return entries.map((e) => e.text);
+}
+
+function pushChatHistory(chatId: number, text: string): void {
+  const now = Date.now();
+  const entries = (chatHistory.get(chatId) ?? []).filter((e) => now - e.ts < HISTORY_TTL_MS);
+  entries.push({ text, ts: now });
+  if (entries.length > MAX_HISTORY) entries.splice(0, entries.length - MAX_HISTORY);
+  chatHistory.set(chatId, entries);
+}
+
 const UNKNOWN_TEXT = [
   "Не смог точно понять запрос.",
   "",
@@ -632,9 +652,13 @@ export async function handleTelegramReadOnlySearch(message: TelegramMessage, tex
     );
     return true;
   }
+  const chatId = message.chat.id;
+  const prior = getChatHistory(chatId);
+  pushChatHistory(chatId, text);
+
   const parsed = isTelegramSearchCommand(text)
     ? parseTextRequest(text)
-    : (await parseTelegramIntentWithLlm(text)) ?? parseTextRequest(text);
+    : (await parseTelegramIntentWithLlm(text, prior.length ? prior : undefined)) ?? parseTextRequest(text);
   await dispatchSearchRequest(message, parsed);
   return true;
 }
