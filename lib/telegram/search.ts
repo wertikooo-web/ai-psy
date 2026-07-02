@@ -1,6 +1,7 @@
+import { randomUUID } from "crypto";
 import { getClients } from "@/lib/data/clients";
 import { getConsultations, getConsultationsForClient } from "@/lib/data/consultations";
-import { getEntries } from "@/lib/data/notebook";
+import { addEntry, getEntries } from "@/lib/data/notebook";
 import { getPayments } from "@/lib/data/payments";
 import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 import { requireLinkedTelegramAccount } from "@/lib/telegram/auth";
@@ -21,6 +22,8 @@ export type TelegramIntent =
   | "get_upcoming_consultation"
   | "get_consultation_count"
   | "get_payment_total"
+  | "get_session_brief"
+  | "add_notebook_entry"
   | "unknown";
 
 type ParsedRequest = {
@@ -67,11 +70,12 @@ const UNKNOWN_TEXT = [
   "",
   "Можно написать, например:",
   "— Покажи всех клиентов",
+  "— Что помнить про Кирилла? (сводка перед сессией)",
   "— Последняя консультация Кирилла",
   "— Сколько консультаций было в июне?",
   "— Оплаты за июль",
   "— Найди заметки про тревогу",
-  "— Что обсуждали с Анной про маму",
+  "— Запиши: Кирилл упомянул детскую травму",
 ].join("\n");
 
 function appBaseUrl(): string {
@@ -218,6 +222,17 @@ function parseTextRequest(text: string): ParsedRequest {
     return { intent: "unknown" };
   }
 
+  // 2a. Quick note to notebook — "запиши:", "добавь в блокнот:", "заметка:"
+  if (/^(запиши|сохрани заметку|добавь в блокнот|заметка)[:\s]/i.test(raw)) {
+    const noteText = raw.replace(/^(запиши:?|сохрани заметку:?|добавь в блокнот:?|заметка:?)\s*/i, "").trim();
+    return { intent: "add_notebook_entry", query: noteText };
+  }
+
+  // 2b. Pre-session brief — "что помнить про Кирилла", "подготовка к сессии"
+  if (lower.includes("помнить") || lower.includes("подготовк") || (lower.includes("напомни") && !lower.includes("напомн"+"и мне"))) {
+    return { intent: "get_session_brief", clientName: extractClientNameFromPhrase(raw) };
+  }
+
   // 2. Payment / money patterns (check before "list clients" to avoid "сколько оплатили")
   if (lower.includes("оплат") || lower.includes("доход") || lower.includes("получен") || lower.includes("деньг") || lower.includes("начислен")) {
     return { intent: "get_payment_total", period: periodFromText(lower) };
@@ -227,9 +242,9 @@ function parseTextRequest(text: string): ParsedRequest {
   const clientList = parseClientListRequest(lower);
   if (clientList) return clientList;
 
-  // 4. Consultation count — "сколько консультаций было в июне"
+  // 4. Consultation count — "сколько консультаций было в июне", "сколько консультаций с Кириллом"
   if (lower.includes("сколько") && (lower.includes("консультац") || lower.includes("встреч") || lower.includes("сессий"))) {
-    return { intent: "get_consultation_count", period: periodFromText(lower) };
+    return { intent: "get_consultation_count", period: periodFromText(lower), clientName: extractClientNameFromPhrase(raw) };
   }
 
   // 5. Last consultation — "когда была последняя консультация с Васей", "последняя встреча"
@@ -421,13 +436,18 @@ async function sendLastConsultation(chatId: number, clientName: string | undefin
     await sendTelegramMessage(chatId, `У клиента ${client.name} консультаций пока нет.`, keyboardFromButtons([urlButton("Открыть клиента", getClientUrl(client.id))]));
     return;
   }
+  const latestAnalysis = latest.analyses?.length
+    ? latest.analyses[latest.analyses.length - 1]
+    : null;
   await sendTelegramMessage(
     chatId,
     [
       `Последняя консультация: ${formatDate(latest.createdAt)}`,
       `Клиент: ${client.name}`,
       latest.title ? `Тема: ${latest.title}` : "",
-      `Фрагмент: ${snippet(consultationText(latest), 220)}`,
+      latestAnalysis
+        ? `Анализ:\n${snippet(latestAnalysis.result, 350)}`
+        : `Фрагмент:\n${snippet(consultationText(latest), 220)}`,
     ].filter(Boolean).join("\n"),
     keyboardFromButtons([urlButton("Открыть консультацию", getConsultationUrl(latest.id))]),
   );
@@ -564,8 +584,16 @@ async function sendSearch(chatId: number, query: string | undefined, onlyNoteboo
   );
 }
 
-async function sendConsultationCount(chatId: number, period: ParsedRequest["period"]): Promise<void> {
+async function sendConsultationCount(chatId: number, period: ParsedRequest["period"], clientName?: string): Promise<void> {
   const range = currentPeriodRange(period);
+  if (clientName?.trim()) {
+    const client = await resolveSingleClient(chatId, clientName);
+    if (!client) return;
+    const all = await getConsultationsForClient(client.id);
+    const count = all.filter((item) => !range.from || inRange(item.createdAt, range)).length;
+    await sendTelegramMessage(chatId, `Консультаций с ${client.name} ${range.label}: ${count}.`, keyboardFromButtons([urlButton("Открыть клиента", getClientUrl(client.id))]));
+    return;
+  }
   const consultations = (await getConsultations()).filter((item) => !range.from || inRange(item.createdAt, range));
   await sendTelegramMessage(chatId, `Консультаций ${range.label}: ${consultations.length}.`, keyboardFromButtons([urlButton("Открыть аналитику", appUrl("/analytics"))]));
 }
@@ -617,6 +645,70 @@ async function sendUpcomingConsultation(chatId: number, clientName?: string): Pr
   );
 }
 
+async function sendSessionBrief(chatId: number, clientName: string | undefined): Promise<void> {
+  const client = await resolveSingleClient(chatId, clientName);
+  if (!client) return;
+  const consultations = await getConsultationsForClient(client.id);
+  const latest = consultations[0] ?? null;
+  const latestAnalysis = latest?.analyses?.length
+    ? latest.analyses[latest.analyses.length - 1]
+    : null;
+
+  let nextDate: string | null = null;
+  if (isSupabaseConfigured()) {
+    const { data } = await supabaseServer!
+      .from("calendar_events")
+      .select("starts_at")
+      .eq("client_id", client.id)
+      .gte("starts_at", new Date().toISOString())
+      .is("deleted_at", null)
+      .order("starts_at", { ascending: true })
+      .limit(1);
+    nextDate = (data?.[0]?.starts_at as string) ?? null;
+  }
+
+  const lines = [
+    `Клиент: ${client.name}`,
+    client.currentFocus ? `Текущий запрос: ${snippet(client.currentFocus, 150)}` : "",
+    `Консультаций всего: ${consultations.length}`,
+    latest ? `Последняя сессия: ${formatDate(latest.createdAt)}` : "Консультаций пока нет.",
+    latestAnalysis ? `\nАнализ последней сессии:\n${snippet(latestAnalysis.result, 400)}` : "",
+    nextDate ? `\nСледующая встреча: ${formatDate(nextDate)}` : "",
+  ].filter(Boolean).join("\n");
+
+  await sendTelegramMessage(
+    chatId,
+    lines,
+    keyboardFromButtons([
+      latest ? urlButton("Открыть последнюю консультацию", getConsultationUrl(latest.id)) : null,
+      urlButton("Открыть клиента", getClientUrl(client.id)),
+    ]),
+  );
+}
+
+async function saveNotebookEntry(chatId: number, text: string | undefined, clientName?: string): Promise<void> {
+  const noteText = text?.trim();
+  if (!noteText) {
+    await sendTelegramMessage(chatId, "Не понял, что записать. Напишите:\nЗапиши: текст заметки");
+    return;
+  }
+  const client = clientName?.trim() ? (await findClientsByName(clientName))[0] ?? null : null;
+  const entry = await addEntry({
+    id: randomUUID(),
+    text: noteText,
+    clientId: client?.id,
+  });
+  await sendTelegramMessage(
+    chatId,
+    [
+      "Заметка сохранена.",
+      client ? `Клиент: ${client.name}` : "",
+      `«${snippet(entry.text, 120)}»`,
+    ].filter(Boolean).join("\n"),
+    keyboardFromButtons([urlButton("Открыть блокнот", appUrl("/notebook"))]),
+  );
+}
+
 async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedRequest): Promise<void> {
   const chatId = message.chat.id;
   if (parsed.intent === "unknown") return sendTelegramMessage(chatId, UNKNOWN_TEXT);
@@ -627,8 +719,10 @@ async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedReq
   if (parsed.intent === "search_notebook") return sendSearch(chatId, parsed.query, true, parsed.clientName);
   if (parsed.intent === "search_consultations" || parsed.intent === "search_analyses") return sendSearch(chatId, parsed.query, false, parsed.clientName);
   if (parsed.intent === "get_upcoming_consultation") return sendUpcomingConsultation(chatId, parsed.clientName);
-  if (parsed.intent === "get_consultation_count") return sendConsultationCount(chatId, parsed.period);
+  if (parsed.intent === "get_consultation_count") return sendConsultationCount(chatId, parsed.period, parsed.clientName);
   if (parsed.intent === "get_payment_total") return sendPaymentTotal(chatId, parsed.period);
+  if (parsed.intent === "get_session_brief") return sendSessionBrief(chatId, parsed.clientName);
+  if (parsed.intent === "add_notebook_entry") return saveNotebookEntry(chatId, parsed.query, parsed.clientName);
   return sendTelegramMessage(chatId, UNKNOWN_TEXT);
 }
 
