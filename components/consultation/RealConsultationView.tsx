@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { StoredConsultation, ConsultationStatus } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
@@ -10,8 +10,9 @@ import {
   Play, NotebookPen, FileText, Loader2, AlertCircle,
   Download, ChevronDown, ChevronUp, BrainCircuit,
   CheckCircle2, CircleDashed, Trash2, Plus, ScanSearch, ChevronsLeft,
-  WalletCards,
+  WalletCards, LayoutPanelLeft,
 } from "lucide-react";
+import { Group, Panel, Separator, useDefaultLayout, usePanelCallbackRef } from "react-resizable-panels";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
 import { AnalysisBlockRenderer } from "@/components/analysis/AnalysisBlockRenderer";
 import { PaymentDialog, paymentStatusLabels, type PaymentRow } from "@/components/payments/PaymentDialog";
@@ -435,6 +436,39 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const whisperText    = c.transcript?.text ?? null;
   const [panelCollapsed, setPanelCollapsed] = useState({ transcript: false, analysis: false, chat: false });
 
+  // ── Resizable panels refs ─────────────────────────────────────────────────
+  const [transcriptPanelRef, setTranscriptPanelRef] = usePanelCallbackRef();
+  const [analysisPanelRef,   setAnalysisPanelRef]   = usePanelCallbackRef();
+  const [chatPanelRef,       setChatPanelRef]        = usePanelCallbackRef();
+
+  // Sync collapse state → panel imperative API
+  useEffect(() => {
+    if (!transcriptPanelRef) return;
+    if (panelCollapsed.transcript) transcriptPanelRef.collapse();
+    else transcriptPanelRef.expand();
+  }, [panelCollapsed.transcript, transcriptPanelRef]);
+
+  useEffect(() => {
+    if (!analysisPanelRef) return;
+    if (panelCollapsed.analysis) analysisPanelRef.collapse();
+    else analysisPanelRef.expand();
+  }, [panelCollapsed.analysis, analysisPanelRef]);
+
+  useEffect(() => {
+    if (!chatPanelRef) return;
+    if (panelCollapsed.chat) chatPanelRef.collapse();
+    else chatPanelRef.expand();
+  }, [panelCollapsed.chat, chatPanelRef]);
+
+  // Reset layout to defaults
+  const resetLayout = useCallback(() => {
+    try { localStorage.removeItem("consultation-panel-layout-v1"); } catch {}
+    setPanelCollapsed({ transcript: false, analysis: false, chat: false });
+    // After removing from storage, reload to get fresh defaults
+    // (alternative: use groupRef.setLayout — but simpler to let useDefaultLayout re-init)
+    window.location.reload();
+  }, []);
+
   const clientHref  = c.clientId ? `/client/${c.clientId}` : "/";
   const displayTitle = cleanTitle(c.title);
   const sourceLabel  = source === "audio" ? "Аудиозапись" : source === "notes" ? "Заметки" : "Транскрипт";
@@ -452,6 +486,16 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
     currentStatus === "transcribing"? "Транскрипция..." :
     currentStatus === "analyzing"   ? "Анализ..." :
     "Ожидает транскрипции";
+
+  // ── useDefaultLayout for localStorage persistence ─────────────────────────
+  const PANEL_IDS = ["transcript", "analysis", "chat"] as const;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    groupId: "consultation-panel-layout-v1",
+    panelIds: [...PANEL_IDS],
+    storage: typeof window !== "undefined" ? localStorage : undefined,
+    onlySaveAfterUserInteractions: true,
+  });
 
   // ── 3-panel view after analysis ─────────────────────────────────────────────
   if (hasAnyResult || generatingMode !== null) {
@@ -484,30 +528,113 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               )}
             </div>
           </div>
+          {/* Reset layout button */}
+          <button
+            onClick={resetLayout}
+            title="Сбросить ширину колонок (34 / 33 / 33)"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors flex-shrink-0"
+            style={{ color: "#9C8E80", border: "1px solid #D8CFBE", background: "transparent" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#EDE7DA"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+          >
+            <LayoutPanelLeft size={13} />
+            Сбросить колонки
+          </button>
         </header>
 
-        <div className="flex-1 min-h-0 flex items-stretch overflow-hidden divide-x divide-[#D8CFBE]">
-          <TranscriptPanel
-            consultationId={c.id}
-            clientId={c.clientId ?? undefined}
-            segments={segments}
-            plainText={whisperText ?? undefined}
-            notesText={notesText ?? undefined}
-            isNotes={isNotesOnly}
-            materials={clientMaterials}
-            transcriptFormatted={c.transcriptFormatted}
-            hasTranscriptRaw={!!c.transcript?.text}
-            hasWhisperSegments={!!c.transcriptSegments?.length}
-            audioDeletedAt={c.audioDeletedAt}
-            clientName={c.clientName}
-            consultationDate={c.createdAt}
-            collapsed={panelCollapsed.transcript}
-            onToggle={() => setPanelCollapsed(p => ({ ...p, transcript: !p.transcript }))}
-            onRefresh={() => router.refresh()}
-            onFormattedCreated={() => setAnalysisStale(true)}
+        {/* Resize handle styles */}
+        <style>{`
+          .consultation-resize-handle {
+            width: 5px;
+            background: transparent;
+            position: relative;
+            cursor: col-resize;
+            flex-shrink: 0;
+            outline: none;
+          }
+          .consultation-resize-handle::after {
+            content: '';
+            position: absolute;
+            top: 0; bottom: 0;
+            left: 50%; transform: translateX(-50%);
+            width: 1px;
+            background: #D8CFBE;
+            transition: background 150ms, width 150ms;
+          }
+          .consultation-resize-handle:hover::after,
+          .consultation-resize-handle[data-resize-handle-active]::after {
+            width: 2px;
+            background: #B8A898;
+          }
+          .consultation-resize-handle:focus-visible::after {
+            width: 2px;
+            background: #6B5D4F;
+          }
+        `}</style>
+
+        <Group
+          orientation="horizontal"
+          id="consultation-panel-layout-v1"
+          defaultLayout={defaultLayout}
+          onLayoutChanged={onLayoutChanged}
+          className="flex-1 min-h-0"
+          style={{ display: "flex", overflow: "hidden" }}
+        >
+          {/* ── Transcript Panel ── */}
+          <Panel
+            id="transcript"
+            panelRef={setTranscriptPanelRef}
+            defaultSize={34}
+            minSize={18}
+            collapsible
+            collapsedSize="48px"
+            onResize={(size) => {
+              // Sync panel collapse state when dragged to collapsed size
+              const isCollapsed = size.inPixels !== undefined && size.inPixels <= 50;
+              setPanelCollapsed(p => p.transcript === isCollapsed ? p : { ...p, transcript: isCollapsed });
+            }}
+            style={{ display: "flex", overflow: "hidden" }}
+          >
+            <TranscriptPanel
+              consultationId={c.id}
+              clientId={c.clientId ?? undefined}
+              segments={segments}
+              plainText={whisperText ?? undefined}
+              notesText={notesText ?? undefined}
+              isNotes={isNotesOnly}
+              materials={clientMaterials}
+              transcriptFormatted={c.transcriptFormatted}
+              hasTranscriptRaw={!!c.transcript?.text}
+              hasWhisperSegments={!!c.transcriptSegments?.length}
+              audioDeletedAt={c.audioDeletedAt}
+              clientName={c.clientName}
+              consultationDate={c.createdAt}
+              collapsed={panelCollapsed.transcript}
+              onToggle={() => setPanelCollapsed(p => ({ ...p, transcript: !p.transcript }))}
+              onRefresh={() => router.refresh()}
+              onFormattedCreated={() => setAnalysisStale(true)}
+            />
+          </Panel>
+
+          <Separator
+            className="consultation-resize-handle"
+            aria-label="Разделитель: Заметки / AI-анализ"
           />
 
-          {/* Analysis panel */}
+          {/* ── Analysis Panel ── */}
+          <Panel
+            id="analysis"
+            panelRef={setAnalysisPanelRef}
+            defaultSize={33}
+            minSize={20}
+            collapsible
+            collapsedSize="48px"
+            onResize={(size) => {
+              const isCollapsed = size.inPixels !== undefined && size.inPixels <= 50;
+              setPanelCollapsed(p => p.analysis === isCollapsed ? p : { ...p, analysis: isCollapsed });
+            }}
+            style={{ display: "flex", overflow: "hidden" }}
+          >
           {panelCollapsed.analysis ? (
             <CollapsedConsultationPanel
               label="AI-анализ"
@@ -723,13 +850,34 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             </div>
           </div>
           )}
+          </Panel>
 
-          <ChatPanel
-            collapsed={panelCollapsed.chat}
-            onToggle={() => setPanelCollapsed(p => ({ ...p, chat: !p.chat }))}
-            consultationId={c.id}
+          <Separator
+            className="consultation-resize-handle"
+            aria-label="Разделитель: AI-анализ / Чат"
           />
-        </div>
+
+          {/* ── Chat Panel ── */}
+          <Panel
+            id="chat"
+            panelRef={setChatPanelRef}
+            defaultSize={33}
+            minSize={18}
+            collapsible
+            collapsedSize="48px"
+            onResize={(size) => {
+              const isCollapsed = size.inPixels !== undefined && size.inPixels <= 50;
+              setPanelCollapsed(p => p.chat === isCollapsed ? p : { ...p, chat: isCollapsed });
+            }}
+            style={{ display: "flex", overflow: "hidden" }}
+          >
+            <ChatPanel
+              collapsed={panelCollapsed.chat}
+              onToggle={() => setPanelCollapsed(p => ({ ...p, chat: !p.chat }))}
+              consultationId={c.id}
+            />
+          </Panel>
+        </Group>
       </div>
     );
   }
