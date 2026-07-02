@@ -10,6 +10,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { AddClientModal } from "@/components/client/AddClientModal";
 import { UserPlus, Mic, ArrowRight, CheckCircle2, Clock, Users, FileText, Calendar, ChevronRight } from "lucide-react";
+import { AnimatedCityScene } from "@/components/home/AnimatedCityScene";
 import { pluralMeetings } from "@/lib/format";
 
 type AnyClient       = StoredClient       & { isMock?: boolean };
@@ -310,6 +311,8 @@ export default function HomePage() {
 
       {/* ── Desktop layout ────────────────────────────────────────── */}
       <section className="hidden lg:flex flex-col flex-1 min-h-0 relative overflow-hidden" style={{ background: "#FBF8F5" }}>
+
+        <AnimatedCityScene />
 
         <div className="relative z-10 flex flex-col h-full overflow-y-auto">
 
