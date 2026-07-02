@@ -139,12 +139,12 @@ export function ObservationsTab({ clientId, isMock }: Props) {
           {!isMock && (
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("open-observation-modal"))}
-              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors"
-              style={{ color: S.countTxt }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = S.count)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors flex-shrink-0"
+              style={{ background: "#D4C5B1", color: "#4A3C2E" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#C9BBAA")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#D4C5B1")}
             >
-              <Plus size={12} />
+              <Plus size={11} />
               Добавить
             </button>
           )}
