@@ -160,7 +160,7 @@ export function ConsultationsTab({
   if (realSessions.length === 0) return <Empty onUpload={onUpload} label={uploadBtnLabel} />;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {realSessions.map((c, idx) => {
         const hasAudio      = !!(c.audio?.fileUrl ?? c.fileUrl);
         const hasTranscript = !!c.transcript?.text;
@@ -173,13 +173,14 @@ export function ConsultationsTab({
         return (
           <div
             key={c.id}
-            className="rounded-2xl border p-4 transition-colors hover:bg-[#FFFDF8]"
+            className="rounded-xl border overflow-hidden transition-colors hover:bg-[#FFFDF8]"
             style={{ background: S.bg, borderColor: S.border }}
           >
-            <div className="flex items-start gap-3">
+            {/* ── Top row: number · title · date · payment · delete ── */}
+            <div className="flex items-center gap-3 px-4 pt-3.5 pb-3">
               <SessionNumber n={idx + 1} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold leading-snug" style={{ color: S.title }}>{displayTitle}</p>
+                <p className="text-sm font-semibold leading-snug truncate" style={{ color: S.title }}>{displayTitle}</p>
                 <p className="text-xs text-stone-400 mt-0.5">{formatDate(c.createdAt ?? c.uploadedAt ?? "")}</p>
                 {c.requestId && requestsMap[c.requestId] && (
                   <p
@@ -187,46 +188,54 @@ export function ConsultationsTab({
                     style={{ color: "#9C8E80" }}
                     title={requestsMap[c.requestId]}
                   >
-                    Запрос: {requestsMap[c.requestId].slice(0, 50)}{requestsMap[c.requestId].length > 50 ? "…" : ""}
+                    {requestsMap[c.requestId].slice(0, 55)}{requestsMap[c.requestId].length > 55 ? "…" : ""}
                   </p>
                 )}
               </div>
               <button
                 onClick={() => setPaymentFor(c)}
-                className="flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors flex-shrink-0"
+                className="flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors flex-shrink-0"
                 style={{
-                  borderColor: "#D8CFBE",
-                  color: "#6B5D4F",
-                  background: paymentStatus === "paid" ? "#EFFAF3" : paymentStatus === "partial" ? "#FFF7E0" : "#FFF8EA",
+                  borderColor: paymentStatus === "paid" ? "#86EFAC" : paymentStatus === "partial" ? "#FCD34D" : "#D8CFBE",
+                  color: paymentStatus === "paid" ? "#16a34a" : paymentStatus === "partial" ? "#92400e" : "#6B5D4F",
+                  background: paymentStatus === "paid" ? "#F0FDF4" : paymentStatus === "partial" ? "#FFFBEB" : "#FFFFFF",
                 }}
-                title="Внести оплату"
+                title="Оплата"
               >
-                <WalletCards size={12} />
+                <WalletCards size={11} />
                 {paymentStatus ? paymentStatusLabels[paymentStatus] : "Оплата"}
               </button>
               <button
                 onClick={() => handleDelete(c.id)}
                 disabled={deletingId === c.id}
                 className="flex items-center justify-center rounded-lg transition-colors flex-shrink-0 disabled:opacity-40"
-                style={{ width: 28, height: 28, background: "#FEF2F2", border: "1px solid #FECACA", color: "#EF4444" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FCA5A5"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.borderColor = "#FECACA"; }}
+                style={{ width: 26, height: 26, background: "transparent", border: "1px solid #FECACA", color: "#EF4444" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#FEF2F2"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                 title="Удалить запись"
               >
-                <Trash2 size={13} />
+                <Trash2 size={12} />
               </button>
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3 pl-11">
+
+            {/* ── Divider ── */}
+            <div style={{ height: 1, background: S.divider, marginLeft: 16, marginRight: 16 }} />
+
+            {/* ── Bottom row: badges · open link ── */}
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5" style={{ paddingLeft: 60 }}>
               <div className="flex flex-wrap items-center gap-1.5">
-                <MiniStatus ok={hasAudio}       label="Аудио" />
-                <MiniStatus ok={hasTranscript}  label="Транскрипт" />
-                <MiniStatus ok={hasAnalysis}    label="Анализ" />
+                <MiniStatus ok={hasAudio}      label="Аудио" />
+                <MiniStatus ok={hasTranscript} label="Транскрипт" />
+                <MiniStatus ok={hasAnalysis}   label="Анализ" />
               </div>
               <Link
                 href={`/consultation/${c.id}`}
-                className="flex flex-shrink-0 items-center gap-1 text-xs font-medium text-brand-500 transition-colors hover:text-brand-600"
+                className="flex flex-shrink-0 items-center gap-1 text-xs font-medium transition-colors"
+                style={{ color: "#7C6B5A" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = "#5C4D3C"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = "#7C6B5A"; }}
               >
-                Открыть <ArrowRight size={12} />
+                Открыть <ArrowRight size={11} />
               </Link>
             </div>
           </div>
