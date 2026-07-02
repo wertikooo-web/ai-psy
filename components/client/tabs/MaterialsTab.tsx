@@ -115,12 +115,12 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
             <div
               key={m.id}
               className="rounded-2xl border overflow-hidden"
-              style={{ background: S.bg, borderColor: S.border }}
+              style={{ background: "#FFFFFF", borderColor: S.border }}
             >
               {/* Clickable header row */}
               <button
                 className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors"
-                style={{ background: isOpen ? "#DDD0BC" : S.header }}
+                style={{ background: isOpen ? S.header : "#FFFFFF" }}
                 onClick={() => setExpanded(isOpen ? null : m.id)}
               >
                 {/* Chevron */}
@@ -168,7 +168,7 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
 
               {/* Expanded content */}
               {isOpen && (
-                <div className="px-5 py-4" style={{ borderTop: `1px solid ${S.divider}` }}>
+                <div className="px-5 py-4" style={{ borderTop: `1px solid ${S.divider}`, background: S.bg }}>
                   <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
                     {m.content}
                   </p>
