@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, Users, FileText, BookOpen, Bot,
+  Home, Users, FileText, Bot,
   Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, BookOpenText,
   PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays, BarChart3, WalletCards,
 } from "lucide-react";
@@ -53,7 +53,6 @@ const toolsNav = [
 ];
 const systemNav = [
   { href: "/analytics",      label: "Аналитика",   icon: BarChart3  },
-  { href: "/knowledge-base", label: "База знаний", icon: BookOpen   },
   { href: "/settings",       label: "Настройки",   icon: Settings   },
   { href: "/help",     label: "Помощь",             icon: HelpCircle  },
   { href: "/about",    label: "About",              icon: Info        },

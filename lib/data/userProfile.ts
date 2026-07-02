@@ -59,7 +59,30 @@ export async function writeProfile(profile: Partial<UserProfile>): Promise<void>
     const { error } = await supabaseServer!
       .from("user_profile")
       .upsert({ id: "default", ...patch }, { onConflict: "id" });
+
     if (error) {
+      // 42703 = column does not exist — migration 020 not yet applied in this Supabase instance.
+      // Retry without the newer profile columns so core fields (name, AI settings) still save.
+      if (error.code === "42703") {
+        const safePatch: Record<string, unknown> = {
+          updated_at:           patch.updated_at,
+          ...(patch.first_name            !== undefined && { first_name:            patch.first_name            }),
+          ...(patch.last_name             !== undefined && { last_name:             patch.last_name             }),
+          ...(patch.display_name          !== undefined && { display_name:          patch.display_name          }),
+          ...(patch.default_analysis_mode !== undefined && { default_analysis_mode: patch.default_analysis_mode }),
+          ...(patch.ai_model              !== undefined && { ai_model:              patch.ai_model              }),
+          ...(patch.analysis_style        !== undefined && { analysis_style:        patch.analysis_style        }),
+          ...(patch.analysis_length       !== undefined && { analysis_length:       patch.analysis_length       }),
+          ...(patch.chat_style            !== undefined && { chat_style:            patch.chat_style            }),
+          ...(patch.ai_instructions       !== undefined && { ai_instructions:       patch.ai_instructions       }),
+        };
+        console.warn("PROFILE_SAVE: migration 020 not applied, retrying without newer columns. Run supabase/migrations/020_user_profile_profile_fields.sql in your Supabase SQL editor.");
+        const { error: retryErr } = await supabaseServer!
+          .from("user_profile")
+          .upsert({ id: "default", ...safePatch }, { onConflict: "id" });
+        if (retryErr) throw new Error(retryErr.message);
+        return;
+      }
       console.error("PROFILE_SAVE_FAILED", {
         code:    error.code,
         message: error.message,

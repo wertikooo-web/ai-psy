@@ -70,12 +70,12 @@ const UNKNOWN_TEXT = [
   "",
   "Можно написать, например:",
   "— Покажи всех клиентов",
-  "— Что помнить про Кирилла? (сводка перед сессией)",
-  "— Последняя консультация Кирилла",
+  "— Что помнить про клиента? (сводка перед сессией)",
+  "— Последняя консультация клиента",
   "— Сколько консультаций было в июне?",
   "— Оплаты за июль",
   "— Найди заметки про тревогу",
-  "— Запиши: Кирилл упомянул детскую травму",
+  "— Запиши: клиент упомянул важную тему",
 ].join("\n");
 
 function appBaseUrl(): string {
@@ -228,7 +228,7 @@ function parseTextRequest(text: string): ParsedRequest {
     return { intent: "add_notebook_entry", query: noteText };
   }
 
-  // 2b. Pre-session brief — "что помнить про Кирилла", "подготовка к сессии"
+  // 2b. Pre-session brief — "что помнить про клиента", "подготовка к сессии"
   if (lower.includes("помнить") || lower.includes("подготовк") || (lower.includes("напомни") && !lower.includes("напомн"+"и мне"))) {
     return { intent: "get_session_brief", clientName: extractClientNameFromPhrase(raw) };
   }
@@ -242,7 +242,7 @@ function parseTextRequest(text: string): ParsedRequest {
   const clientList = parseClientListRequest(lower);
   if (clientList) return clientList;
 
-  // 4. Consultation count — "сколько консультаций было в июне", "сколько консультаций с Кириллом"
+  // 4. Consultation count — "сколько консультаций было в июне", "сколько консультаций с клиентом"
   if (lower.includes("сколько") && (lower.includes("консультац") || lower.includes("встреч") || lower.includes("сессий"))) {
     return { intent: "get_consultation_count", period: periodFromText(lower), clientName: extractClientNameFromPhrase(raw) };
   }

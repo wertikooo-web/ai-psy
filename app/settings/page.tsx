@@ -525,6 +525,25 @@ export default function SettingsPage() {
             />
           </SettingsSection>
 
+          <Link
+            href="/knowledge-base"
+            className="settings-section flex items-center justify-between rounded-2xl border px-6 py-4 text-left shadow-sm transition-colors"
+            style={{ background: "#F0EBE3", borderColor: "#E5DDD2" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#EDE7DA"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#F0EBE3"; }}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#E5DDD2", color: "#6B5D4F" }}>
+                <BookOpen size={14} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold" style={{ color: "#4A3C2E" }}>База знаний</div>
+                <div className="text-xs truncate mt-0.5" style={{ color: "#A8997F" }}>Файлы, которые используются в AI-анализе консультаций</div>
+              </div>
+            </div>
+            <ExternalLink size={15} className="flex-shrink-0 ml-3" style={{ color: "#A8997F" }} />
+          </Link>
+
           {/* 5. Transcription */}
           <SettingsSection
             title="Транскрибация"

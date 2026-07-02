@@ -191,6 +191,8 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const [analysisError, setAnalysisError]   = useState<string | null>(null);
   const [paymentOpen, setPaymentOpen]       = useState(false);
   const [payment, setPayment]               = useState<PaymentRow | null>(null);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const downloadMenuRef = useRef<HTMLDivElement>(null);
 
   // Client context: materials (full objects) + history count
   const [clientMaterials, setClientMaterials] = useState<import("@/lib/types").ClientMaterial[]>([]);
@@ -245,6 +247,17 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
     document.addEventListener("keydown", onEsc);
     return () => { document.removeEventListener("mousedown", onOutside); document.removeEventListener("keydown", onEsc); };
   }, [addMenuOpen]);
+
+  useEffect(() => {
+    if (!downloadMenuOpen) return;
+    function onOutside(e: MouseEvent) {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target as Node)) setDownloadMenuOpen(false);
+    }
+    function onEsc(e: KeyboardEvent) { if (e.key === "Escape") setDownloadMenuOpen(false); }
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onOutside); document.removeEventListener("keydown", onEsc); };
+  }, [downloadMenuOpen]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
   async function runTranscription() {
@@ -332,6 +345,85 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
   const analysesByMode = new Map<ModeId, typeof analyses[0]>();
   for (const a of analyses) analysesByMode.set(a.mode as ModeId, a);
   const selectedAnalysis = displayedMode ? (analysesByMode.get(displayedMode) ?? null) : null;
+  const selectedAnalysisLabel = displayedMode
+    ? (ANALYSIS_MODES.find(m => m.id === displayedMode)?.label ?? displayedMode)
+    : "AI-анализ";
+
+  function buildSelectedAnalysisText() {
+    if (!selectedAnalysis) return "";
+    return [
+      `AI-анализ консультации`,
+      `Клиент: ${c.clientName ?? "Клиент"}`,
+      `Режим: ${selectedAnalysisLabel}`,
+      `Дата консультации: ${dateStr ? new Date(dateStr).toLocaleDateString("ru-RU") : "—"}`,
+      `Дата анализа: ${selectedAnalysis.createdAt ? new Date(selectedAnalysis.createdAt).toLocaleString("ru-RU") : "—"}`,
+      "",
+      selectedAnalysis.result,
+    ].join("\n");
+  }
+
+  async function downloadSelectedAnalysis(format: "pdf" | "txt" | "md" | "docx") {
+    if (!selectedAnalysis) return;
+    setDownloadMenuOpen(false);
+    const safeClient = (c.clientName || "client").replace(/[\\/:*?"<>|]+/g, "-").trim();
+    const baseName = `AI-анализ_${safeClient}_${selectedAnalysis.mode || "analysis"}`;
+    const text = buildSelectedAnalysisText();
+
+    if (format === "txt") {
+      downloadBlob(text, `${baseName}.txt`);
+      return;
+    }
+
+    if (format === "md") {
+      const md = [
+        "# AI-анализ консультации",
+        "",
+        `**Клиент:** ${c.clientName ?? "Клиент"}`,
+        `**Режим:** ${selectedAnalysisLabel}`,
+        `**Дата консультации:** ${dateStr ? new Date(dateStr).toLocaleDateString("ru-RU") : "—"}`,
+        `**Дата анализа:** ${selectedAnalysis.createdAt ? new Date(selectedAnalysis.createdAt).toLocaleString("ru-RU") : "—"}`,
+        "",
+        selectedAnalysis.result,
+      ].join("\n");
+      downloadBlob(md, `${baseName}.md`, "text/markdown;charset=utf-8");
+      return;
+    }
+
+    if (format === "docx") {
+      const { Document, HeadingLevel, Packer, Paragraph, TextRun } = await import("docx");
+      const doc = new Document({
+        sections: [{
+          children: [
+            new Paragraph({ text: "AI-анализ консультации", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ children: [new TextRun({ text: "Клиент: ", bold: true }), new TextRun(c.clientName ?? "Клиент")] }),
+            new Paragraph({ children: [new TextRun({ text: "Режим: ", bold: true }), new TextRun(selectedAnalysisLabel)] }),
+            new Paragraph({ text: "" }),
+            ...selectedAnalysis.result.split(/\n{2,}/).map((part) => new Paragraph({ text: part.replace(/\n/g, " ") })),
+          ],
+        }],
+      });
+      const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${baseName}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    const escaped = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\n/g, "<br>");
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${baseName}</title><style>body{font-family:Georgia,serif;max-width:760px;margin:40px auto;padding:0 24px;line-height:1.65;color:#2f261f}h1{font-size:22px}</style></head><body><h1>AI-анализ консультации</h1><div>${escaped}</div><script>window.onload=()=>window.print()<\/script></body></html>`);
+    win.document.close();
+  }
   // Whether the selected analysis has any evidence tooltip icons
   const hasEvidenceIcons = !!selectedAnalysis?.blocks?.some(
     b => b.isInterpretive && Array.isArray(b.evidenceTooltip) && b.evidenceTooltip.length > 0,
@@ -446,6 +538,45 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               </div>
 
               <div className="flex items-center gap-1.5 flex-shrink-0">
+                {selectedAnalysis && (
+                  <div className="relative" ref={downloadMenuRef}>
+                    <button
+                      onClick={() => setDownloadMenuOpen(v => !v)}
+                      title="Скачать весь анализ"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+                      style={{
+                        background: downloadMenuOpen ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)",
+                        color: "#FFFFFF",
+                        border: downloadMenuOpen ? "1.5px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.18)",
+                      }}
+                    >
+                      <Download size={13} />
+                    </button>
+                    {downloadMenuOpen && (
+                      <div className="absolute right-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-xl border py-1 shadow-xl" style={{ background: "#FAF8F5", borderColor: "#D8CFBE" }}>
+                        <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#9C8E80" }}>
+                          Скачать весь анализ
+                        </div>
+                        {([
+                          ["pdf", "PDF (по умолчанию)"],
+                          ["txt", "Текст (.txt)"],
+                          ["md", "Markdown (.md)"],
+                          ["docx", "Word (.docx)"],
+                        ] as const).map(([fmt, label]) => (
+                          <button
+                            key={fmt}
+                            onClick={() => downloadSelectedAnalysis(fmt)}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-stone-100"
+                            style={{ color: "#4A3C2E" }}
+                          >
+                            <FileText size={12} style={{ color: "#9C8E80" }} />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Лупа toggle — show/hide evidence icons without affecting analysis text */}
                 {selectedAnalysis && (
                   <button
