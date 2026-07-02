@@ -374,8 +374,8 @@ function WeekView({
             return (
               <div
                 key={di}
-                className="flex-1 relative border-r border-[#F3F4F6] last:border-r-0"
-                style={{ background: di >= 5 ? "#F2EDE4" : "#F7F3EA" }}
+                className="flex-1 relative border-r border-[#E8E2D8] last:border-r-0"
+                style={{ background: di >= 5 ? "#F5F0E8" : "#FDFCF9" }}
                 onClick={(e) => {
                   if ((e.target as HTMLElement) === e.currentTarget) {
                     const rect = e.currentTarget.getBoundingClientRect();
@@ -388,7 +388,7 @@ function WeekView({
                 {/* Hour lines */}
                 {hours.map((h) => (
                   <div key={h} style={{ height: HOUR_H }}
-                    className="border-b border-[#F3F4F6] cursor-pointer hover:bg-blue-50/20 transition-colors"
+                    className="border-b border-[#E8E2D8] cursor-pointer hover:bg-amber-50/20 transition-colors"
                     onClick={() => onSlotClick(day, h)}
                   />
                 ))}
