@@ -71,7 +71,7 @@ function NavItem({
     <Link
       href={href}
       onClick={onNavigate}
-      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+      className="flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-medium transition-all"
       style={{
         background: active ? C.active : "transparent",
         color:      active ? C.activeTxt : C.idleTxt,
@@ -112,7 +112,7 @@ function DecoBtn({
 // ── Nav groups ────────────────────────────────────────────────────────────────
 function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void; onUpload: () => void; onSearch?: () => void }) {
   return (
-    <nav className="flex-1 px-3 py-5 overflow-y-auto flex flex-col gap-8">
+    <nav className="flex-1 px-3 py-2 overflow-y-auto flex flex-col gap-3">
 
       {/* ── Global search button ── */}
       {onSearch && (
@@ -130,7 +130,7 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
       )}
 
       <div className="space-y-0.5">
-        <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+        <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Основное
         </div>
         {mainNav.map(({ href, label, icon }) => (
@@ -138,7 +138,7 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         ))}
         <button
           onClick={onUpload}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+          className="w-full flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-medium transition-all"
           style={{ color: C.idleTxt, background: "transparent" }}
           onMouseEnter={(e) => { e.currentTarget.style.background = C.hover; e.currentTarget.style.color = C.activeTxt; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.idleTxt; }}
@@ -149,7 +149,7 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
       </div>
 
       <div className="space-y-0.5">
-        <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+        <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Инструменты
         </div>
         {toolsNav.map(({ href, label, icon }) => (
@@ -158,7 +158,7 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
       </div>
 
       <div className="space-y-0.5">
-        <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+        <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Система
         </div>
         {systemNav.map(({ href, label, icon }) => (
