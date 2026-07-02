@@ -1036,8 +1036,136 @@ export default function CalendarPage() {
     if (view === "month") { setCurrent(day); setView("day"); }
   }, [view]);
 
+  // Mobile: compute mini calendar for current month
+  const mobileMonthStart = startOfMonth(current);
+  const mobileCalStart   = startOfWeek(mobileMonthStart);
+  const mobileDays       = Array.from({ length: 35 }, (_, i) => addDays(mobileCalStart, i));
+
+  // Days that have events (set of date keys)
+  const daysWithEvents = useMemo(() => {
+    const s = new Set<string>();
+    events.forEach((ev) => s.add(isoToLocalDate(ev.startsAt)));
+    return s;
+  }, [events]);
+
+  // Upcoming events: next 5 from today
+  const upcomingEvents = useMemo(() => {
+    const todayKey = dateKey(today);
+    return [...events]
+      .filter((ev) => isoToLocalDate(ev.startsAt) >= todayKey)
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+      .slice(0, 5);
+  }, [events, today]);
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#F9FAFB]">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+
+    {/* ── MOBILE LAYOUT ── */}
+    <div className="lg:hidden flex-1 overflow-y-auto" style={{ background: "#FBF8F5" }}>
+      {/* Header */}
+      <div className="sticky top-0 z-10" style={{ background: "#FBF8F5", borderBottom: "1px solid #CFC0A9", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 18, fontWeight: 700, color: "#3D3228" }}>Календарь</span>
+        <button
+          onClick={() => openCreate()}
+          style={{ display: "flex", alignItems: "center", gap: 5, background: "#3a5ff8", color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+        >
+          <Plus size={13} /> Новая
+        </button>
+      </div>
+
+      <div style={{ padding: "12px 16px", paddingBottom: 80 }}>
+        {/* Mini month calendar */}
+        <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px", marginBottom: 16 }}>
+          {/* Month navigation */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <button onClick={goPrev} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B5D4F", padding: 4 }}>
+              <ChevronLeft size={18} />
+            </button>
+            <span style={{ fontWeight: 700, fontSize: 14, color: "#3D3228" }}>
+              {MONTH_NAMES[current.getMonth()]} {current.getFullYear()}
+            </span>
+            <button onClick={goNext} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B5D4F", padding: 4 }}>
+              <ChevronRight size={18} />
+            </button>
+          </div>
+          {/* Day headers */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
+            {WEEK_DAYS_SHORT.map((d) => (
+              <div key={d} style={{ textAlign: "center", fontSize: 10, fontWeight: 700, color: "#A8997F", padding: "2px 0" }}>{d}</div>
+            ))}
+          </div>
+          {/* Days grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "2px 0" }}>
+            {mobileDays.map((day) => {
+              const key     = dateKey(day);
+              const isToday = isSameDay(day, today);
+              const inMonth = day.getMonth() === current.getMonth();
+              const hasEvt  = daysWithEvents.has(key);
+              return (
+                <div
+                  key={key}
+                  onClick={() => { setCurrent(day); setView("day"); }}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "3px 0", cursor: "pointer", opacity: inMonth ? 1 : 0.35 }}
+                >
+                  <span style={{
+                    width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 13, fontWeight: isToday ? 800 : 500,
+                    background: isToday ? "#3a5ff8" : "transparent",
+                    color: isToday ? "#fff" : "#3D3228",
+                  }}>
+                    {day.getDate()}
+                  </span>
+                  {hasEvt && inMonth && (
+                    <span style={{ width: 4, height: 4, borderRadius: "50%", background: isToday ? "#fff" : "#3a5ff8", marginTop: 1 }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Upcoming sessions */}
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#A8997F", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Ближайшие сессии</div>
+        {upcomingEvents.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "32px 0", color: "#A8997F", fontSize: 13 }}>
+            Нет предстоящих сессий
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {upcomingEvents.map((ev) => {
+              const initials = ev.clientName.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+              return (
+                <button
+                  key={ev.id}
+                  onClick={() => setSelectedEvent(ev)}
+                  style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, textAlign: "left", cursor: "pointer", width: "100%" }}
+                >
+                  <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", minWidth: 36 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#A8997F", textTransform: "uppercase" }}>
+                      {new Date(ev.startsAt).toLocaleDateString("ru-RU", { month: "short" })}
+                    </span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: "#3D3228", lineHeight: 1 }}>
+                      {new Date(ev.startsAt).getDate()}
+                    </span>
+                  </div>
+                  <div style={{ width: 1, background: "#CFC0A9", alignSelf: "stretch" }} />
+                  <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#6B5D4F", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                    {initials || ev.clientName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#3D3228", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.clientName || ev.title}</div>
+                    <div style={{ fontSize: 12, color: "#A8997F", marginTop: 2 }}>{fmtTime(ev.startsAt)}–{fmtTime(ev.endsAt)}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* ── DESKTOP LAYOUT ── */}
+    <div className="hidden lg:flex flex-col h-full overflow-hidden bg-[#F9FAFB]">
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header className="flex items-center gap-3 px-4 py-3 bg-white border-b border-[#E5E7EB] flex-shrink-0">
         {/* Nav buttons */}
@@ -1123,36 +1251,38 @@ export default function CalendarPage() {
         )}
       </main>
 
-      {/* ── Modals ─────────────────────────────────────────────────────── */}
-      {selectedEvent && (
-        <EventDetailModal
-          event={selectedEvent}
-          onClose={() => setSelectedEvent(null)}
-          onEdit={() => openEdit(selectedEvent)}
-          onDelete={() => setDeleteTarget(selectedEvent.id)}
-          onStatusChange={(s) => handleStatusChange(selectedEvent, s)}
-        />
-      )}
+    </div>{/* end hidden lg:flex */}
 
-      {form && (
-        <EventFormModal
-          form={form}
-          clients={clients}
-          saving={saving}
-          onClose={() => setForm(null)}
-          onSave={handleSave}
-          onChange={(patch) => setForm((f) => f ? { ...f, ...patch } : null)}
-        />
-      )}
+    {/* ── Modals (shared mobile + desktop, fixed positioning) ── */}
+    {selectedEvent && (
+      <EventDetailModal
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+        onEdit={() => openEdit(selectedEvent)}
+        onDelete={() => setDeleteTarget(selectedEvent.id)}
+        onStatusChange={(s) => handleStatusChange(selectedEvent, s)}
+      />
+    )}
 
-      {deleteTarget && (
-        <DeleteConfirm
-          onConfirm={() => handleDelete(deleteTarget)}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      )}
+    {form && (
+      <EventFormModal
+        form={form}
+        clients={clients}
+        saving={saving}
+        onClose={() => setForm(null)}
+        onSave={handleSave}
+        onChange={(patch) => setForm((f) => f ? { ...f, ...patch } : null)}
+      />
+    )}
 
-      {toast && <Toast msg={toast} />}
-    </div>
+    {deleteTarget && (
+      <DeleteConfirm
+        onConfirm={() => handleDelete(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    )}
+
+    {toast && <Toast msg={toast} />}
+    </div>{/* end outer flex-1 container */}
   );
 }

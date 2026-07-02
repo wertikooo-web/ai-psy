@@ -11,7 +11,6 @@ import { UploadModal } from "@/components/upload/UploadModal";
 import { AddClientModal } from "@/components/client/AddClientModal";
 import { UserPlus, Mic, ArrowRight, CheckCircle2, Clock, Users, FileText, Calendar, ChevronRight } from "lucide-react";
 import { pluralMeetings } from "@/lib/format";
-import { AnimatedCityScene } from "@/components/home/AnimatedCityScene";
 
 type AnyClient       = StoredClient       & { isMock?: boolean };
 type AnyConsultation = StoredConsultation & {
@@ -310,10 +309,9 @@ export default function HomePage() {
       </div>
 
       {/* ── Desktop layout ────────────────────────────────────────── */}
-      <section className="hidden lg:flex flex-col flex-1 min-h-0 relative overflow-hidden">
-        <AnimatedCityScene />
+      <section className="hidden lg:flex flex-col flex-1 min-h-0 relative overflow-hidden" style={{ background: "#FBF8F5" }}>
 
-        <div className="relative z-10 flex flex-col h-full">
+        <div className="relative z-10 flex flex-col h-full overflow-y-auto">
 
           {/* Welcome */}
           <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-4 sm:pb-6 text-center">

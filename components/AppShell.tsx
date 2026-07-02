@@ -31,6 +31,11 @@ export function AppShell({ children, initialSidebarMode = "full" }: AppShellProp
     document.cookie = `app_sidebar_mode=${mode};path=/;max-age=31536000`;
   }
 
+  // Close mobile sidebar drawer on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
   useEffect(() => {
     const handler = () => setObservationOpen(true);
     window.addEventListener("open-observation-modal", handler);
