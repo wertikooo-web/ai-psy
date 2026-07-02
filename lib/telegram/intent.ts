@@ -130,6 +130,8 @@ const SYSTEM_PROMPT = `
 - "деньги"/"доход"/"получено" = оплаты; "заметки"/"блокнот" = notebook
 - Имена нормализуй в именительный падеж
 - Если ТЕКУЩИЙ запрос — короткое уточнение (начинается с "а", "ещё", "а что") — используй КОНТЕКСТ РАЗГОВОРА
+- Для intent search_consultations/search_analyses/search_notebook: поле query ОБЯЗАТЕЛЬНО — поставь query = ключевые слова запроса (не null!)
+- Одиночное слово или тема (например "тревога", "кошка", "семья") — это search_consultations с query = это слово
 
 JSON SHAPE:
 {"mode":"project_data","intent":"list_clients","client_name":null,"client_status":"all","query":null,"period":null,"date_from":null,"date_to":null}

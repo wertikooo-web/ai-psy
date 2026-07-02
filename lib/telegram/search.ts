@@ -434,7 +434,7 @@ function searchScore(text: string, query: string): number {
 function snippetForSearch(value: unknown, query: string, max = 220): string {
   const text = typeof value === "string" ? value : JSON.stringify(value ?? "");
   const clean = text.replace(/\s+/g, " ").trim();
-  if (!clean) return "РўРµРєСЃС‚ РЅРµ Р·Р°РїРѕР»РЅРµРЅ.";
+  if (!clean) return "Текст не заполнен.";
   const lower = clean.toLowerCase().replace(/ё/g, "е");
   const needles = searchNeedles(query).sort((a, b) => b.length - a.length);
   const hit = needles
@@ -679,7 +679,7 @@ async function searchNotebook(query: string): Promise<SearchResult[]> {
       url: getNotebookUrl(query),
     }));
 }
-async function searchSupabaseTextTables(query: string): Promise<SearchResult[]> {
+async function searchSupabaseTextTables(query: string, consultationIdsAlreadyFound?: Set<string>): Promise<SearchResult[]> {
   if (!isSupabaseConfigured()) return [];
   const safeQuery = sanitizeSupabaseSearch(query);
   if (!safeQuery) return [];
@@ -688,7 +688,9 @@ async function searchSupabaseTextTables(query: string): Promise<SearchResult[]> 
   const orFor = (columns: string[]) => terms
     .flatMap((term) => columns.map((column) => `${column}.ilike.%${term}%`))
     .join(",");
-  const [requests, history, materials, calendar] = await Promise.all([
+  const [consultations, requests, history, materials, calendar] = await Promise.all([
+    // Direct DB search on transcript_text — catches text that in-memory search may miss
+    supabaseServer!.from("consultations").select("id,client_id,client_name,title,created_at,notes,transcript_text").or(orFor(["title", "notes", "transcript_text"])).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
     supabaseServer!.from("client_requests").select("id,client_id,text,created_at").or(orFor(["text"])).is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
     supabaseServer!.from("client_history").select("id,client_id,section,text,created_at").or(orFor(["text"])).order("created_at", { ascending: false }).limit(5),
     supabaseServer!.from("client_materials").select("id,client_id,title,content,created_at").or(orFor(["title", "content"])).order("created_at", { ascending: false }).limit(5),
@@ -697,6 +699,13 @@ async function searchSupabaseTextTables(query: string): Promise<SearchResult[]> 
   const clients = await getClients();
   const clientName = (id?: string) => clients.find((client) => client.id === id)?.name;
   const rows: SearchResult[] = [];
+  for (const row of consultations.data ?? []) {
+    // Skip if already found by in-memory search (avoid duplicates by URL)
+    const url = getConsultationUrl(row.id as string);
+    if (consultationIdsAlreadyFound?.has(row.id as string)) continue;
+    const textSrc = [row.title, row.notes, row.transcript_text].filter(Boolean).join(" ");
+    rows.push({ type: "consultation", title: (row.title as string) || `Консультация от ${formatDate(row.created_at as string)}`, clientName: (row.client_name as string) || clientName(row.client_id as string), date: row.created_at as string, snippet: snippetForSearch(textSrc, query), url });
+  }
   for (const row of requests.data ?? []) {
     rows.push({ type: "client_request", title: "Запрос клиента", clientName: clientName(row.client_id as string), date: row.created_at as string, snippet: snippetForSearch(row.text, query), url: row.client_id ? getClientUrl(row.client_id as string) : undefined });
   }
@@ -711,7 +720,7 @@ async function searchSupabaseTextTables(query: string): Promise<SearchResult[]> 
   }
   return rows
     .sort((a, b) => searchScore(b.snippet, query) - searchScore(a.snippet, query))
-    .slice(0, 5);
+    .slice(0, 6);
 }
 
 function renderSearchResults(query: string, results: SearchResult[]): string {
@@ -736,17 +745,25 @@ async function sendSearch(chatId: number, query: string | undefined, onlyNoteboo
   }
   const client = clientName?.trim() ? await resolveSingleClient(chatId, clientName) : null;
   if (clientName?.trim() && !client) return;
-  const rawResults = onlyNotebook
-    ? await searchNotebook(cleaned)
-    : [
-      ...(await searchConsultations(cleaned, client?.id)),
-      ...(await searchNotebook(cleaned)),
-      ...(await searchSupabaseTextTables(cleaned)),
-    ];
+  let rawResults: SearchResult[];
+  if (onlyNotebook) {
+    rawResults = await searchNotebook(cleaned);
+  } else {
+    const consultationResults = await searchConsultations(cleaned, client?.id);
+    const foundConsultationIds = new Set(
+      consultationResults.map((r) => r.url?.split("/consultation/")[1]).filter((id): id is string => Boolean(id)),
+    );
+    const [notebookResults, supabaseResults] = await Promise.all([
+      searchNotebook(cleaned),
+      searchSupabaseTextTables(cleaned, foundConsultationIds),
+    ]);
+    rawResults = [...consultationResults, ...notebookResults, ...supabaseResults];
+  }
+  // Dedup by URL (same consultation from different sources)
   const seen = new Set<string>();
   const results = rawResults
     .filter((item) => {
-      const key = `${item.type}:${item.url ?? ""}:${item.title}:${item.snippet}`;
+      const key = item.url ?? `${item.type}:${item.title}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -955,12 +972,14 @@ export async function handleTelegramReadOnlySearch(message: TelegramMessage, tex
   } else {
     const llmResult = await parseTelegramIntentWithLlm(text, prior.length ? prior : undefined);
     if (llmResult) {
+      const isSearchIntent = ["search_consultations", "search_analyses", "search_notebook"].includes(llmResult.intent ?? "");
       parsed = {
         mode: llmResult.mode,
         intent: llmResult.intent ?? "unknown",
         clientName: llmResult.clientName,
         clientStatus: llmResult.clientStatus,
-        query: llmResult.query,
+        // If LLM classified as search but forgot to set query, use original text
+        query: llmResult.query ?? (isSearchIntent ? cleanupSearchQuery(text) || text : undefined),
         period: llmResult.period,
         dateFrom: llmResult.dateFrom,
         dateTo: llmResult.dateTo,
