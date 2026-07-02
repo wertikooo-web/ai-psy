@@ -148,7 +148,7 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         </button>
       </div>
 
-      <div className="space-y-0.5 pt-3 mt-1" style={{ borderTop: `1px solid ${C.border}` }}>
+      <div className="space-y-0.5 pt-4 mt-2" style={{ borderTop: `1px solid ${C.border}` }}>
         <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Инструменты
         </div>
@@ -157,7 +157,7 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         ))}
       </div>
 
-      <div className="space-y-0.5 pt-3 mt-1" style={{ borderTop: `1px solid ${C.border}` }}>
+      <div className="space-y-0.5 pt-4 mt-2" style={{ borderTop: `1px solid ${C.border}` }}>
         <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Система
         </div>
