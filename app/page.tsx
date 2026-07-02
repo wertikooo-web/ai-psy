@@ -207,7 +207,7 @@ export default function HomePage() {
         <div className="relative z-10 flex flex-col h-full">
 
           {/* Welcome */}
-          <div className="max-w-2xl mx-auto px-6 pt-8 pb-6 text-center">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-4 sm:pb-6 text-center">
             <div className="flex items-center justify-center gap-3 mb-2">
               {photoUrl ? (
                 <img src={photoUrl} alt={greeting}
@@ -248,7 +248,7 @@ export default function HomePage() {
           </div>
 
           {/* Cards grid */}
-          <div className="max-w-4xl mx-auto px-6 pb-6 flex-1 min-h-0 w-full">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-4 sm:pb-6 flex-1 min-h-0 w-full">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
               {/* Recent clients */}

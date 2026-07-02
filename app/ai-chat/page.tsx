@@ -235,7 +235,7 @@ export default function AiChatPage() {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
-      <div className="p-8 max-w-6xl mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-2">

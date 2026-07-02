@@ -529,11 +529,11 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               )}
             </div>
           </div>
-          {/* Reset layout button */}
+          {/* Reset layout button — desktop only */}
           <button
             onClick={resetLayout}
             title="Сбросить ширину колонок (34 / 33 / 33)"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors flex-shrink-0"
+            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors flex-shrink-0"
             style={{ color: "#9C8E80", border: "1px solid #D8CFBE", background: "transparent" }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#EDE7DA"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
@@ -1064,19 +1064,21 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             title="Внести или изменить оплату"
           >
             <WalletCards size={14} />
-            {payment ? paymentStatusLabels[payment.paymentStatus] : "Оплата"}
+            <span className="hidden sm:inline">{payment ? paymentStatusLabels[payment.paymentStatus] : "Оплата"}</span>
           </button>
           {dateStr && (
-            <span className="text-xs text-slate-400">
+            <span className="hidden sm:inline text-xs text-slate-400">
               {new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
             </span>
           )}
-          <CalendarButtons
-            clientName={c.clientName ?? ""}
-            date={dateStr}
-            topic={c.title ?? ""}
-            compact
-          />
+          <div className="hidden sm:flex">
+            <CalendarButtons
+              clientName={c.clientName ?? ""}
+              date={dateStr}
+              topic={c.title ?? ""}
+              compact
+            />
+          </div>
         </div>
       </header>
 

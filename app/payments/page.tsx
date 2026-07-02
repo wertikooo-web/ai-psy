@@ -96,7 +96,7 @@ export default function PaymentsPage() {
   }
 
   return (
-    <div className="min-h-full bg-[#F7F3EA] p-6 text-[#2F261F]">
+    <div className="min-h-full bg-[#F7F3EA] p-4 sm:p-6 text-[#2F261F]">
       <div className="mx-auto max-w-7xl space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
