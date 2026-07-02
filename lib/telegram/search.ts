@@ -27,6 +27,8 @@ export type TelegramIntent =
   | "get_upcoming_consultation"
   | "get_consultation_count"
   | "get_payment_total"
+  | "get_top_payer"
+  | "get_notebook_count"
   | "get_session_brief"
   | "add_notebook_entry"
   | "unknown";
@@ -306,6 +308,19 @@ function parseTextRequest(text: string): ParsedRequest {
   // 2b. Pre-session brief — "что помнить про клиента", "подготовка к сессии"
   if (lower.includes("помнить") || lower.includes("подготовк") || (lower.includes("напомни") && !lower.includes("напомн"+"и мне"))) {
     return { intent: "get_session_brief", clientName: extractClientNameFromPhrase(raw) };
+  }
+
+  // 2a. Who paid the most — must be before generic payment check
+  if ((lower.includes("кто") && (lower.includes("заплатил") || lower.includes("оплатил") || lower.includes("платит") || lower.includes("платил"))) ||
+      (lower.includes("больше всех") && (lower.includes("оплат") || lower.includes("заплат") || lower.includes("платил"))) ||
+      /топ.{0,10}(клиент|оплат)|рейтинг.{0,10}(оплат|клиент)/.test(lower)) {
+    return { intent: "get_top_payer" };
+  }
+
+  // 2b. Notebook record count
+  if ((lower.includes("сколько") || lower.includes("количество")) &&
+      (lower.includes("запис") || lower.includes("заметк") || lower.includes("блокнот") || lower.includes("заметок"))) {
+    return { intent: "get_notebook_count" };
   }
 
   // 2. Payment / money patterns (check before "list clients" to avoid "сколько оплатили")
@@ -811,6 +826,49 @@ async function sendConsultationCount(chatId: number, period: ParsedRequest["peri
   await sendTelegramMessage(chatId, `Консультаций ${range.label}: ${consultations.length}.`, keyboardFromButtons([urlButton("Открыть аналитику", appUrl("/analytics"))]));
 }
 
+function pluralRu(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+}
+
+async function sendNotebookCount(chatId: number): Promise<void> {
+  const page = await getEntries({
+    page: 1, pageSize: 1, search: "", sort: "newest",
+    group: "none", date: "all", status: "all",
+  });
+  const n = page.total;
+  await sendTelegramMessage(
+    chatId,
+    `В блокноте ${n} ${pluralRu(n, "запись", "записи", "записей")}.`,
+    keyboardFromButtons([urlButton("Открыть блокнот", appUrl("/notebook"))]),
+  );
+}
+
+async function sendTopPayer(chatId: number): Promise<void> {
+  const [payments, clients] = await Promise.all([getPayments(), getClients()]);
+  const byClient = new Map<string, { name: string; paid: number }>();
+  for (const p of payments) {
+    const key = p.clientId ?? "__none__";
+    const name = clients.find((c) => c.id === p.clientId)?.name ?? "Без клиента";
+    const prev = byClient.get(key) ?? { name, paid: 0 };
+    byClient.set(key, { name, paid: prev.paid + Number(p.paidAmount || 0) });
+  }
+  const sorted = [...byClient.values()].filter((c) => c.paid > 0).sort((a, b) => b.paid - a.paid);
+  if (!sorted.length) {
+    await sendTelegramMessage(chatId, "Оплат пока нет.", keyboardFromButtons([urlButton("Открыть оплаты", appUrl("/payments"))]));
+    return;
+  }
+  const lines = [
+    `Клиенты по сумме оплат:`,
+    "",
+    ...sorted.slice(0, 5).map((c, i) => `${i + 1}. ${c.name}: ${c.paid} MDL`),
+  ];
+  await sendTelegramMessage(chatId, lines.join("\n"), keyboardFromButtons([urlButton("Открыть оплаты", appUrl("/payments"))]));
+}
+
 async function sendPaymentTotal(chatId: number, period: ParsedRequest["period"]): Promise<void> {
   const range = currentPeriodRange(period);
   const payments = (await getPayments()).filter((item) => !range.from || inRange(item.paymentDate || item.createdAt, range));
@@ -938,6 +996,8 @@ async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedReq
   if (parsed.intent === "get_upcoming_consultation") return sendUpcomingConsultation(chatId, parsed.clientName);
   if (parsed.intent === "get_consultation_count") return sendConsultationCount(chatId, parsed.period, parsed.clientName);
   if (parsed.intent === "get_payment_total") return sendPaymentTotal(chatId, parsed.period);
+  if (parsed.intent === "get_top_payer") return sendTopPayer(chatId);
+  if (parsed.intent === "get_notebook_count") return sendNotebookCount(chatId);
   if (parsed.intent === "get_session_brief") return sendSessionBrief(chatId, parsed.clientName);
   if (parsed.intent === "add_notebook_entry") return saveNotebookEntry(chatId, parsed.query, parsed.clientName);
   return sendUnknownResponse(chatId);

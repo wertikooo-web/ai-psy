@@ -30,6 +30,8 @@ const ALLOWED_INTENTS: Array<TelegramIntent | null> = [
   "get_upcoming_consultation",
   "get_consultation_count",
   "get_payment_total",
+  "get_top_payer",
+  "get_notebook_count",
   "get_session_brief",
   "add_notebook_entry",
   "unknown",
@@ -117,7 +119,12 @@ const SYSTEM_PROMPT = `
 - search_analyses: поиск по анализам
 - search_notebook: поиск по заметкам/блокноту
 - get_consultation_count: сколько консультаций
-- get_payment_total: оплаты / доходы
+- get_payment_total: оплаты / доходы (общая сумма)
+  Примеры: "сколько получено за месяц?", "какой доход за июнь?"
+- get_top_payer: кто из клиентов заплатил больше всего
+  Примеры: "кто заплатил больше всех?", "из клиентов кто больше всех?", "топ клиентов по оплатам", "кто больше всех платит?"
+- get_notebook_count: сколько записей в блокноте
+  Примеры: "сколько записей у меня в блокноте?", "сколько заметок?", "количество записей в блокноте"
 - get_upcoming_consultation: ближайшая консультация
 - get_session_brief: сводка по клиенту перед сессией ("что помнить", "подготовка к сессии")
 - add_notebook_entry: записать заметку ("запиши:", "добавь в блокнот:")
