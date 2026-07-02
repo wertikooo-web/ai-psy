@@ -88,8 +88,8 @@ function formatChatMessage(text: string): string {
 const QUICK_PROMPTS = [
   "Что важно на следующей сессии?",
   "Ключевой инсайт?",
-  "Риски?",
   "Какие техники использовать?",
+  "Риски?",
 ];
 
 export function ChatPanel({

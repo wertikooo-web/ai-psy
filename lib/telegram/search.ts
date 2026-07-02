@@ -10,6 +10,7 @@ import type { StoredClient } from "@/lib/clientStore";
 import type { StoredConsultation } from "@/lib/consultationStore";
 
 export type TelegramIntent =
+  | "list_clients"
   | "find_client"
   | "get_client_summary"
   | "get_last_consultation"
@@ -25,6 +26,7 @@ export type TelegramIntent =
 type ParsedRequest = {
   intent: TelegramIntent;
   clientName?: string;
+  clientStatus?: "all" | "active" | "archived";
   query?: string;
   period?: "month" | "week" | "today" | "all";
   dateFrom?: string;
@@ -41,15 +43,15 @@ type SearchResult = {
 };
 
 const UNKNOWN_TEXT = [
-  "Не понял запрос.",
+  "Не смог точно понять запрос.",
   "",
-  "Примеры:",
-  "- /client Кирилл",
-  "- /last Анна",
-  "- /consultations Кирилл",
-  "- /search тревога",
-  "- Найди заметки про тревогу",
-  "- Сколько консультаций было в июне?",
+  "Можно написать, например:",
+  "— Покажи всех клиентов",
+  "— Последняя консультация Кирилла",
+  "— Сколько консультаций было в июне?",
+  "— Оплаты за июль",
+  "— Найди заметки про тревогу",
+  "— Что обсуждали с Анной про маму",
 ].join("\n");
 
 function appBaseUrl(): string {
@@ -150,9 +152,39 @@ function extractClientName(text: string): string {
     .trim();
 }
 
+/** Extract client name from a natural-language phrase, stripping verb/preposition prefixes. */
+function extractClientNameFromPhrase(text: string): string | undefined {
+  const name = text
+    .replace(/\?+$/g, "")
+    .replace(/^(когда\s+)?(была?|был|последняя|последнюю|последнее|покажи|найди|посмотри)\s*/i, "")
+    .replace(/^(консультаци[яюи]|встреча?|встреч[аие]|сессия|сессии)\s*/i, "")
+    .replace(/\b(с|у|для|клиент[аа]?|по|про|клиента)\s+/i, "")
+    .replace(/\b(когда|виде[лл]|встречал[аи]?|был[аои]?)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return name || undefined;
+}
+
+/** Detect "клиент" list signals in normalized text. */
+function parseClientListRequest(lower: string): ParsedRequest | null {
+  const hasClientWord = /клиент|пациент/.test(lower);
+  const hasListSignal = /все|всех|список|мои|наши|покажи|какие|кто|сколько|активн|архив/.test(lower);
+  const isSimpleClientQuery = /^(клиенты|мои клиенты|наши клиенты|все клиенты|список клиентов|список всех клиентов)$/.test(lower);
+
+  if (!isSimpleClientQuery && !(hasClientWord && hasListSignal) && !/кто (в работе|сейчас|у нас|активен)/.test(lower)) {
+    return null;
+  }
+  const clientStatus: "all" | "active" | "archived" = lower.includes("архив") ? "archived"
+    : (lower.includes("актив") || lower.includes("в работе") || lower.includes("сейчас")) ? "active"
+    : "all";
+  return { intent: "list_clients", clientStatus };
+}
+
 function parseTextRequest(text: string): ParsedRequest {
   const raw = text.trim();
   const lower = normalize(raw);
+
+  // 1. Slash commands
   const command = raw.match(/^\/([a-z_]+)(?:@\w+)?\s*(.*)$/i);
   if (command) {
     const cmd = `/${command[1].toLowerCase()}`;
@@ -162,16 +194,56 @@ function parseTextRequest(text: string): ParsedRequest {
     if (cmd === "/last") return { intent: "get_last_consultation", clientName: args };
     if (cmd === "/search") return { intent: "search_consultations", query: args };
     if (cmd === "/stats") return parseStats(args);
+    if (cmd === "/clients") return { intent: "list_clients", clientStatus: "all" };
     return { intent: "unknown" };
   }
 
-  if (lower.includes("сколько") && lower.includes("консультац")) return { intent: "get_consultation_count", period: periodFromText(lower) };
-  if (lower.includes("сколько") && (lower.includes("оплат") || lower.includes("получено") || lower.includes("доход"))) return { intent: "get_payment_total", period: periodFromText(lower) };
-  if (lower.includes("последн") && lower.includes("консультац")) return { intent: "get_last_consultation", clientName: raw.replace(/.*(?:с|у|для)\s+/i, "").replace(/\?+$/g, "").trim() };
-  if (lower.includes("консультац") && (lower.includes("покажи") || lower.includes("найди"))) return { intent: "get_consultations", clientName: raw.replace(/.*(?:с|у|для)\s+/i, "").replace(/\?+$/g, "").trim() };
-  if (lower.includes("заметк") || lower.includes("блокнот")) return { intent: "search_notebook", query: cleanupSearchQuery(raw) };
-  if (lower.startsWith("найди ") || lower.startsWith("покажи ")) return { intent: "get_client_summary", clientName: extractClientName(raw) };
-  if (lower.includes("обсуждал") || lower.includes("про ")) return { intent: "search_consultations", query: cleanupSearchQuery(raw) };
+  // 2. Payment / money patterns (check before "list clients" to avoid "сколько оплатили")
+  if (lower.includes("оплат") || lower.includes("доход") || lower.includes("получен") || lower.includes("деньг") || lower.includes("начислен")) {
+    return { intent: "get_payment_total", period: periodFromText(lower) };
+  }
+
+  // 3. Client list — "кто наши клиенты", "список всех клиентов", etc.
+  const clientList = parseClientListRequest(lower);
+  if (clientList) return clientList;
+
+  // 4. Consultation count — "сколько консультаций было в июне"
+  if (lower.includes("сколько") && (lower.includes("консультац") || lower.includes("встреч") || lower.includes("сессий"))) {
+    return { intent: "get_consultation_count", period: periodFromText(lower) };
+  }
+
+  // 5. Last consultation — "когда была последняя консультация с Васей", "последняя встреча"
+  if ((lower.includes("последн") || lower.includes("посл ")) && (lower.includes("консультац") || lower.includes("встреч") || lower.includes("сессия") || lower.includes("виде") || lower.includes("встречал"))) {
+    return { intent: "get_last_consultation", clientName: extractClientNameFromPhrase(raw) };
+  }
+
+  // 6. Upcoming consultation
+  if ((lower.includes("следующ") || lower.includes("ближайш") || lower.includes("когда") && lower.includes("следующ")) && (lower.includes("консультац") || lower.includes("встреч") || lower.includes("сессия"))) {
+    return { intent: "get_upcoming_consultation", clientName: extractClientNameFromPhrase(raw) };
+  }
+
+  // 7. Consultation listing for a specific client
+  if ((lower.includes("консультац") || lower.includes("встреч") || lower.includes("сессия")) && (lower.includes("покажи") || lower.includes("найди") || lower.includes("список"))) {
+    return { intent: "get_consultations", clientName: extractClientNameFromPhrase(raw) };
+  }
+
+  // 8. Notebook / notes search
+  if (lower.includes("заметк") || lower.includes("блокнот") || lower.includes("запис") || lower.includes("напоминан")) {
+    return { intent: "search_notebook", query: cleanupSearchQuery(raw) };
+  }
+
+  // 9. Analysis search
+  if (lower.includes("анализ") || lower.includes("разбор") || lower.includes("вывод")) {
+    return { intent: "search_analyses", query: cleanupSearchQuery(raw), clientName: extractClientNameFromPhrase(raw) };
+  }
+
+  // 10. General search phrases
+  if (lower.includes("обсуждал") || lower.includes("про ") || lower.includes("о ")) {
+    return { intent: "search_consultations", query: cleanupSearchQuery(raw) };
+  }
+  if (lower.startsWith("найди ")) return { intent: "search_consultations", query: cleanupSearchQuery(raw) };
+  if (lower.startsWith("покажи ")) return { intent: "get_client_summary", clientName: extractClientName(raw) };
+
   return raw.length >= 3 ? { intent: "search_consultations", query: raw } : { intent: "unknown" };
 }
 
@@ -305,6 +377,23 @@ async function sendClientConsultations(chatId: number, clientName: string | unde
 }
 
 async function sendLastConsultation(chatId: number, clientName: string | undefined): Promise<void> {
+  if (!clientName?.trim()) {
+    const activeClients = (await getClients())
+      .filter((c) => c.status === "active")
+      .slice(0, 5);
+    const buttons = activeClients.map((c) => urlButton(c.name, getClientUrl(c.id)));
+    await sendTelegramMessage(
+      chatId,
+      [
+        "По какому клиенту показать последнюю консультацию?",
+        "",
+        "Выберите на сайте или напишите:",
+        "/last Имя",
+      ].join("\n"),
+      keyboardFromButtons([...buttons, urlButton("Все клиенты", appUrl("/clients"))]),
+    );
+    return;
+  }
   const client = await resolveSingleClient(chatId, clientName);
   if (!client) return;
   const latest = (await getConsultationsForClient(client.id))[0];
@@ -322,6 +411,32 @@ async function sendLastConsultation(chatId: number, clientName: string | undefin
     ].filter(Boolean).join("\n"),
     keyboardFromButtons([urlButton("Открыть консультацию", getConsultationUrl(latest.id))]),
   );
+}
+
+async function sendClientList(chatId: number, clientStatus?: "all" | "active" | "archived"): Promise<void> {
+  const all = await getClients();
+  const active = all.filter((c) => c.status === "active");
+  const archived = all.filter((c) => c.status !== "active");
+  const filtered = clientStatus === "active" ? active : clientStatus === "archived" ? archived : all;
+  const shown = filtered.slice(0, 10);
+
+  const statusLabel = clientStatus === "active" ? "активные" : clientStatus === "archived" ? "архивные" : "все";
+  const lines: string[] = [
+    `Клиенты (${statusLabel}): ${filtered.length}`,
+    clientStatus !== "active" && clientStatus !== "archived"
+      ? `\nАктивные: ${active.length}\nАрхивные: ${archived.length}`
+      : "",
+    "",
+    ...shown.map((c, i) => `${i + 1}. ${c.name}`),
+    filtered.length > 10 ? `\n...и ещё ${filtered.length - 10}` : "",
+  ].filter((l) => l !== undefined);
+
+  const keyboard = [
+    shown.length < filtered.length ? urlButton("Показать всех на сайте", appUrl("/clients")) : null,
+    clientStatus !== "active" ? urlButton("Только активные", appUrl("/clients")) : null,
+    urlButton("Открыть клиентов", appUrl("/clients")),
+  ];
+  await sendTelegramMessage(chatId, lines.join("\n").replace(/\n{3,}/g, "\n\n").trim(), keyboardFromButtons(keyboard));
 }
 
 async function searchConsultations(query: string, clientId?: string): Promise<SearchResult[]> {
@@ -485,6 +600,7 @@ async function sendUpcomingConsultation(chatId: number, clientName?: string): Pr
 async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedRequest): Promise<void> {
   const chatId = message.chat.id;
   if (parsed.intent === "unknown") return sendTelegramMessage(chatId, UNKNOWN_TEXT);
+  if (parsed.intent === "list_clients") return sendClientList(chatId, parsed.clientStatus);
   if (parsed.intent === "find_client" || parsed.intent === "get_client_summary") return sendClientSummary(chatId, parsed.clientName || parsed.query);
   if (parsed.intent === "get_consultations") return sendClientConsultations(chatId, parsed.clientName);
   if (parsed.intent === "get_last_consultation") return sendLastConsultation(chatId, parsed.clientName);
