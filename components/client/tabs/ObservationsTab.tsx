@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Eye, Trash2, ChevronDown, ChevronUp, Loader2, AlertCircle, Plus } from "lucide-react";
 import type { ClientMaterial } from "@/lib/types";
 
@@ -45,6 +45,18 @@ export function ObservationsTab({ clientId, isMock }: Props) {
   const [loading,    setLoading]    = useState(true);
   const [expanded,   setExpanded]   = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!expanded) return;
+    function onOutside(e: MouseEvent) {
+      if (listRef.current && !listRef.current.contains(e.target as Node)) {
+        setExpanded(null);
+      }
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [expanded]);
 
   useEffect(() => {
     if (isMock) { setLoading(false); return; }
@@ -151,7 +163,7 @@ export function ObservationsTab({ clientId, isMock }: Props) {
         </div>
 
         {/* Items */}
-        <div>
+        <div ref={listRef}>
           {sorted.length === 0 && (
             <p className="px-5 py-3.5 text-xs italic" style={{ color: "#C9BBAA" }}>Нет наблюдений</p>
           )}

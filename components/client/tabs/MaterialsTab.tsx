@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Trash2, FileText, Plus, Paperclip } from "lucide-react";
 import { ImportMaterialModal } from "@/components/client/ImportMaterialModal";
 import { MATERIAL_TYPE_LABELS, type ClientMaterial } from "@/lib/types";
@@ -35,6 +35,18 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
   const [expanded,   setExpanded]   = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [page,       setPage]       = useState(1);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!expanded) return;
+    function onOutside(e: MouseEvent) {
+      if (listRef.current && !listRef.current.contains(e.target as Node)) {
+        setExpanded(null);
+      }
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [expanded]);
 
   const totalPages = Math.max(1, Math.ceil(materials.length / PAGE_SIZE));
   const safePage   = Math.min(page, totalPages);
@@ -108,6 +120,7 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
         )}
 
         {/* Accordion list */}
+        <div ref={listRef}>
         {paginated.map((m) => {
           const isOpen = expanded === m.id;
 
@@ -177,6 +190,8 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
             </div>
           );
         })}
+
+        </div>{/* /listRef */}
 
         {/* Pagination */}
         {totalPages > 1 && (

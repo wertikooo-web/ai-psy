@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Trash2, CheckCircle2, CircleDashed, WalletCards } from "lucide-react";
 import Link from "next/link";
 import type { StoredConsultation } from "@/lib/consultationStore";
@@ -82,6 +82,18 @@ export function ConsultationsTab({
   const [deletingId, setDeletingId]   = useState<string | null>(null);
   const [paymentFor, setPaymentFor]   = useState<StoredConsultation | null>(null);
   const [payments, setPayments]       = useState<Record<string, PaymentRow>>({});
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openCompare) return;
+    function onOutside(e: MouseEvent) {
+      if (listRef.current && !listRef.current.contains(e.target as Node)) {
+        setOpenCompare(null);
+      }
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [openCompare]);
 
   useEffect(() => {
     if (!realSessions.length) return;
@@ -113,7 +125,7 @@ export function ConsultationsTab({
   if (isMock) {
     if (mockSessions.length === 0) return <Empty onUpload={onUpload} label={uploadBtnLabel} />;
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" ref={listRef}>
         {mockSessions.map((c, idx) => {
           const st     = sessionStatus[c.status] ?? sessionStatus.uploaded;
           const isOpen = openCompare === c.id;
