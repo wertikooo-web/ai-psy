@@ -473,6 +473,11 @@ export function TranscriptPanel({
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMsg, setActionMsg]        = useState<string | null>(null);
+  useEffect(() => {
+    if (!actionMsg) return;
+    const t = setTimeout(() => setActionMsg(null), 3000);
+    return () => clearTimeout(t);
+  }, [actionMsg]);
   const [deletingMatId, setDeletingMatId] = useState<string | null>(null);
   const [matDeleteLoading, setMatDeleteLoading] = useState(false);
   const [obsFormOpen, setObsFormOpen]   = useState(false);
