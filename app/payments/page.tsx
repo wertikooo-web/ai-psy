@@ -147,8 +147,8 @@ export default function PaymentsPage() {
                   <div style={{ fontWeight: 800, fontSize: 15, color: "#3D3228" }}>{money.format(row.paidAmount)}</div>
                   <span style={{
                     fontSize: 11, fontWeight: 600, borderRadius: 6, padding: "2px 6px",
-                    background: row.paymentStatus === "paid" ? "#dcfce7" : row.paymentStatus === "pending" ? "#fef3c7" : "#f3f4f6",
-                    color: row.paymentStatus === "paid" ? "#16a34a" : row.paymentStatus === "pending" ? "#d97706" : "#6B7280",
+                    background: row.paymentStatus === "paid" ? "#dcfce7" : row.paymentStatus === "partial" ? "#fef3c7" : "#f3f4f6",
+                    color: row.paymentStatus === "paid" ? "#16a34a" : row.paymentStatus === "partial" ? "#d97706" : "#6B7280",
                   }}>
                     {paymentStatusLabels[row.paymentStatus]}
                   </span>

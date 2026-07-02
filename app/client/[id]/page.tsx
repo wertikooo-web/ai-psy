@@ -14,7 +14,7 @@ import { HistoryTab } from "@/components/client/tabs/HistoryTab";
 import { MaterialsTab } from "@/components/client/tabs/MaterialsTab";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mic, ArrowLeft, Trash2, Pause, Archive, RotateCcw } from "lucide-react";
+import { Mic, ArrowLeft, Trash2, Pause, Archive, RotateCcw, ChevronRight } from "lucide-react";
 
 type Tab = "overview" | "consultations" | "history" | "materials";
 
@@ -171,28 +171,131 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
-      <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-4 sm:space-y-6">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{ background: "inherit" }}>
 
-        {/* Back — hidden on mobile (use BottomNav) */}
+      {/* ── MOBILE LAYOUT ─────────────────────────────────────── */}
+      <div className="lg:hidden flex-1 min-h-0 flex flex-col overflow-hidden" style={{ background: "#FBF8F5" }}>
+
+        {/* Sticky header */}
+        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2.5 border-b" style={{ background: "#FBF8F5", borderColor: "#CFC0A9" }}>
+          <Link href="/clients" style={{ color: "#3a5ff8", display: "flex", alignItems: "center", flexShrink: 0 }}>
+            <ArrowLeft size={20} />
+          </Link>
+          <span className="flex-1 text-base font-semibold truncate" style={{ color: "#3D3228" }}>{client?.name}</span>
+          <button onClick={() => setUploadOpen(true)} style={{ background: "#3a5ff8", border: "none", borderRadius: 8, padding: "5px 10px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+            <Mic size={13} /> Запись
+          </button>
+        </div>
+
+        {/* Client card */}
+        <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b" style={{ background: "#F3EBDD", borderColor: "#CFC0A9" }}>
+          <Avatar initials={client.initials} color={client.color} size="lg" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-base font-bold truncate" style={{ color: "#3D3228" }}>{client.name}</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${st.cls}`}>{st.label}</span>
+            </div>
+            <span className="text-xs" style={{ color: "#A8997F" }}>{sessionCount} встреч</span>
+          </div>
+        </div>
+
+        {/* Tab bar */}
+        <div className="flex-shrink-0 flex border-b overflow-x-auto" style={{ borderColor: "#CFC0A9", background: "#FBF8F5" }}>
+          {TABS.map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className="flex-shrink-0 px-4 py-2.5 text-sm font-medium whitespace-nowrap"
+              style={{ color: tab === t.id ? "#3a5ff8" : "#A8997F", borderBottom: tab === t.id ? "2px solid #3a5ff8" : "2px solid transparent", background: "none", border: "none", cursor: "pointer", borderBottomWidth: 2, borderBottomStyle: "solid", borderBottomColor: tab === t.id ? "#3a5ff8" : "transparent" }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content — mobile simplified */}
+        <div className="flex-1 min-h-0 overflow-y-auto" style={{ padding: "12px 16px 80px" }}>
+          {tab === "overview" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {currentRequestText ? (
+                <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 12, padding: "12px 14px", fontSize: 14, color: "#3D3228", lineHeight: 1.55 }}>
+                  {currentRequestText}
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", padding: "30px 0", color: "#C9BBAA", fontSize: 13 }}>Запрос не указан</div>
+              )}
+              <button onClick={() => setUploadOpen(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px 0", background: "#3a5ff8", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, color: "#fff", cursor: "pointer" }}>
+                <Mic size={15} /> Новая консультация
+              </button>
+            </div>
+          )}
+          {tab === "consultations" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {isMock ? (
+                mockSessionsForClient.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "30px 0", color: "#C9BBAA", fontSize: 13 }}>Консультаций нет</div>
+                ) : mockSessionsForClient.map((s) => (
+                  <Link key={s.id} href={`/consultation/${s.id}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 12, textDecoration: "none" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#3D3228", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.topic || "Консультация"}</div>
+                      <div style={{ fontSize: 11, color: "#A8997F", marginTop: 2 }}>{s.date}</div>
+                    </div>
+                    <ChevronRight size={16} color="#C9BBAA" />
+                  </Link>
+                ))
+              ) : (
+                realSessions.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "30px 0", color: "#C9BBAA", fontSize: 13 }}>Консультаций нет</div>
+                ) : realSessions.map((s) => (
+                  <Link key={s.id} href={`/consultation/${s.id}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 12, textDecoration: "none" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#3D3228", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title || "Консультация"}</div>
+                      <div style={{ fontSize: 11, color: "#A8997F", marginTop: 2 }}>{new Date(s.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</div>
+                    </div>
+                    <ChevronRight size={16} color="#C9BBAA" />
+                  </Link>
+                ))
+              )}
+            </div>
+          )}
+          {tab === "history" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {historyItems.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "30px 0", color: "#C9BBAA", fontSize: 13 }}>История пуста</div>
+              ) : historyItems.map((item) => (
+                <div key={item.id} style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 12, padding: "12px 14px" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#3D3228" }}>{item.section}</div>
+                  <div style={{ fontSize: 12, color: "#6B5D4F", marginTop: 4, lineHeight: 1.5 }}>{item.text}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {tab === "materials" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {materials.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "30px 0", color: "#C9BBAA", fontSize: 13 }}>Материалов нет</div>
+              ) : materials.map((m) => (
+                <div key={m.id} style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#3D3228", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title || m.fileName}</div>
+                  </div>
+                  <ChevronRight size={16} color="#C9BBAA" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── DESKTOP LAYOUT ────────────────────────────────────── */}
+      <div className="hidden lg:block flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
+      <div className="p-6 max-w-2xl mx-auto space-y-6">
+
+        {/* Back */}
         <Link
           href="/clients"
-          className="hidden sm:inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"
         >
           <ArrowLeft size={14} />
           Клиенты
         </Link>
-
-        {/* Mobile-only sticky header */}
-        <div className="sm:hidden -mx-4 -mt-4 sticky top-0 z-10 flex items-center gap-2 px-3 py-2.5 border-b" style={{ background: "#FBF8F5", borderColor: "#CFC0A9" }}>
-          <Link href="/clients" style={{ color: "#3a5ff8", display: "flex", alignItems: "center" }}>
-            <ArrowLeft size={20} />
-          </Link>
-          <span className="flex-1 text-sm font-semibold truncate" style={{ color: "#3D3228" }}>{client?.name}</span>
-          <button onClick={() => setUploadOpen(true)} style={{ background: "#3a5ff8", border: "none", borderRadius: 8, padding: "5px 10px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-            <Mic size={13} /> Запись
-          </button>
-        </div>
 
         {/* Status banner for paused/archived */}
         {!isMock && client.status === "paused" && (
@@ -371,6 +474,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
         )}
 
       </div>
+      </div>{/* end hidden lg:block desktop */}
 
       <UploadModal
         open={uploadOpen}

@@ -1283,6 +1283,6 @@ export default function CalendarPage() {
     )}
 
     {toast && <Toast msg={toast} />}
-    </div>{/* end outer flex-1 container */}
+    </div>
   );
 }
