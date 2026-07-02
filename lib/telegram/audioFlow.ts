@@ -249,8 +249,14 @@ export async function handleTelegramAudioCallback(query: TelegramCallbackQuery):
     if (action === "c") {
       const client = await findClientByShortId(targetShortId);
       if (!client) throw new Error("Client not found");
-      const updated = await updateTelegramAudioUpload(upload.id, { clientId: client.id, status: "awaiting_consultation" });
-      await editTelegramMessage(chatId, messageId, "Куда добавить аудио?", await consultationKeyboard(updated, client.id));
+      // Always create a new consultation for Telegram audio uploads
+      const consultation = await createConsultationForUpload(upload, client.id);
+      const updated = await updateTelegramAudioUpload(upload.id, {
+        clientId: client.id,
+        consultationId: consultation.id,
+        status: "awaiting_confirmation",
+      });
+      await showConfirmation(chatId, messageId, updated);
       return true;
     }
 

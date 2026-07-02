@@ -20,8 +20,13 @@ import { getClientRequestById, getCurrentClientRequest } from "@/lib/data/client
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
+  let consultationId: string | undefined;
+  let mode: string | undefined;
   try {
-    const { consultationId, mode, force = false } = await req.json();
+    const body = await req.json();
+    consultationId = body.consultationId as string | undefined;
+    mode           = body.mode           as string | undefined;
+    const force: boolean = body.force ?? false;
 
     if (!consultationId || !mode) {
       return NextResponse.json({ error: "consultationId и mode обязательны" }, { status: 400 });
@@ -237,11 +242,9 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     console.error("[analyze]", err);
-    // Reset status so the user can retry
-    try {
-      const { consultationId } = await req.clone().json().catch(() => ({}));
-      if (consultationId) await updateConsultation(consultationId, { status: "ready" });
-    } catch { /* ignore */ }
+    if (consultationId) {
+      await updateConsultation(consultationId, { status: "ready" }).catch(() => {});
+    }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Ошибка анализа" },
       { status: 500 },

@@ -5,7 +5,7 @@ import { ChatMessage } from "@/lib/mockData";
 import {
   Send, BrainCircuit, User, ChevronsLeft, ChevronsRight,
   MessagesSquare, AlertCircle, Mic, MicOff, Trash2,
-  BookmarkPlus, Check, Loader2, Download,
+  BookmarkPlus, Check, Loader2, Download, Zap,
 } from "lucide-react";
 import clsx from "clsx";
 import { CollapsedConsultationPanel } from "./CollapsedConsultationPanel";
@@ -110,7 +110,9 @@ export function ChatPanel({
   const [saveState,    setSaveState]      = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [savedCount,   setSavedCount]     = useState<number | null>(null);
   const [dynSuggestions, setDynSuggestions] = useState<string[]>([]);
-  const bottomRef    = useRef<HTMLDivElement>(null);
+  const [showQuickPopup, setShowQuickPopup] = useState(false);
+  const quickPopupRef  = useRef<HTMLDivElement>(null);
+  const bottomRef      = useRef<HTMLDivElement>(null);
   const textareaRef  = useRef<HTMLTextAreaElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
@@ -155,6 +157,18 @@ export function ChatPanel({
   // Re-run after each AI reply (when messages length changes and last msg is assistant)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [consultationId, messages.filter(m => m.role === "assistant").length]);
+
+  // ── Close quick popup on outside click ────────────────────────────────────
+  useEffect(() => {
+    if (!showQuickPopup) return;
+    const handler = (e: MouseEvent) => {
+      if (!quickPopupRef.current?.contains(e.target as Node)) {
+        setShowQuickPopup(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showQuickPopup]);
 
   // ── Pending message from parent ───────────────────────────────────────────
   useEffect(() => {
@@ -555,7 +569,7 @@ export function ChatPanel({
 
       {/* Quick prompts */}
       <div className="px-4 pt-2 pb-1 flex-shrink-0">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 items-center">
           {dynSuggestions.map((s) => (
             <button
               key={s}
@@ -569,16 +583,42 @@ export function ChatPanel({
               {s}
             </button>
           ))}
-          {QUICK_PROMPTS.map((s) => (
+          {/* Fixed prompts behind popup icon */}
+          <div className="relative" ref={quickPopupRef}>
             <button
-              key={s}
-              onClick={() => send(s)}
+              onClick={() => setShowQuickPopup(v => !v)}
               disabled={loading}
-              className="text-xs px-2.5 py-1 rounded-full bg-brand-50 text-brand-600 border border-brand-100 hover:bg-brand-100 transition-colors disabled:opacity-40"
+              title="Подсказки"
+              className="flex items-center justify-center w-6 h-6 rounded-full border transition-colors disabled:opacity-40"
+              style={{
+                background: showQuickPopup ? "#F3E8FF" : "#FDF4FF",
+                borderColor: "#E9D5FF",
+                color: "#7C3AED",
+              }}
             >
-              {s}
+              <Zap size={12} />
             </button>
-          ))}
+            {showQuickPopup && (
+              <div
+                className="absolute bottom-8 left-0 z-50 rounded-xl shadow-lg border p-2 flex flex-col gap-1 min-w-[200px]"
+                style={{ background: "#FFFBFF", borderColor: "#E9D5FF" }}
+              >
+                {QUICK_PROMPTS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { send(s); setShowQuickPopup(false); }}
+                    disabled={loading}
+                    className="text-xs text-left px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+                    style={{ color: "#7C3AED" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#F3E8FF"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -428,7 +428,7 @@ export default function NotebookPage() {
   const [notebookOpening, setNotebookOpening] = useState(false);
   const [expandedEntries, setExpandedEntries] = useState<Set<string>>(() => new Set());
   const [toolSectionsOpen, setToolSectionsOpen] =
-    useState<NotebookToolSection[]>(DEFAULT_TOOL_SECTIONS);
+    useState<NotebookToolSection[]>([]);
   const [reloadKey, setReloadKey]             = useState(0);
   const [deleteTarget, setDeleteTarget]       = useState<string | null>(null);
   const searchInputRef                         = useRef<HTMLInputElement>(null);
@@ -481,7 +481,7 @@ export default function NotebookPage() {
       );
       if (valid.length) setToolSectionsOpen(valid);
     } catch {
-      setToolSectionsOpen(DEFAULT_TOOL_SECTIONS);
+      setToolSectionsOpen([]);
     }
   }, []);
 
