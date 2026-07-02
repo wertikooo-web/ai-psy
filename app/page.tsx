@@ -9,7 +9,7 @@ import type { StoredConsultation } from "@/lib/consultationStore";
 import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { AddClientModal } from "@/components/client/AddClientModal";
-import { UserPlus, Mic, ArrowRight, CheckCircle2, Clock, Users } from "lucide-react";
+import { UserPlus, Mic, ArrowRight, CheckCircle2, Clock, Users, FileText, Calendar, ChevronRight } from "lucide-react";
 import { pluralMeetings } from "@/lib/format";
 import { AnimatedCityScene } from "@/components/home/AnimatedCityScene";
 
@@ -197,11 +197,120 @@ export default function HomePage() {
   const recentClients       = clients.slice(0, MAX_DASHBOARD_CLIENTS);
   const recentConsultations = consultations.slice(0, MAX_DASHBOARD_CONSULTATIONS);
 
+  const totalClients = clients.length;
+  const totalConsultations = consultations.length;
+  const thisMonth = consultations.filter((c) => {
+    const d = new Date(c.createdAt);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+
   return (
     <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
 
-      {/* ── Single hero section — fills all available space ── */}
-      <section className="flex-1 min-h-0 relative overflow-hidden">
+      {/* ── Mobile layout ─────────────────────────────────────────── */}
+      <div className="lg:hidden flex-1 overflow-y-auto" style={{ background: "#FBF8F5" }}>
+
+        {/* Hero card */}
+        <div style={{ padding: "16px 16px 14px", background: "#F3EBDD", borderBottom: "1px solid #CFC0A9" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            {photoUrl ? (
+              <img src={photoUrl} alt={greeting} style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid #CFC0A9" }} />
+            ) : (
+              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#3a5ff8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff", fontSize: 16, fontWeight: 700, border: "2px solid #CFC0A9" }}>
+                {initials}
+              </div>
+            )}
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#3D3228" }}>Добро пожаловать!</div>
+              <div style={{ fontSize: 12, color: "#A8997F" }}>
+                {new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => router.push("/clients")} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 0", background: "#FBF8F5", border: "1px solid #CFC0A9", borderRadius: 12, fontSize: 13, fontWeight: 500, color: "#6B5D4F", cursor: "pointer" }}>
+              <Users size={15} /> Клиенты
+            </button>
+            <button onClick={() => setUploadOpen(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 0", background: "#3a5ff8", border: "none", borderRadius: 12, fontSize: 13, fontWeight: 500, color: "#fff", cursor: "pointer" }}>
+              <Mic size={15} /> Запись
+            </button>
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div style={{ display: "flex", gap: 1, borderBottom: "1px solid #CFC0A9", background: "#CFC0A9" }}>
+          {[
+            { label: "Клиентов",    value: totalClients,       icon: <Users size={14} /> },
+            { label: "Сессий",      value: totalConsultations, icon: <FileText size={14} /> },
+            { label: "Этот месяц",  value: thisMonth,          icon: <Calendar size={14} /> },
+          ].map((s) => (
+            <div key={s.label} style={{ flex: 1, background: "#FBF8F5", padding: "10px 8px", textAlign: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#A8997F", marginBottom: 2 }}>{s.icon}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: "#3D3228" }}>{s.value}</div>
+              <div style={{ fontSize: 10, color: "#C9BBAA" }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Recent clients */}
+        <div style={{ padding: "14px 16px 8px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "#A8997F" }}>Последние клиенты</span>
+            <button onClick={() => router.push("/clients")} style={{ fontSize: 11, color: "#3a5ff8", background: "none", border: "none", cursor: "pointer" }}>Все →</button>
+          </div>
+          {recentClients.length === 0 ? (
+            <div style={{ padding: "20px 0", textAlign: "center", color: "#C9BBAA", fontSize: 13 }}>Клиентов пока нет</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {recentClients.slice(0, 3).map((client) => (
+                <button key={client.id} onClick={() => router.push(`/client/${client.id}`)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%" }}>
+                  <Avatar initials={client.initials} color={client.color} size="sm" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#3D3228", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{client.name}</div>
+                    <div style={{ fontSize: 11, color: "#A8997F" }}>{pluralMeetings(client.totalConsultations ?? 0)}{client.lastConsultation ? ` · ${new Date(client.lastConsultation).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}` : ""}</div>
+                  </div>
+                  <ChevronRight size={16} color="#C9BBAA" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Recent consultations */}
+        <div style={{ padding: "4px 16px 80px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "#A8997F" }}>Последние консультации</span>
+            <button onClick={() => router.push("/consultations")} style={{ fontSize: 11, color: "#3a5ff8", background: "none", border: "none", cursor: "pointer" }}>Все →</button>
+          </div>
+          {recentConsultations.length === 0 ? (
+            <div style={{ padding: "20px 0", textAlign: "center", color: "#C9BBAA", fontSize: 13 }}>Консультаций пока нет</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {recentConsultations.map((c, i) => {
+                const hasAnalysis = !!((c as StoredConsultation).analyses?.length) || c.isMock;
+                const label = c.title || c.topic || `Консультация #${c.sessionNumber ?? (i + 1)}`;
+                return (
+                  <button key={c.id} onClick={() => router.push(`/consultation/${c.id}`)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 12, cursor: "pointer", textAlign: "left", width: "100%" }}>
+                    <Avatar initials={c.clientInitials ?? "?"} color={c.clientColor ?? "#94a3b8"} size="sm" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#3D3228", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.clientName}</div>
+                      <div style={{ fontSize: 11, color: "#A8997F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: 10, color: "#C9BBAA" }}>{formatDate(c.createdAt)}</div>
+                      {hasAnalysis && <div style={{ fontSize: 10, color: "#16a34a", marginTop: 2, display: "flex", alignItems: "center", gap: 2, justifyContent: "flex-end" }}><CheckCircle2 size={9} /> анализ</div>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Desktop layout ────────────────────────────────────────── */}
+      <section className="hidden lg:flex flex-col flex-1 min-h-0 relative overflow-hidden">
         <AnimatedCityScene />
 
         <div className="relative z-10 flex flex-col h-full">

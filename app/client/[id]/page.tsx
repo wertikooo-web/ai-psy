@@ -172,16 +172,27 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
-      <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-4 sm:space-y-6">
 
-        {/* Back */}
+        {/* Back — hidden on mobile (use BottomNav) */}
         <Link
           href="/clients"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"
+          className="hidden sm:inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors"
         >
           <ArrowLeft size={14} />
           Клиенты
         </Link>
+
+        {/* Mobile-only sticky header */}
+        <div className="sm:hidden -mx-4 -mt-4 sticky top-0 z-10 flex items-center gap-2 px-3 py-2.5 border-b" style={{ background: "#FBF8F5", borderColor: "#CFC0A9" }}>
+          <Link href="/clients" style={{ color: "#3a5ff8", display: "flex", alignItems: "center" }}>
+            <ArrowLeft size={20} />
+          </Link>
+          <span className="flex-1 text-sm font-semibold truncate" style={{ color: "#3D3228" }}>{client?.name}</span>
+          <button onClick={() => setUploadOpen(true)} style={{ background: "#3a5ff8", border: "none", borderRadius: 8, padding: "5px 10px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+            <Mic size={13} /> Запись
+          </button>
+        </div>
 
         {/* Status banner for paused/archived */}
         {!isMock && client.status === "paused" && (
@@ -252,7 +263,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
                 : ""}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
             <button
               onClick={() => setUploadOpen(true)}
               className="flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
@@ -282,8 +293,24 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        {/* Tab navigation — scrollable for 6 tabs */}
-        <div className="flex gap-1 bg-stone-300 rounded-xl p-1 overflow-x-auto">
+        {/* Tab navigation — underline on mobile, pills on desktop */}
+        <div className="sm:hidden flex border-b overflow-x-auto" style={{ borderColor: "#CFC0A9" }}>
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className="flex-shrink-0 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors"
+              style={{
+                color: tab === t.id ? "#3a5ff8" : "#A8997F",
+                borderBottom: tab === t.id ? "2px solid #3a5ff8" : "2px solid transparent",
+                background: "none",
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="hidden sm:flex gap-1 bg-stone-300 rounded-xl p-1 overflow-x-auto">
           {TABS.map((t) => (
             <button
               key={t.id}

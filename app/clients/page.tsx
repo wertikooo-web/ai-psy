@@ -471,7 +471,7 @@ export default function ClientsPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              className="flex items-center gap-1.5 text-sm transition-colors"
+              className="hidden sm:flex items-center gap-1.5 text-sm transition-colors"
               style={{ color: "#A8997F" }}
               onMouseEnter={(e) => { e.currentTarget.style.color = "#4A3C2E"; }}
               onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; }}
@@ -479,7 +479,7 @@ export default function ClientsPage() {
               <ArrowLeft size={16} />
               Назад
             </button>
-            <div className="w-px h-5" style={{ background: "#DDD4C6" }} />
+            <div className="hidden sm:block w-px h-5" style={{ background: "#DDD4C6" }} />
             <h1 className="text-xl font-bold text-slate-800">Клиенты</h1>
           </div>
         </div>
