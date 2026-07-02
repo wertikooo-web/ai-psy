@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Trash2, CheckCircle2, CircleDashed } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Trash2, CheckCircle2, CircleDashed, WalletCards } from "lucide-react";
 import Link from "next/link";
 import type { StoredConsultation } from "@/lib/consultationStore";
+import { PaymentDialog, paymentStatusLabels, type PaymentRow, type PaymentStatus } from "@/components/payments/PaymentDialog";
 
 // ── Craft palette ─────────────────────────────────────────────────────────────
 const S = {
@@ -17,8 +18,17 @@ const S = {
   title:   "#6B5D4F",
 };
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+function formatDate(dateStr?: string | null) {
+  if (!dateStr) return "—";
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function getPaymentStatus(row?: PaymentRow): PaymentStatus | null {
+  const status = row?.paymentStatus;
+  if (status === "unpaid" || status === "partial" || status === "paid") return status;
+  return null;
 }
 
 interface MockSession {
@@ -70,6 +80,28 @@ export function ConsultationsTab({
 }: Props) {
   const [openCompare, setOpenCompare] = useState<string | null>(null);
   const [deletingId, setDeletingId]   = useState<string | null>(null);
+  const [paymentFor, setPaymentFor]   = useState<StoredConsultation | null>(null);
+  const [payments, setPayments]       = useState<Record<string, PaymentRow>>({});
+
+  useEffect(() => {
+    if (!realSessions.length) return;
+    fetch("/api/payments")
+      .then((res) => res.ok ? res.json() : [])
+      .then((rows: PaymentRow[]) => {
+        const map: Record<string, PaymentRow> = {};
+        for (const row of rows) map[row.consultationId] = row;
+        setPayments(map);
+      })
+      .catch(() => {});
+  }, [realSessions.length]);
+
+  const paymentConsultations = useMemo(() => realSessions.map((session) => ({
+    id: session.id,
+    title: session.title || "Консультация",
+    clientId: session.clientId,
+    clientName: session.clientName,
+    createdAt: session.createdAt,
+  })), [realSessions]);
 
   async function handleDelete(id: string) {
     if (!confirm("Удалить эту запись консультации?")) return;
@@ -133,19 +165,21 @@ export function ConsultationsTab({
         const hasAudio      = !!(c.audio?.fileUrl ?? c.fileUrl);
         const hasTranscript = !!c.transcript?.text;
         const hasAnalysis   = !!(c.analyses?.length);
-        const displayTitle  = /\.(mp3|m4a|wav|ogg|webm|flac)$/i.test(c.title)
+        const title         = c.title || "Консультация";
+        const paymentStatus = getPaymentStatus(payments[c.id]);
+        const displayTitle  = /\.(mp3|m4a|wav|ogg|webm|flac)$/i.test(title)
           ? `Консультация #${idx + 1}`
-          : c.title;
+          : title;
         return (
           <div
             key={c.id}
-            className="rounded-2xl border overflow-hidden"
+            className="rounded-2xl border p-4 transition-colors hover:bg-[#FFFDF8]"
             style={{ background: S.bg, borderColor: S.border }}
           >
-            <div className="flex items-center gap-3 p-4" style={{ background: S.header }}>
+            <div className="flex items-start gap-3">
               <SessionNumber n={idx + 1} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: S.title }}>{displayTitle}</p>
+                <p className="text-sm font-semibold leading-snug" style={{ color: S.title }}>{displayTitle}</p>
                 <p className="text-xs text-stone-400 mt-0.5">{formatDate(c.createdAt ?? c.uploadedAt ?? "")}</p>
                 {c.requestId && requestsMap[c.requestId] && (
                   <p
@@ -156,18 +190,20 @@ export function ConsultationsTab({
                     Запрос: {requestsMap[c.requestId].slice(0, 50)}{requestsMap[c.requestId].length > 50 ? "…" : ""}
                   </p>
                 )}
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <MiniStatus ok={hasAudio}       label="Аудио" />
-                  <MiniStatus ok={hasTranscript}  label="Транскрипт" />
-                  <MiniStatus ok={hasAnalysis}    label="Анализ" />
-                </div>
               </div>
-              <Link
-                href={`/consultation/${c.id}`}
-                className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 font-medium flex-shrink-0 transition-colors"
+              <button
+                onClick={() => setPaymentFor(c)}
+                className="flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors flex-shrink-0"
+                style={{
+                  borderColor: "#D8CFBE",
+                  color: "#6B5D4F",
+                  background: paymentStatus === "paid" ? "#EFFAF3" : paymentStatus === "partial" ? "#FFF7E0" : "#FFF8EA",
+                }}
+                title="Внести оплату"
               >
-                Открыть <ArrowRight size={12} />
-              </Link>
+                <WalletCards size={12} />
+                {paymentStatus ? paymentStatusLabels[paymentStatus] : "Оплата"}
+              </button>
               <button
                 onClick={() => handleDelete(c.id)}
                 disabled={deletingId === c.id}
@@ -180,9 +216,30 @@ export function ConsultationsTab({
                 <Trash2 size={13} />
               </button>
             </div>
+            <div className="mt-3 flex items-center justify-between gap-3 pl-11">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <MiniStatus ok={hasAudio}       label="Аудио" />
+                <MiniStatus ok={hasTranscript}  label="Транскрипт" />
+                <MiniStatus ok={hasAnalysis}    label="Анализ" />
+              </div>
+              <Link
+                href={`/consultation/${c.id}`}
+                className="flex flex-shrink-0 items-center gap-1 text-xs font-medium text-brand-500 transition-colors hover:text-brand-600"
+              >
+                Открыть <ArrowRight size={12} />
+              </Link>
+            </div>
           </div>
         );
       })}
+      <PaymentDialog
+        open={Boolean(paymentFor)}
+        onClose={() => setPaymentFor(null)}
+        fixedConsultationId={paymentFor?.id}
+        consultations={paymentConsultations}
+        initial={paymentFor ? payments[paymentFor.id] ?? null : null}
+        onSaved={(row) => setPayments((prev) => ({ ...prev, [row.consultationId]: row }))}
+      />
     </div>
   );
 }

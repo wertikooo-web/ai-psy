@@ -326,8 +326,9 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
   const reload = useCallback(async () => {
     if (isMock) { setLoading(false); return; }
     try {
-      const res  = await fetch(`/api/client-requests/${clientId}`);
-      const data: ClientRequest[] = res.ok ? await res.json() : [];
+      const res = await fetch(`/api/client-requests/${clientId}`);
+      const payload = res.ok ? await res.json() : [];
+      const data: ClientRequest[] = Array.isArray(payload) ? payload : [];
       setRequests(data);
       const cur = data.find((r) => r.isCurrent);
       if (cur) onCurrentChange?.(cur.text);

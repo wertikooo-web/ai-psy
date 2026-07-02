@@ -7,6 +7,7 @@ import {
   Save, Trash2, User, CheckCircle2, AlertCircle,
   BrainCircuit, Database, Loader2, Camera, X, ArrowLeft,
   Building2, ChevronDown, RotateCcw, BookOpen, Mic,
+  Send, Copy, ExternalLink, Unplug,
 } from "lucide-react";
 import type { UserProfile, AnalysisStyle, AnalysisLength, ChatStyle } from "@/lib/userProfile";
 import { AI_MODELS, ANALYSIS_STYLE_OPTIONS, ANALYSIS_LENGTH_OPTIONS, CHAT_STYLE_OPTIONS } from "@/lib/userProfile";
@@ -47,9 +48,25 @@ const AI_DEFAULTS = {
 
 const APPROACHES = ["Гештальт", "КПТ", "ACT", "Схема-терапия", "Интегративный", "Другой"];
 
-type SectionId = "profile" | "ai" | "interface" | "transcription" | "data";
+type SectionId = "profile" | "telegram" | "ai" | "interface" | "transcription" | "data";
 
-const VALID_SECTION_IDS: SectionId[] = ["profile", "ai", "interface", "transcription", "data"];
+const VALID_SECTION_IDS: SectionId[] = ["profile", "telegram", "ai", "interface", "transcription", "data"];
+
+interface TelegramStatus {
+  connected: boolean;
+  account: {
+    telegramUsername?: string;
+    telegramFirstName?: string;
+    telegramLastName?: string;
+    linkedAt: string;
+  } | null;
+  botUsername: string | null;
+}
+
+interface TelegramLinkCodeState {
+  code: string;
+  expiresAt: string;
+}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -68,6 +85,11 @@ export default function SettingsPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError]   = useState<string>("");
   const [deleting, setDeleting] = useState(false);
+  const [telegramStatus, setTelegramStatus] = useState<TelegramStatus | null>(null);
+  const [telegramCode, setTelegramCode] = useState<TelegramLinkCodeState | null>(null);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramChecking, setTelegramChecking] = useState(false);
+  const [telegramMessage, setTelegramMessage] = useState("");
 
   // City animation state
   const [cityAnim, setCityAnim] = useState<CityAnimationSettings>(DEFAULT_CITY_ANIMATION_SETTINGS);
@@ -92,6 +114,17 @@ export default function SettingsPage() {
       return next;
     });
   }
+
+  useEffect(() => {
+    if (!openSections.size) return;
+    const closeOnOutside = (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest(".settings-section")) return;
+      setOpenSections(new Set());
+    };
+    document.addEventListener("mousedown", closeOnOutside);
+    return () => document.removeEventListener("mousedown", closeOnOutside);
+  }, [openSections.size]);
 
   // Scroll to the target section after mount
   const targetSectionRef = useRef<HTMLDivElement>(null);
@@ -151,6 +184,83 @@ export default function SettingsPage() {
       .then((d) => { setApiConfigured(d.configured); setApiMasked(d.masked ?? null); })
       .catch(() => setApiConfigured(false));
   }, []);
+
+  const loadTelegramStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/telegram/status");
+      if (!res.ok) throw new Error("status failed");
+      const data = await res.json();
+      setTelegramStatus(data);
+      if (data.connected) setTelegramCode(null);
+    } catch {
+      setTelegramStatus({ connected: false, account: null, botUsername: null });
+    }
+  }, []);
+
+  async function handleRefreshTelegramStatus() {
+    setTelegramChecking(true);
+    setTelegramMessage("");
+    try {
+      await loadTelegramStatus();
+      setTelegramMessage("Статус Telegram обновлён");
+    } catch {
+      setTelegramMessage("Не удалось проверить Telegram");
+    } finally {
+      setTelegramChecking(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadTelegramStatus();
+  }, [loadTelegramStatus]);
+
+  useEffect(() => {
+    if (!telegramCode || telegramStatus?.connected) return;
+    const id = window.setInterval(() => {
+      void loadTelegramStatus();
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [telegramCode, telegramStatus?.connected, loadTelegramStatus]);
+
+  async function handleCreateTelegramCode() {
+    setTelegramLoading(true);
+    setTelegramMessage("");
+    try {
+      const res = await fetch("/api/telegram/link-code", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Не удалось создать код");
+      setTelegramCode(data);
+      setTelegramMessage("Код создан");
+    } catch (err) {
+      setTelegramMessage(err instanceof Error ? err.message : "Не удалось создать код");
+    } finally {
+      setTelegramLoading(false);
+    }
+  }
+
+  async function handleCopyTelegramCommand() {
+    if (!telegramCode) return;
+    await navigator.clipboard?.writeText(`/link ${telegramCode.code}`);
+    setTelegramMessage("Команда скопирована");
+  }
+
+  async function handleDisconnectTelegram() {
+    if (!confirm("Отключить Telegram?\n\nПосле отключения бот больше не сможет получать доступ к данным приложения.")) return;
+    setTelegramLoading(true);
+    setTelegramMessage("");
+    try {
+      const res = await fetch("/api/telegram/disconnect", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Не удалось отключить Telegram");
+      setTelegramCode(null);
+      await loadTelegramStatus();
+      setTelegramMessage("Telegram отключён");
+    } catch (err) {
+      setTelegramMessage(err instanceof Error ? err.message : "Не удалось отключить Telegram");
+    } finally {
+      setTelegramLoading(false);
+    }
+  }
 
   // Profile field setter
   function setField(field: keyof UserProfile, value: string) {
@@ -360,7 +470,28 @@ export default function SettingsPage() {
           </SettingsSection>
           </div>
 
-          {/* 2. AI Settings */}
+          {/* 2. Telegram */}
+          <SettingsSection
+            title="Telegram"
+            description={telegramStatus?.connected ? "Telegram подключён" : "Telegram не подключён"}
+            icon={<Send size={14} />}
+            isOpen={isOpen("telegram")}
+            onToggle={() => toggleSection("telegram")}
+          >
+            <TelegramSettingsContent
+              status={telegramStatus}
+              code={telegramCode}
+              loading={telegramLoading}
+              checking={telegramChecking}
+              message={telegramMessage}
+              onCreateCode={handleCreateTelegramCode}
+              onCopyCommand={handleCopyTelegramCommand}
+              onRefresh={handleRefreshTelegramStatus}
+              onDisconnect={handleDisconnectTelegram}
+            />
+          </SettingsSection>
+
+          {/* 3. AI Settings */}
           <SettingsSection
             title="Настройки AI"
             description={aiSummary}
@@ -377,7 +508,7 @@ export default function SettingsPage() {
             />
           </SettingsSection>
 
-          {/* 3. Interface */}
+          {/* 4. Interface */}
           <SettingsSection
             title="Интерфейс"
             description="Анимация города на главной странице"
@@ -394,7 +525,7 @@ export default function SettingsPage() {
             />
           </SettingsSection>
 
-          {/* 4. Transcription */}
+          {/* 5. Transcription */}
           <SettingsSection
             title="Транскрибация"
             description="Распознавание речи через OpenAI Whisper"
@@ -490,7 +621,7 @@ function SettingsSection({ title, description, icon, isOpen, onToggle, children 
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F7F4EF", borderColor: "#E5DDD2" }}>
+    <div className="settings-section rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F7F4EF", borderColor: "#E5DDD2" }}>
       <button
         aria-expanded={isOpen}
         onClick={onToggle}
@@ -558,6 +689,151 @@ function SaveRow({ status, onSave, label = "Сохранить", errorMsg }: {
 }
 
 // ── AISettingsContent ─────────────────────────────────────────────────────────
+
+function TelegramSettingsContent({
+  status,
+  code,
+  loading,
+  checking,
+  message,
+  onCreateCode,
+  onCopyCommand,
+  onRefresh,
+  onDisconnect,
+}: {
+  status: TelegramStatus | null;
+  code: TelegramLinkCodeState | null;
+  loading: boolean;
+  checking: boolean;
+  message: string;
+  onCreateCode: () => void;
+  onCopyCommand: () => void;
+  onRefresh: () => void;
+  onDisconnect: () => void;
+}) {
+  const botUrl = status?.botUsername ? `https://t.me/${status.botUsername.replace(/^@/, "")}` : "";
+  const expiresText = code
+    ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(code.expiresAt))
+    : "";
+  const linkedAt = status?.account?.linkedAt
+    ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(status.account.linkedAt))
+    : "";
+  const username = status?.account?.telegramUsername
+    ? `@${status.account.telegramUsername}`
+    : [status?.account?.telegramFirstName, status?.account?.telegramLastName].filter(Boolean).join(" ");
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border px-4 py-3" style={{ borderColor: "#E5DDD2", background: "#F8F6F2" }}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#4A3C2E" }}>
+              {status?.connected ? <CheckCircle2 size={15} className="text-emerald-600" /> : <AlertCircle size={15} className="text-amber-600" />}
+              {status?.connected ? "Telegram подключён" : "Telegram не подключён"}
+            </div>
+            {status?.connected ? (
+              <div className="mt-1 text-xs" style={{ color: "#7A6A58" }}>
+                {username || "Аккаунт Telegram"}{linkedAt ? ` · ${linkedAt}` : ""}
+              </div>
+            ) : (
+              <div className="mt-1 text-xs" style={{ color: "#7A6A58" }}>
+                Создайте одноразовый код и отправьте его боту командой /link.
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onRefresh}
+            disabled={checking}
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60"
+            style={{ borderColor: "#D4C9B5", color: "#6B5D4F", background: "#FFFFFF" }}
+          >
+            {checking ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+            Проверить
+          </button>
+        </div>
+      </div>
+
+      {!status?.connected && (
+        <div className="space-y-3">
+          <button
+            onClick={onCreateCode}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-60"
+            style={{ background: "#7A6148" }}
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            Подключить Telegram
+          </button>
+
+          {code && (
+            <div className="rounded-xl border p-4" style={{ borderColor: "#E5DDD2", background: "#FFFDFC" }}>
+              <div className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: "#A8997F" }}>
+                Код подключения
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <div className="rounded-xl border px-4 py-2 font-mono text-2xl font-bold tracking-[0.22em]" style={{ borderColor: "#D4C9B5", color: "#3D3228", background: "#F7F4EF" }}>
+                  {code.code}
+                </div>
+                <button
+                  onClick={onCopyCommand}
+                  className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold"
+                  style={{ borderColor: "#D4C9B5", color: "#6B5D4F", background: "#FFFFFF" }}
+                >
+                  <Copy size={13} />
+                  Скопировать команду
+                </button>
+              </div>
+              <div className="mt-3 text-sm" style={{ color: "#6B5D4F" }}>
+                Действует до {expiresText}. Откройте Telegram-бота и отправьте:
+              </div>
+              <div className="mt-2 rounded-lg px-3 py-2 font-mono text-sm" style={{ background: "#F0EBE3", color: "#3D3228" }}>
+                /link {code.code}
+              </div>
+              {botUrl ? (
+                <Link
+                  href={botUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold"
+                  style={{ color: "#6B4E2E" }}
+                >
+                  <ExternalLink size={14} />
+                  Открыть Telegram-бота
+                </Link>
+              ) : (
+                <div className="mt-3 text-xs" style={{ color: "#A8997F" }}>
+                  Добавьте TELEGRAM_BOT_USERNAME в Railway, чтобы здесь появилась ссылка на бота.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {status?.connected && (
+        <button
+          onClick={onDisconnect}
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-60"
+          style={{ borderColor: "#E7C8C2", background: "#FFFDFC" }}
+        >
+          {loading ? <Loader2 size={14} className="animate-spin" /> : <Unplug size={14} />}
+          Отключить Telegram
+        </button>
+      )}
+
+      {message && (
+        <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "#F0EBE3", color: "#6B5D4F" }}>
+          {message}
+        </div>
+      )}
+
+      <div className="rounded-xl border px-3 py-2 text-xs leading-relaxed" style={{ borderColor: "#E5DDD2", background: "#FFF8EE", color: "#7A5D3D" }}>
+        Перед загрузкой аудиозаписи убедитесь, что запись и обработка консультации выполняются с необходимым информированным согласием клиента.
+      </div>
+    </div>
+  );
+}
 
 function SegButtons<T extends string>({
   options, value, onChange,

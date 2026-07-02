@@ -5,16 +5,20 @@
 
 import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 import * as memStore from "@/lib/notebookStore";
-import type { NotebookEntry } from "@/lib/notebookStore";
+import type { NotebookEntry, NoteAttentionStatus } from "@/lib/notebookStore";
 
 export const NOTEBOOK_PAGE_SIZE = 3;
 
 export type NotebookSort = "newest" | "oldest" | "updated" | "client" | "topic";
 export type NotebookGroup = "none" | "date" | "client" | "topic";
 export type NotebookDateFilter = "all" | "today" | "7d" | "30d" | "custom";
+export type NotebookStatusFilter = "all" | NoteAttentionStatus;
+
+const NOTE_ATTENTION_STATUSES: NoteAttentionStatus[] = ["none", "later", "important", "urgent", "done"];
 
 export interface NotebookQuery {
   page: number;
+  pageSize?: number;
   search?: string;
   client?: string;
   topic?: string;
@@ -22,6 +26,7 @@ export interface NotebookQuery {
   sort: NotebookSort;
   group: NotebookGroup;
   date: NotebookDateFilter;
+  status?: NotebookStatusFilter;
   from?: string;
   to?: string;
 }
@@ -46,6 +51,12 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
+function asAttentionStatus(value: unknown): NoteAttentionStatus {
+  return typeof value === "string" && NOTE_ATTENTION_STATUSES.includes(value as NoteAttentionStatus)
+    ? value as NoteAttentionStatus
+    : "none";
+}
+
 function rowToEntry(row: Record<string, unknown>): NotebookEntry {
   const client = row.clients as Record<string, unknown> | null | undefined;
   const hasTitleColumn = Object.prototype.hasOwnProperty.call(row, "title");
@@ -63,6 +74,7 @@ function rowToEntry(row: Record<string, unknown>): NotebookEntry {
     id:         row.id as string,
     title:      legacy.title,
     text:       legacy.text,
+    attentionStatus: asAttentionStatus(row.attention_status),
     clientId:   legacy.clientId,
     clientName: (client?.full_name as string | undefined) ?? undefined,
     clientInitials: (client?.initials as string | undefined) ?? undefined,
@@ -173,6 +185,7 @@ function isMissingNotebookV2Schema(message: string): boolean {
     message.includes("topic") ||
     message.includes("tags") ||
     message.includes("title") ||
+    message.includes("attention_status") ||
     message.includes("Could not find") ||
     message.includes("does not exist")
   );
@@ -222,15 +235,16 @@ async function getClientIdsByName(search: string): Promise<string[]> {
 
 export async function getEntries(query: NotebookQuery): Promise<NotebookPageResult> {
   const page = Math.max(1, query.page || 1);
+  const pageSize = Math.max(1, Math.min(500, query.pageSize ?? NOTEBOOK_PAGE_SIZE));
 
   if (isSupabaseConfigured()) {
-    const from = (page - 1) * NOTEBOOK_PAGE_SIZE;
-    const to = from + NOTEBOOK_PAGE_SIZE - 1;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
     const search = sanitizeFilterText((query.search ?? "").trim());
     const clientIds = search ? await getClientIdsByName(search) : [];
     let request = supabaseServer!
       .from("notebook")
-      .select("*, clients:client_id(full_name,initials,color)", { count: "exact" })
+      .select("*", { count: "exact" })
       .is("deleted_at", null);
 
     if (search) {
@@ -248,6 +262,7 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
     else if (query.client) request = request.eq("client_id", query.client);
     if (query.topic) request = request.eq("topic", query.topic);
     if (query.tags?.length) request = request.contains("tags", query.tags);
+    if (query.status && query.status !== "all") request = request.eq("attention_status", query.status);
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -276,9 +291,9 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
     return {
       entries: await enrichLegacyClientData((data ?? []).map(rowToEntry)),
       page,
-      pageSize: NOTEBOOK_PAGE_SIZE,
+      pageSize,
       total,
-      totalPages: Math.max(1, Math.ceil(total / NOTEBOOK_PAGE_SIZE)),
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
     };
   }
 
@@ -289,6 +304,7 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
     if (query.client && query.client !== "none" && entry.clientId !== query.client) return false;
     if (query.topic && entry.topic !== query.topic) return false;
     if (query.tags?.length && !query.tags.every((tag) => entry.tags.includes(tag))) return false;
+    if (query.status && query.status !== "all" && entry.attentionStatus !== query.status) return false;
     if (!search) return true;
     return [entry.title, entry.text, entry.clientName, entry.topic, ...entry.tags]
       .filter(Boolean)
@@ -299,11 +315,11 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
   entries = applyDateFilter(entries, query);
   entries = sortEntries(entries, query.sort);
   const total = entries.length;
-  const totalPages = Math.max(1, Math.ceil(total / NOTEBOOK_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return {
-    entries: await enrichLegacyClientData(entries.slice((page - 1) * NOTEBOOK_PAGE_SIZE, page * NOTEBOOK_PAGE_SIZE)),
+    entries: await enrichLegacyClientData(entries.slice((page - 1) * pageSize, page * pageSize)),
     page,
-    pageSize: NOTEBOOK_PAGE_SIZE,
+    pageSize,
     total,
     totalPages,
   };
@@ -311,8 +327,9 @@ export async function getEntries(query: NotebookQuery): Promise<NotebookPageResu
 
 async function getLegacyEntries(query: NotebookQuery): Promise<NotebookPageResult> {
   const page = Math.max(1, query.page || 1);
-  const from = (page - 1) * NOTEBOOK_PAGE_SIZE;
-  const to = from + NOTEBOOK_PAGE_SIZE - 1;
+  const pageSize = Math.max(1, Math.min(500, query.pageSize ?? NOTEBOOK_PAGE_SIZE));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
   let request = supabaseServer!
     .from("notebook")
     .select("id,text,created_at", { count: "exact" });
@@ -329,9 +346,9 @@ async function getLegacyEntries(query: NotebookQuery): Promise<NotebookPageResul
   return {
     entries: await enrichLegacyClientData((data ?? []).map(rowToEntry)),
     page,
-    pageSize: NOTEBOOK_PAGE_SIZE,
+    pageSize,
     total,
-    totalPages: Math.max(1, Math.ceil(total / NOTEBOOK_PAGE_SIZE)),
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
   };
 }
 
@@ -370,6 +387,7 @@ export async function addEntry(input: NotebookInput & { id: string }): Promise<N
     clientId:  input.clientId || undefined,
     topic:     input.topic?.trim() || undefined,
     tags:      normalizeTags(input.tags),
+    attentionStatus: "none",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -446,6 +464,52 @@ export async function updateEntry(id: string, input: NotebookInput): Promise<Not
     topic:    input.topic?.trim() || undefined,
     tags:     normalizeTags(input.tags),
   });
+}
+
+export async function updateEntryAttentionStatus(
+  id: string,
+  attentionStatus: NoteAttentionStatus,
+): Promise<NotebookEntry | null> {
+  if (!NOTE_ATTENTION_STATUSES.includes(attentionStatus)) {
+    throw new Error("[DAL/notebook/updateEntryAttentionStatus] invalid attention status");
+  }
+
+  if (isSupabaseConfigured()) {
+    let { data, error } = await supabaseServer!
+      .from("notebook")
+      .update({ attention_status: attentionStatus })
+      .eq("id", id)
+      .is("deleted_at", null)
+      .select("*")
+      .single();
+
+    if (error && error.message.includes("deleted_at")) {
+      const legacy = await supabaseServer!
+        .from("notebook")
+        .update({ attention_status: attentionStatus })
+        .eq("id", id)
+        .select("*")
+        .single();
+      data = legacy.data;
+      error = legacy.error;
+    }
+
+    if (error) {
+      if (
+        error.message.includes("attention_status") ||
+        error.message.includes("Could not find the 'attention_status'")
+      ) {
+        throw new Error(
+          "Supabase migration is missing: add public.notebook.attention_status before changing note marks.",
+        );
+      }
+      throw new Error(`[DAL/notebook/updateEntryAttentionStatus] ${error.message}`);
+    }
+    const enriched = await enrichLegacyClientData(data ? [rowToEntry(data as Record<string, unknown>)] : []);
+    return enriched[0] ?? null;
+  }
+
+  return memStore.updateNotebookEntry(id, { attentionStatus });
 }
 
 export async function deleteEntry(id: string): Promise<void> {

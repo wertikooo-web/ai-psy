@@ -1,43 +1,63 @@
-# TRANSCRIPT AI · PSY — AGENTS.md
+# TRANSCRIPT AI · PSY - AGENTS.md
 
----
+## Purpose
 
-## Обязательное начало новой сессии
+This file is the single operating guide for all AI agents working on TRANSCRIPT AI · PSY.
 
-Перед любой работой с кодом:
+It replaces separate duplicated agent instructions such as `CLAUDE.md` and `AI_RULES.md`.
 
-1. Прочитай `project_state.md` — он содержит актуальное состояние проекта.
-2. Прочитай `NEXT_STEPS.md` — он содержит приоритизированный список задач.
-3. Не переспрашивай об архитектуре если это уже задокументировано в project_state.md.
-4. Не проводи повторный аудит кодовой базы если project_state.md уже существует — доверяй ему и обновляй по мере изменений.
-5. Supabase уже подключён и работает в production. Фраза "Do not connect Supabase yet" в разделе Data Storage ниже — устарела.
-6. Основной компонент страницы консультации — `RealConsultationView.tsx`, не `ConsultationClient.tsx`.
-7. Анализы хранятся в `consultations.analyses` (JSONB массив), не в отдельной таблице.
+All agents should treat this file as the main source of rules for coding, review, architecture, safety, Git workflow, Supabase work, UI changes, testing, and reporting.
 
----
+## Deferred Features
 
-## Project Mission
+Do not implement the "Резюме" feature without a separate explicit user task.
+The idea is documented in `docs/PRODUCT_BACKLOG.md`.
 
-TRANSCRIPT AI · PSY is an AI-assisted workspace for practicing psychologists.
+## Project
+
+Project: TRANSCRIPT AI · PSY
+
+Type: AI-assisted workspace for practicing psychologists.
+
+Stack:
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Supabase
+- OpenAI APIs
+
+Current default AI provider: OpenAI.
+
+The architecture may support Anthropic and DeepSeek, but they can remain mock or secondary implementations unless the user explicitly asks otherwise.
+
+## Product Mission
+
+TRANSCRIPT AI · PSY helps psychologists work with client material.
 
 The product helps psychologists:
 
-* manage clients;
-* store consultations;
-* create transcripts;
-* maintain client history;
-* run AI-assisted analysis;
-* continue case exploration through consultation chat.
+- manage clients;
+- store consultations;
+- create transcripts;
+- maintain client history;
+- run AI-assisted analysis;
+- continue case exploration through consultation chat.
 
-The primary goal is not CRM functionality.
+The main goal is not CRM functionality.
 
-The primary goal is helping a psychologist work with client material.
+The main goal is a safe, useful workspace for real psychological practice.
 
----
+## Core Workflow
 
-# Core Product Principle
+The core MVP flow is:
 
-Do not add new functionality if the core workflow is not complete.
+```text
+Client -> Consultation -> Transcript -> AI Analysis -> Chat -> Client History
+```
+
+Every implementation decision should support this workflow.
 
 Priority order:
 
@@ -48,250 +68,460 @@ Priority order:
 5. Consultation Chat
 6. Client History
 
-Every implementation decision should support this workflow.
+Do not add large new product areas while this workflow is unstable.
 
----
+## Mandatory Session Start
 
-# Current MVP Goal
+Before working with code, every agent must:
 
-The MVP is considered successful when the following flow works reliably:
+1. Read `project_state.md`.
+2. Read `NEXT_STEPS.md`.
+3. Check the current branch.
+4. Check Git status.
+5. Pull the latest changes.
 
-Client → Consultation → Transcript → Analysis → Chat → Client History
+Use:
 
-Anything outside this flow is secondary.
+```bash
+git branch
+git status
+git pull
+```
 
----
+Do not repeat a full codebase audit if `project_state.md` already gives the current state.
 
-# Things NOT To Do
+If `project_state.md` is outdated, inspect the real codebase before updating it.
 
-Do not introduce:
+## Current Known Implementation Facts
 
-* authentication;
-* billing;
-* subscriptions;
-* user roles;
-* multi-user support;
-* team collaboration;
-* complex analytics;
-* large-scale refactoring.
+These facts override older documentation:
 
-Do not redesign the entire UI unless explicitly requested.
+- Supabase is connected and works in production.
+- Do not follow old instructions saying "Do not connect Supabase yet".
+- The main consultation page component is `RealConsultationView.tsx`, not `ConsultationClient.tsx`.
+- Analyses are stored in `consultations.analyses` as a JSONB array, not in a separate analyses table.
+- Request history is already implemented through migrations and `clientRequests.ts` DAL.
 
-Do not modify knowledge base content without approval.
+## Branch Strategy
 
-Do not connect Supabase until the core workflow is stable.
+Never work directly in `main`.
 
----
+Branches:
 
-# Client Structure
+- `main` - stable branch.
+- `ai-dev` - main working branch for AI agents.
+- feature branches may be created from `ai-dev` when useful.
+
+Before work:
+
+```bash
+git checkout ai-dev
+git pull
+git status
+```
+
+The working tree should be clean before making changes.
+
+## Git Workflow
+
+After changes:
+
+```bash
+git status
+git diff
+```
+
+If the changes are correct:
+
+```bash
+git add .
+git commit -m "ai: short description"
+git push
+```
+
+Commit messages should be short and practical.
+
+If the user writes `КПД` on a new line, treat it as an explicit command:
+
+```text
+Коммит - Пуш - Деплой
+```
+
+For `КПД`, finish the current changes, run the necessary verification, commit, push to the deployment branch, trigger/allow deploy, and report what was done.
+
+Examples:
+
+```text
+ai: add basic auth middleware
+ai: prepare missing schema migrations
+ai: refactor whisper service
+ai: split consultation view layout
+```
+
+Never commit:
+
+- `.env`
+- `.env.local`
+- API keys
+- `node_modules`
+- `.next`
+- private uploaded files
+- real client data
+
+## Destructive Commands
+
+Do not run destructive commands without explicit user approval.
+
+Forbidden without approval:
+
+```bash
+git reset --hard
+git clean -fd
+rm -rf
+npm install
+pnpm install
+supabase db push
+supabase migration up
+```
+
+Before cleaning files, use preview:
+
+```bash
+git clean -fdn
+```
+
+## Sensitive Data Rules
+
+This project may contain psychological consultation data, transcripts, audio references, client notes, and private clinical material.
+
+Never expose, print, export, or send client data outside the local project unless the user explicitly asks.
+
+Never add real client data to:
+
+- tests;
+- examples;
+- fixtures;
+- screenshots;
+- documentation.
+
+Use anonymized sample data only.
+
+## Human Approval Gates
+
+Ask the user before:
+
+- changing database schema;
+- applying migrations;
+- deleting fallback systems;
+- changing authentication strategy;
+- installing dependencies;
+- moving many files;
+- splitting large components;
+- changing deployment settings;
+- touching secrets or environment variables;
+- modifying knowledge base content.
+
+## Scope Control
+
+Work on one small task at a time.
+
+Do not rewrite large parts of the project unless explicitly asked.
+
+For a new task, first identify:
+
+- files to change;
+- files to avoid;
+- possible risks;
+- how to test the result.
+
+Then make the smallest useful change.
+
+## Default First Response for Risky Tasks
+
+For risky work, begin with:
+
+```text
+I will first inspect the relevant files and propose a minimal plan. I will not change files until the plan is clear.
+```
+
+Then inspect, plan, and wait for approval if needed.
+
+## Protected Areas
+
+Do not modify these without explicit approval:
+
+```text
+.env
+.env.local
+.env.production
+supabase/schema.sql
+supabase/migrations/
+package.json
+package-lock.json
+pnpm-lock.yaml
+next.config.*
+knowledge_base/
+```
+
+For Supabase migrations, create SQL files only. Do not apply them automatically.
+
+## Security Rules
+
+This app handles sensitive psychological material.
+
+Do not expose it publicly while pages or API routes are unprotected.
+
+For current single-user deployment, prefer middleware-level Basic Auth or another simple whole-app protection.
+
+Keep `SUPABASE_SERVICE_ROLE_KEY` server-side only.
+
+Never move service-role logic into client components.
+
+## Supabase Rules
+
+Supabase is the current production storage layer.
+
+Do not assume schema changes are already applied.
+
+If code expects a column, check whether the column exists in schema and migrations.
+
+When creating a migration, include:
+
+- forward SQL;
+- rollback SQL;
+- explanation;
+- risk notes;
+- manual Supabase run instructions.
+
+Do not apply migrations automatically.
+
+## Data Storage Direction
+
+Local JSON storage may exist as fallback or legacy code, but Supabase is the production source.
+
+The project should eventually decide between:
+
+- removing the JSON fallback;
+- completing it fully for all features.
+
+Do not remove the JSON fallback without explicit approval.
+
+## Architecture Direction
+
+Move toward small replaceable modules.
+
+Prefer:
+
+```text
+one module
+one responsibility
+clear input
+clear output
+small surface area
+```
+
+Avoid:
+
+```text
+large monolithic components
+duplicated service logic
+hidden side effects
+mixed UI, data, and AI logic in one file
+```
+
+Current refactoring priorities:
+
+1. Protect pages and API routes for single-user deployment.
+2. Prepare missing database migration SQL files.
+3. Consolidate duplicated audio and Whisper logic.
+4. Decide the future of JSON fallback.
+5. Split large UI components only after security and data issues are stable.
+
+## Client Model
 
 Each client contains:
 
-## Overview
+### Overview
 
 Short summary of the case.
 
-## Consultations
+### Consultations
 
 List of consultation sessions.
 
-## Client History
+### Client History
 
 Structured long-term context.
 
 Sections:
 
-* Key themes
-* Working hypotheses
-* Resources
-* Significant life events
-* What has already been explored
-* What requires further exploration
-* Therapist notes
+- key themes;
+- working hypotheses;
+- resources;
+- significant life events;
+- what has already been explored;
+- what requires further exploration;
+- therapist notes.
 
-Use the name:
+Use the name `Client History`.
 
-"Client History"
+Do not use `Client Memory`.
 
-Never use:
-
-"Client Memory"
-
-## Materials
+### Materials
 
 Imported files and reference material:
 
-* therapist notes;
-* previous GPT analyses;
-* historical transcripts;
-* intake forms;
-* additional documentation.
+- therapist notes;
+- previous GPT analyses;
+- historical transcripts;
+- intake forms;
+- additional documentation.
 
----
-
-# Consultation Creation
+## Consultation Creation
 
 Supported sources:
 
-## Audio Recording
+### Audio Recording
 
 Formats:
 
-* mp3
-* m4a
-* wav
+- mp3
+- m4a
+- wav
 
 Flow:
 
-Audio → Whisper → Transcript → Analysis
+```text
+Audio -> Whisper -> Transcript -> Analysis
+```
 
----
-
-## Existing Transcript
+### Existing Transcript
 
 Formats:
 
-* txt
-* md
-
-Or pasted text.
+- txt
+- md
+- pasted text
 
 Flow:
 
-Transcript → Analysis
+```text
+Transcript -> Analysis
+```
 
----
-
-## Therapist Notes
+### Therapist Notes
 
 Manual text entry.
 
 Flow:
 
-Notes → Analysis
+```text
+Notes -> Analysis
+```
 
-Notes must be clearly identified as notes, not a full transcript.
+Notes must be clearly identified as notes, not as a full transcript.
 
----
-
-# Consultation Page
+## Consultation Page
 
 The consultation page is the most important screen.
 
-Structure:
+It contains:
 
-## Consultation Header
+- consultation header;
+- transcript panel;
+- AI analysis panel;
+- consultation chat panel.
 
-Shows:
+The consultation header shows:
 
-* client name;
-* session number;
-* date;
-* duration;
-* status;
-* actions.
+- client name;
+- session number;
+- date;
+- duration;
+- status;
+- actions.
 
 The client name must not be used as the header of the AI Analysis panel.
 
----
+## UI Rules
 
-## Three Working Panels
+Do not make broad visual redesigns inside functional tasks.
 
-### 🎙 Transcript
+When changing UI:
 
-Client and therapist dialogue.
+- keep the current visual language;
+- avoid unrelated components;
+- check desktop layout first;
+- preserve existing Russian interface text unless asked to rewrite it.
 
-### 🧠 AI Analysis
+Large files such as `RealConsultationView.tsx` and `TranscriptPanel.tsx` should be split gradually, not rewritten in one pass.
 
-Observations, hypotheses, directions for exploration.
+## Scroll Behavior
 
-### 💬 Consultation Chat
-
-Questions about the current session.
-
----
-
-# Scroll Behavior
-
-This is critical.
+Scroll behavior is critical.
 
 Expected behavior:
 
-* sidebar remains fixed;
-* consultation header remains visible;
-* transcript panel scrolls independently;
-* analysis panel scrolls independently;
-* chat panel scrolls independently;
-* chat input remains fixed at the bottom.
+- sidebar remains fixed;
+- consultation header remains visible;
+- transcript panel scrolls independently;
+- analysis panel scrolls independently;
+- chat panel scrolls independently;
+- chat input remains fixed at the bottom.
 
 Do not rely on page-level scrolling.
 
 Check:
 
-* h-screen
-* min-h-0
-* overflow-hidden
-* overflow-y-auto
+- `h-screen`
+- `min-h-0`
+- `overflow-hidden`
+- `overflow-y-auto`
 
-A missing min-h-0 is a common cause of broken panel scrolling.
+A missing `min-h-0` commonly breaks panel scrolling.
 
----
+## Collapsible Panels
 
-# Collapsible Panels
-
-Transcript, Analysis and Chat panels should support collapse/expand.
+Transcript, Analysis, and Chat panels should support collapse and expand.
 
 When collapsed:
 
-* panel becomes a narrow tab;
-* content is hidden;
-* remaining panels expand automatically.
+- panel becomes a narrow tab;
+- content is hidden;
+- remaining panels expand automatically.
 
-Do not use checkboxes.
+Do not use checkboxes for this behavior.
 
 Use dedicated panel controls.
 
----
-
-# Analysis Modes
+## Analysis Modes
 
 Supported modes:
 
-## working
+| Mode | Meaning |
+|---|---|
+| `working` | Working Analysis |
+| `deep` | Deep Analysis |
+| `therapist_process` | Therapist Process Analysis (+A) |
+| `gestalt` | Gestalt Analysis (+G) |
 
-Working Analysis
+Use `therapist_process`.
 
-## deep
+Do not use `therapist`.
 
-Deep Analysis
-
-## therapist_process
-
-Therapist Process Analysis (+A)
-
-## gestalt
-
-Gestalt Analysis (+G)
-
-Use:
-
-therapist_process
-
-Do not use:
-
-therapist
-
----
-
-# Knowledge Base
+## Knowledge Base Rules
 
 Location:
 
+```text
 knowledge_base/
+```
 
 Main file:
 
+```text
 000_CORE_INSTRUCTIONS.md
+```
 
 This file must always be loaded first.
 
@@ -301,165 +531,223 @@ Prompt composition order:
 2. Knowledge Map
 3. Mode-specific files
 4. Client Context
-5. Transcript / Notes
+5. Transcript or Notes
 6. Current Task
 
----
+Do not modify knowledge base content without approval.
 
-# Client Context
+## Client Context Assembly
 
 Client context should be assembled from:
 
-* client profile;
-* Client History;
-* Materials;
-* previous consultations;
-* previous analyses.
+- client profile;
+- Client History;
+- Materials;
+- previous consultations;
+- previous analyses.
 
 The context should be concise and relevant.
 
----
+## AI and LLM Rules
 
-# LLM Providers
+Keep prompts and analysis logic modular.
 
-Architecture should support:
+Do not hardcode prompt behavior inside UI components.
 
-* OpenAI
-* Anthropic
-* DeepSeek
+Do not mix transcript parsing, evidence extraction, UI rendering, and OpenAI calls in one place.
 
-Current default:
+Prefer dedicated service files for:
 
-OpenAI
+- transcription;
+- analysis;
+- evidence extraction;
+- prompt loading;
+- client materials;
+- session summary.
 
-Anthropic and DeepSeek may remain mock implementations.
+## Whisper Rules
 
----
-
-# Whisper
-
-Use OpenAI Whisper API.
+Use OpenAI Whisper API for transcription.
 
 Flow:
 
-Audio File → Whisper → Transcript → Consultation
+```text
+Audio File -> Whisper -> Transcript -> Consultation
+```
 
-If transcript already exists, require confirmation before regenerating.
+If a transcript already exists, require confirmation before regenerating.
 
----
-
-# Materials Inside Consultation
+## Materials Inside Consultation
 
 A consultation may contain:
 
-* audio recording;
-* transcript;
-* AI analysis.
+- audio recording;
+- transcript;
+- AI analysis.
 
 These should be presented as consultation assets.
 
 Example:
 
-🎧 Audio Recording
+```text
+Audio Recording
+Transcript
+AI Analysis
+```
 
-📝 Transcript
+## Testing and Verification
 
-🧠 AI Analysis
+After any code change, run the lightest available checks.
 
----
+Prefer:
 
-# Data Storage
+```bash
+npm run lint
+npx tsc --noEmit
+```
 
-Local JSON storage is acceptable for MVP.
+If scripts are unavailable, report that clearly.
 
-However:
+For UI changes, describe exactly what the user should click and check.
 
-Railway filesystem is ephemeral.
+Before deployment, run:
 
-Files stored inside:
-
-* data/
-* public/uploads/
-
-may disappear after redeploy.
-
-Design future architecture with migration to Supabase in mind.
-
-Do not connect Supabase yet.
-
----
-
-# Git Safety
-
-Never commit:
-
-* .env
-* .env.local
-* API keys
-* node_modules
-* .next
-* public/uploads
-* data
-
-Always verify before commit.
-
----
-
-# Deployment
-
-Before deployment run:
-
+```bash
 npm run build
+```
 
-Deployment target:
+Deployment target: Railway.
 
-Railway
-
-Repository:
-
-GitHub
-
----
-
-# How To Work
-
-Before large changes:
-
-1. Explain the plan.
-2. List affected files.
-
-After changes:
-
-1. List modified files.
-2. Explain what changed.
-3. Provide manual test instructions.
-4. Identify what is still mock.
-
----
-
-# Current Priority
-
-Finish:
-
-Client → Consultation → Transcript → AI Analysis → Chat → Client History
-
-Before introducing major new features.
-
-
+Repository: GitHub.
 
 ## Updating Project State
 
-When the user says "обнови project state", "обнови состояние проекта",
-"актуализируй PROJECT_STATE" or similar:
+When the user says "обнови project state", "обнови состояние проекта", "актуализируй PROJECT_STATE", or similar:
 
-1. Do not trust PROJECT_STATE.md blindly.
-2. Inspect the real codebase, migrations, API routes, components, package.json and git diff.
-3. Update PROJECT_STATE.md to reflect the current real implementation.
-4. Update NEXT_STEPS.md:
-   - remove tasks that are already implemented;
-   - mark partially implemented tasks accurately;
+1. Do not trust `PROJECT_STATE.md` blindly.
+2. Inspect the real codebase, migrations, API routes, components, package.json, and git diff.
+3. Update `PROJECT_STATE.md` to reflect the real implementation.
+4. Update `NEXT_STEPS.md`:
+   - remove completed tasks;
+   - mark partial tasks accurately;
    - add only next steps that follow from the current MVP workflow.
 5. Do not invent features.
 6. Do not mark something as working unless it exists in code or was verified.
-7. Include date of update.
-8. Keep Client → Consultation → Transcript → Analysis → Chat → Client History as the priority.
+7. Include update date.
+8. Keep the core workflow as priority.
+
+## Agent Roles
+
+### Claude Code
+
+Role: Implementation Engineer.
+
+Responsibilities:
+
+- new features;
+- bug fixes;
+- small refactoring.
+
+Never:
+
+- rewrite architecture without approval;
+- delete modules without approval;
+- make broad redesigns during functional work.
+
+### Codex
+
+Role: Senior Reviewer.
+
+Responsibilities:
+
+- find bugs;
+- simplify code;
+- review changes;
+- check edge cases;
+- suggest safer implementation paths.
+
+Never:
+
+- make large UI redesigns without approval;
+- turn review into a rewrite unless asked.
+
+### Antigravity
+
+Role: Chief Architect.
+
+Responsibilities:
+
+- architecture audit;
+- coupling analysis;
+- refactoring strategy;
+- AI-agent readiness checks;
+- documentation structure review.
+
+Never:
+
+- rewrite working code only for style;
+- make structural changes without a plan and approval.
+
+## Collaboration Between Agents
+
+Do not let multiple agents edit the same task at the same time.
+
+Finish, commit, and push one agent's work before giving the next agent a review task.
+
+Suggested flow:
+
+```text
+Claude Code -> implementation
+Codex -> code review
+Antigravity -> architecture review
+User -> approve merge to main
+```
+
+## Agent Report Format
+
+After finishing a task, always report:
+
+```text
+Changed files:
+- ...
+
+What changed:
+- ...
+
+How to test:
+- ...
+
+Risks:
+- ...
+
+Next suggested step:
+- ...
+```
+
+## Documentation Rules
+
+Avoid duplicated sources of truth.
+
+One topic should live in one place.
+
+Keep documentation short, accurate, and current.
+
+If a document contains outdated instructions, update or remove them instead of adding a contradictory note elsewhere.
+
+`AGENTS.md` is the main rule file for all agents.
+
+## Project Principle
+
+The goal is not beautiful code for its own sake.
+
+The goal is a working, safe, maintainable tool for real psychological practice.
+
+Prioritize:
+
+```text
+safety
+data privacy
+small changes
+clear modules
+easy rollback
+```
