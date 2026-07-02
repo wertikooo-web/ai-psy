@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Plus, Trash2, Bot, User } from "lucide-react";
 import {
   HISTORY_SECTIONS_ORDER,
@@ -35,14 +35,24 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
   const [saving, setSaving]               = useState(false);
   const [deletingId, setDeletingId]       = useState<string | null>(null);
   const [expandedItem, setExpandedItem]   = useState<string | null>(null);
+  // Level 1: section open/closed — all collapsed by default ({} = all closed)
+  const [openSections, setOpenSections]   = useState<Record<string, boolean>>({});
+
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const bySection = (section: HistorySection) => items.filter((i) => i.section === section);
 
+  function toggleSection(section: HistorySection) {
+    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  }
+
+  // Click-outside closes expanded item (Level 2)
   useEffect(() => {
     if (!expandedItem) return;
     function onOutside(e: MouseEvent) {
-      const target = e.target as HTMLElement | null;
-      if (!target?.closest("[data-history-entry]")) setExpandedItem(null);
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setExpandedItem(null);
+      }
     }
     document.addEventListener("mousedown", onOutside);
     return () => document.removeEventListener("mousedown", onOutside);
@@ -81,7 +91,7 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" ref={containerRef}>
       {items.length === 0 && !isMock && (
         <p className="text-sm text-stone-400 text-center py-6">
           История клиента пуста. Добавьте первую запись вручную или она появится после AI-анализа консультации.
@@ -89,8 +99,9 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
       )}
 
       {HISTORY_SECTIONS_ORDER.map((section) => {
-        const sectionItems = bySection(section);
-        const isAdding     = addingSection === section;
+        const sectionItems  = bySection(section);
+        const isAdding      = addingSection === section;
+        const isSectionOpen = !!openSections[section];
 
         return (
           <div
@@ -98,12 +109,28 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
             className="rounded-2xl border overflow-hidden"
             style={{ background: S.bg, borderColor: S.border }}
           >
-            {/* Section header */}
+            {/* ── Level 1: Section header — click to toggle ── */}
             <div
-              className="flex items-center justify-between px-5 py-3.5 border-b"
-              style={{ background: S.header, borderColor: S.divider }}
+              className="flex items-center justify-between px-5 border-b cursor-pointer select-none"
+              style={{
+                background: S.header,
+                borderColor: isSectionOpen ? S.divider : "transparent",
+                minHeight: 44,
+              }}
+              onClick={() => toggleSection(section)}
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 py-3.5">
+                {/* Rotating arrow */}
+                <span
+                  style={{
+                    color: S.title,
+                    display: "inline-flex",
+                    transition: "transform 150ms ease",
+                    transform: isSectionOpen ? "rotate(0deg)" : "rotate(-90deg)",
+                  }}
+                >
+                  <ChevronDown size={14} />
+                </span>
                 <h3 className="text-sm font-semibold" style={{ color: S.title }}>
                   {HISTORY_SECTION_LABELS[section]}
                 </h3>
@@ -118,7 +145,13 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
               </div>
               {!isMock && (
                 <button
-                  onClick={() => { setAddingSection(isAdding ? null : section); setDraftText(""); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAddingSection(isAdding ? null : section);
+                    setDraftText("");
+                    // Auto-open section when user clicks Add
+                    if (!isSectionOpen) toggleSection(section);
+                  }}
                   className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors flex-shrink-0"
                   style={{ background: "#D4C5B1", color: "#4A3C2E" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "#C9BBAA")}
@@ -130,100 +163,105 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
               )}
             </div>
 
-            {/* Items */}
-            <div>
-              {sectionItems.map((item, i) => {
-                const isOpen = expandedItem === item.id;
-                const preview = item.text.trim().slice(0, 150);
-                const hasMore = item.text.trim().length > 150;
+            {/* ── Level 1: Section body — visible only when open ── */}
+            {isSectionOpen && (
+              <div>
+                {/* ── Level 2: Individual entries ── */}
+                {sectionItems.map((item, i) => {
+                  const isOpen  = expandedItem === item.id;
+                  const preview = item.text.trim().slice(0, 150);
+                  const hasMore = item.text.trim().length > 150;
 
-                return (
-                <div
-                  key={item.id}
-                  data-history-entry
-                  className="flex cursor-pointer items-start gap-3 px-5 py-3.5 group transition-colors hover:bg-white/55"
-                  style={{
-                    borderTop: i > 0 ? `1px solid ${S.divider}` : undefined,
-                  }}
-                  onClick={() => setExpandedItem(isOpen ? null : item.id)}
-                >
-                  <SourceBadge source={item.source} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
-                      {isOpen ? item.text : preview}
-                      {!isOpen && hasMore && <span style={{ color: S.countTxt }}>...</span>}
-                    </p>
-                    <button
-                      type="button"
-                      className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium transition-colors"
-                      style={{ color: S.countTxt }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedItem(isOpen ? null : item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      data-history-entry
+                      className="flex cursor-pointer items-start gap-3 px-5 py-3.5 group transition-colors hover:bg-white/55"
+                      style={{
+                        borderTop: i > 0 ? `1px solid ${S.divider}` : undefined,
                       }}
+                      onClick={() => setExpandedItem(isOpen ? null : item.id)}
                     >
-                      {isOpen ? <><ChevronUp size={11} /> Свернуть</> : <><ChevronDown size={11} /> Развернуть</>}
-                    </button>
+                      <SourceBadge source={item.source} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
+                          {isOpen ? item.text : preview}
+                          {!isOpen && hasMore && <span style={{ color: S.countTxt }}>...</span>}
+                        </p>
+                        <button
+                          type="button"
+                          className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium transition-colors"
+                          style={{ color: S.countTxt }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedItem(isOpen ? null : item.id);
+                          }}
+                        >
+                          {isOpen
+                            ? <><ChevronUp size={11} /> Свернуть</>
+                            : <><ChevronDown size={11} /> Развернуть</>}
+                        </button>
+                      </div>
+                      {!isMock && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(item.id);
+                          }}
+                          disabled={deletingId === item.id}
+                          className="flex-shrink-0 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
+                          style={{ width: 26, height: 26, background: "#FEF2F2", border: "1px solid #FECACA", color: "#EF4444" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FCA5A5"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.borderColor = "#FECACA"; }}
+                          title="Удалить"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {sectionItems.length === 0 && !isAdding && (
+                  <p className="px-5 py-3.5 text-xs text-stone-300 italic">Нет записей</p>
+                )}
+
+                {/* Inline add form */}
+                {isAdding && (
+                  <div
+                    className="px-5 py-3 border-t"
+                    style={{ background: S.addArea, borderColor: S.divider }}
+                  >
+                    <textarea
+                      autoFocus
+                      rows={2}
+                      value={draftText}
+                      onChange={(e) => setDraftText(e.target.value)}
+                      placeholder="Введите наблюдение или заметку..."
+                      className="w-full px-3 py-2 rounded-xl border text-sm text-slate-800 placeholder:text-stone-300 focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-50 transition-all resize-none"
+                      style={{ background: S.bg, borderColor: S.border }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleAdd(section);
+                        if (e.key === "Escape") { setAddingSection(null); setDraftText(""); }
+                      }}
+                    />
+                    <div className="flex items-center justify-end gap-2 mt-2">
+                      <button
+                        onClick={() => { setAddingSection(null); setDraftText(""); }}
+                        className="text-xs text-stone-400 hover:text-stone-600 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Отмена
+                      </button>
+                      <button
+                        onClick={() => handleAdd(section)}
+                        disabled={saving || !draftText.trim()}
+                        className="text-xs bg-brand-500 hover:bg-brand-600 disabled:bg-stone-300 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+                      >
+                        {saving ? "Сохраняю..." : "Сохранить"}
+                      </button>
+                    </div>
                   </div>
-                  {!isMock && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(item.id);
-                      }}
-                      disabled={deletingId === item.id}
-                      className="flex-shrink-0 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
-                      style={{ width: 26, height: 26, background: "#FEF2F2", border: "1px solid #FECACA", color: "#EF4444" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FCA5A5"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.borderColor = "#FECACA"; }}
-                      title="Удалить"
-                    >
-                      <Trash2 size={11} />
-                    </button>
-                  )}
-                </div>
-                );
-              })}
-
-              {sectionItems.length === 0 && !isAdding && (
-                <p className="px-5 py-3.5 text-xs text-stone-300 italic">Нет записей</p>
-              )}
-            </div>
-
-            {/* Inline add form */}
-            {isAdding && (
-              <div
-                className="px-5 py-3 border-t"
-                style={{ background: S.addArea, borderColor: S.divider }}
-              >
-                <textarea
-                  autoFocus
-                  rows={2}
-                  value={draftText}
-                  onChange={(e) => setDraftText(e.target.value)}
-                  placeholder="Введите наблюдение или заметку..."
-                  className="w-full px-3 py-2 rounded-xl border text-sm text-slate-800 placeholder:text-stone-300 focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-50 transition-all resize-none"
-                  style={{ background: S.bg, borderColor: S.border }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleAdd(section);
-                    if (e.key === "Escape") { setAddingSection(null); setDraftText(""); }
-                  }}
-                />
-                <div className="flex items-center justify-end gap-2 mt-2">
-                  <button
-                    onClick={() => { setAddingSection(null); setDraftText(""); }}
-                    className="text-xs text-stone-400 hover:text-stone-600 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    Отмена
-                  </button>
-                  <button
-                    onClick={() => handleAdd(section)}
-                    disabled={saving || !draftText.trim()}
-                    className="text-xs bg-brand-500 hover:bg-brand-600 disabled:bg-stone-300 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
-                  >
-                    {saving ? "Сохраняю..." : "Сохранить"}
-                  </button>
-                </div>
+                )}
               </div>
             )}
           </div>
