@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Trash2, CheckCircle2, CircleDashed, WalletCards } from "lucide-react";
 import Link from "next/link";
 import type { StoredConsultation } from "@/lib/consultationStore";
-import { PaymentDialog, paymentStatusLabels, type PaymentRow } from "@/components/payments/PaymentDialog";
+import { PaymentDialog, paymentStatusLabels, type PaymentRow, type PaymentStatus } from "@/components/payments/PaymentDialog";
 
 // ── Craft palette ─────────────────────────────────────────────────────────────
 const S = {
@@ -18,8 +18,17 @@ const S = {
   title:   "#6B5D4F",
 };
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+function formatDate(dateStr?: string | null) {
+  if (!dateStr) return "—";
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function getPaymentStatus(row?: PaymentRow): PaymentStatus | null {
+  const status = row?.paymentStatus;
+  if (status === "unpaid" || status === "partial" || status === "paid") return status;
+  return null;
 }
 
 interface MockSession {
@@ -156,9 +165,11 @@ export function ConsultationsTab({
         const hasAudio      = !!(c.audio?.fileUrl ?? c.fileUrl);
         const hasTranscript = !!c.transcript?.text;
         const hasAnalysis   = !!(c.analyses?.length);
-        const displayTitle  = /\.(mp3|m4a|wav|ogg|webm|flac)$/i.test(c.title)
+        const title         = c.title || "Консультация";
+        const paymentStatus = getPaymentStatus(payments[c.id]);
+        const displayTitle  = /\.(mp3|m4a|wav|ogg|webm|flac)$/i.test(title)
           ? `Консультация #${idx + 1}`
-          : c.title;
+          : title;
         return (
           <div
             key={c.id}
@@ -186,12 +197,12 @@ export function ConsultationsTab({
                 style={{
                   borderColor: "#D8CFBE",
                   color: "#6B5D4F",
-                  background: payments[c.id]?.paymentStatus === "paid" ? "#EFFAF3" : payments[c.id]?.paymentStatus === "partial" ? "#FFF7E0" : "#FFF8EA",
+                  background: paymentStatus === "paid" ? "#EFFAF3" : paymentStatus === "partial" ? "#FFF7E0" : "#FFF8EA",
                 }}
                 title="Внести оплату"
               >
                 <WalletCards size={12} />
-                {payments[c.id] ? paymentStatusLabels[payments[c.id].paymentStatus] : "Оплата"}
+                {paymentStatus ? paymentStatusLabels[paymentStatus] : "Оплата"}
               </button>
               <button
                 onClick={() => handleDelete(c.id)}

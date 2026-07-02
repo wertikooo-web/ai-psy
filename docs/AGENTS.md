@@ -8,6 +8,11 @@ It replaces separate duplicated agent instructions such as `CLAUDE.md` and `AI_R
 
 All agents should treat this file as the main source of rules for coding, review, architecture, safety, Git workflow, Supabase work, UI changes, testing, and reporting.
 
+## Deferred Features
+
+Do not implement the "Резюме" feature without a separate explicit user task.
+The idea is documented in `docs/PRODUCT_BACKLOG.md`.
+
 ## Project
 
 Project: TRANSCRIPT AI · PSY
