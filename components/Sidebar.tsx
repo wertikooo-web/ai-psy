@@ -129,7 +129,7 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         </button>
       )}
 
-      <div className="space-y-0.5">
+      <div className="space-y-0.5 mt-[15px]">
         <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Основное
         </div>
@@ -148,7 +148,7 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         </button>
       </div>
 
-      <div className="space-y-0.5 pt-4 mt-2" style={{ borderTop: `1px solid ${C.border}` }}>
+      <div className="space-y-0.5 pt-[35px] mt-[27px]" style={{ borderTop: `1px solid ${C.border}` }}>
         <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Инструменты
         </div>
@@ -157,7 +157,7 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         ))}
       </div>
 
-      <div className="space-y-0.5 pt-4 mt-2" style={{ borderTop: `1px solid ${C.border}` }}>
+      <div className="space-y-0.5 pt-[35px] mt-[27px]" style={{ borderTop: `1px solid ${C.border}` }}>
         <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Система
         </div>
