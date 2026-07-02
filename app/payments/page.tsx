@@ -95,7 +95,73 @@ export default function PaymentsPage() {
     load();
   }
 
+  const thisMonthTotal = useMemo(() => {
+    const now = new Date();
+    return payments
+      .filter((p) => {
+        const d = new Date(p.consultationDate || p.paymentDate || "");
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      })
+      .reduce((sum, p) => sum + p.paidAmount, 0);
+  }, [payments]);
+
   return (
+    <>
+    {/* ── MOBILE LAYOUT ── */}
+    <div className="lg:hidden flex-1 min-h-0 overflow-y-auto" style={{ background: "#FBF8F5" }}>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10" style={{ background: "#FBF8F5", borderBottom: "1px solid #CFC0A9", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 18, fontWeight: 700, color: "#3D3228" }}>Платежи</span>
+      </div>
+
+      {/* Summary card */}
+      <div style={{ background: "#F3EBDD", padding: "14px 16px", borderBottom: "1px solid #CFC0A9" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#A8997F", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Этот месяц</div>
+        <div style={{ fontSize: 28, fontWeight: 800, color: "#3D3228" }}>{money.format(thisMonthTotal)} <span style={{ fontSize: 16, fontWeight: 500 }}>MDL</span></div>
+      </div>
+
+      <div style={{ padding: "12px 16px", paddingBottom: 80 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#A8997F", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Транзакции</div>
+
+        {loading ? (
+          <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
+            <Loader2 className="animate-spin" style={{ color: "#A8997F" }} />
+          </div>
+        ) : payments.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "48px 0", color: "#A8997F" }}>
+            <WalletCards size={32} style={{ margin: "0 auto 12px", opacity: 0.4 }} />
+            <p style={{ fontWeight: 600, color: "#3D3228", fontSize: 14 }}>Оплат пока нет</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {payments.slice(0, 30).map((row) => (
+              <div key={row.id} style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: row.clientColor, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                  {row.clientInitials || row.clientName.slice(0, 2)}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#3D3228", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.clientName}</div>
+                  <div style={{ fontSize: 12, color: "#A8997F", marginTop: 2 }}>{formatDate(row.paymentDate)}</div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: "#3D3228" }}>{money.format(row.paidAmount)}</div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, borderRadius: 6, padding: "2px 6px",
+                    background: row.paymentStatus === "paid" ? "#dcfce7" : row.paymentStatus === "pending" ? "#fef3c7" : "#f3f4f6",
+                    color: row.paymentStatus === "paid" ? "#16a34a" : row.paymentStatus === "pending" ? "#d97706" : "#6B7280",
+                  }}>
+                    {paymentStatusLabels[row.paymentStatus]}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* ── DESKTOP LAYOUT ── */}
+    <div className="hidden lg:block flex-1 min-h-0 overflow-y-auto">
     <div className="min-h-full bg-[#F7F3EA] p-4 sm:p-6 text-[#2F261F]">
       <div className="mx-auto max-w-7xl space-y-5">
         <header className="flex flex-wrap items-center justify-between gap-3">
@@ -209,5 +275,7 @@ export default function PaymentsPage() {
         onSaved={onSaved}
       />
     </div>
+    </div>{/* end hidden lg:block */}
+    </>
   );
 }

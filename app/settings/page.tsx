@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Save, Trash2, User, CheckCircle2, AlertCircle,
   BrainCircuit, Database, Loader2, Camera, X, ArrowLeft,
-  Building2, ChevronDown, RotateCcw, BookOpen, Mic,
+  Building2, ChevronDown, ChevronRight, RotateCcw, BookOpen, Mic,
   Send, Copy, ExternalLink, Unplug,
 } from "lucide-react";
 import type { UserProfile, AnalysisStyle, AnalysisLength, ChatStyle } from "@/lib/userProfile";
@@ -355,8 +355,71 @@ export default function SettingsPage() {
     ANALYSIS_LENGTH_OPTIONS.find((o) => o.value === (profile.analysisLength ?? "standard"))?.label ?? "Стандартный",
   ].join(" · ");
 
+  const displayName = profile.displayName || [profile.firstName, profile.lastName].filter(Boolean).join(" ") || "Психолог";
+  const initials = displayName.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase() || "П";
+
+  const SECTION_LABELS: Record<SectionId, string> = {
+    profile: "Профиль",
+    telegram: "Telegram",
+    ai: "Настройки AI",
+    interface: "Интерфейс",
+    transcription: "Транскрибация",
+    data: "Данные",
+  };
+
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
+    <>
+    {/* ── MOBILE LAYOUT ── */}
+    <div className="lg:hidden flex-1 min-h-0 overflow-y-auto" style={{ background: "#FBF8F5" }}>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10" style={{ background: "#FBF8F5", borderBottom: "1px solid #CFC0A9", padding: "12px 16px" }}>
+        <span style={{ fontSize: 18, fontWeight: 700, color: "#3D3228" }}>Настройки</span>
+      </div>
+
+      <div style={{ padding: "12px 16px", paddingBottom: 80 }}>
+        {/* Profile card */}
+        <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 16, overflow: "hidden", marginBottom: 16 }}>
+          <div style={{ padding: "16px", display: "flex", alignItems: "center", gap: 14 }}>
+            {profile.photoUrl ? (
+              <img src={profile.photoUrl} alt="Фото" style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#6B5D4F", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 18, fontWeight: 700, flexShrink: 0 }}>
+                {initials}
+              </div>
+            )}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "#3D3228", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</div>
+              <div style={{ fontSize: 12, color: "#A8997F", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {profile.specialization || profile.approach || "Психолог"}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => toggleSection("profile")}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "#EDE7DA", border: "none", borderTop: "1px solid #CFC0A9", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#3D3228" }}
+          >
+            Редактировать профиль
+            <ChevronRight size={16} style={{ color: "#A8997F" }} />
+          </button>
+        </div>
+
+        {/* Settings rows */}
+        {(["telegram", "ai", "interface", "transcription", "data"] as SectionId[]).map((sectionId) => (
+          <div key={sectionId} style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, marginBottom: 8 }}>
+            <button
+              onClick={() => toggleSection(sectionId)}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#3D3228" }}
+            >
+              {SECTION_LABELS[sectionId]}
+              <ChevronRight size={16} style={{ color: "#A8997F" }} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* ── DESKTOP LAYOUT ── */}
+    <div className="hidden lg:block flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
       <div className="max-w-2xl mx-auto px-6 py-10">
 
         {/* Page header */}
@@ -625,7 +688,8 @@ export default function SettingsPage() {
 
         </div>
       </div>
-    </div>
+    </div>{/* end hidden lg:block */}
+    </>
   );
 }
 

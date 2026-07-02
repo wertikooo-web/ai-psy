@@ -415,7 +415,75 @@ export default function AnalyticsPage() {
 
   const maxIncome = Math.max(1, ...(data?.incomeTimeline.map((item) => item.received) ?? [0]));
 
+  // Last 6 months of income for mobile bar chart
+  const mobileBarData = data?.incomeTimeline.slice(-6) ?? [];
+  const mobileBarMax = Math.max(1, ...mobileBarData.map((item) => item.received));
+
   return (
+    <>
+    {/* ── MOBILE LAYOUT ── */}
+    <div className="lg:hidden flex-1 min-h-0 overflow-y-auto" style={{ background: "#FBF8F5" }}>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10" style={{ background: "#FBF8F5", borderBottom: "1px solid #CFC0A9", padding: "12px 16px" }}>
+        <span style={{ fontSize: 18, fontWeight: 700, color: "#3D3228" }}>Аналитика</span>
+      </div>
+
+      <div style={{ padding: "12px 16px", paddingBottom: 80 }}>
+        {loading ? (
+          <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
+            <Loader2 className="animate-spin" style={{ color: "#A8997F" }} size={28} />
+          </div>
+        ) : data ? (
+          <>
+            {/* 2×2 KPI grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px" }}>
+                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 4 }}>Клиентов</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#8B5CF6" }}>{data.summary.totalClients}</div>
+                <div style={{ fontSize: 10, color: "#C9BBAA", marginTop: 2 }}>{data.summary.activeClients} активных</div>
+              </div>
+              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px" }}>
+                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 4 }}>Консультаций</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#3a5ff8" }}>{data.summary.consultations}</div>
+                <div style={{ fontSize: 10, color: "#C9BBAA", marginTop: 2 }}>за период</div>
+              </div>
+              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px" }}>
+                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 4 }}>Получено</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#16a34a" }}>{money.format(data.finance.received)}</div>
+                <div style={{ fontSize: 10, color: "#C9BBAA", marginTop: 2 }}>MDL</div>
+              </div>
+              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px" }}>
+                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 4 }}>Новых клиентов</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#d97706" }}>{data.summary.newClients}</div>
+                <div style={{ fontSize: 10, color: "#C9BBAA", marginTop: 2 }}>за период</div>
+              </div>
+            </div>
+
+            {/* Bar chart section */}
+            <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#3D3228", marginBottom: 12 }}>Доход по месяцам</div>
+              {mobileBarData.length === 0 ? (
+                <div style={{ fontSize: 13, color: "#A8997F", textAlign: "center", padding: "16px 0" }}>Нет данных</div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 80 }}>
+                  {mobileBarData.map((item) => (
+                    <div key={item.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                      <div style={{ width: "100%", background: "#8B5CF6", borderRadius: "4px 4px 0 0", height: Math.max(4, (item.received / mobileBarMax) * 60) }} title={`${item.label}: ${money.format(item.received)}`} />
+                      <span style={{ fontSize: 10, color: "#A8997F" }}>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        ) : error ? (
+          <div style={{ color: "#B42318", fontSize: 13, padding: "16px 0" }}>{error}</div>
+        ) : null}
+      </div>
+    </div>
+
+    {/* ── DESKTOP LAYOUT ── */}
+    <div className="hidden lg:block flex-1 min-h-0 overflow-y-auto">
     <div ref={dashboardRef} className="h-full overflow-hidden bg-[#F7F3EA] p-4 text-[#2F261F] print:bg-white">
       <div className="mx-auto flex h-full max-w-[1540px] flex-col gap-3">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-3">
@@ -622,5 +690,7 @@ export default function AnalyticsPage() {
       </div>
       {toast && <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#3D3228] px-4 py-2 text-sm font-semibold text-white shadow-lg">{toast}</div>}
     </div>
+    </div>{/* end hidden lg:block */}
+    </>
   );
 }

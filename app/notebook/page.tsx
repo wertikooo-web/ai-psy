@@ -892,7 +892,87 @@ export default function NotebookPage() {
   }, [notebookTotalPages, query.page]);
 
   return (
-    <div className="flex-1 h-full min-h-0 overflow-hidden bg-[#F7F3EA]">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+
+      {/* ── MOBILE LAYOUT ── */}
+      <div className="lg:hidden flex-1 min-h-0 overflow-y-auto" style={{ background: "#FBF8F5" }}>
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10" style={{ background: "#FBF8F5", borderBottom: "1px solid #CFC0A9", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: "#3D3228" }}>Блокнот</span>
+          <button
+            onClick={openNewEntry}
+            style={{ display: "flex", alignItems: "center", gap: 5, background: "#3a5ff8", color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          >
+            <Plus size={13} /> Запись
+          </button>
+        </div>
+
+        <div style={{ padding: "12px 16px", paddingBottom: 80 }}>
+          {/* Search */}
+          <div style={{ position: "relative", marginBottom: 12 }}>
+            <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#A8997F" }} />
+            <input
+              value={query.search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Поиск в блокноте..."
+              style={{ width: "100%", boxSizing: "border-box", background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 10, padding: "9px 12px 9px 32px", fontSize: 13, color: "#3D3228", outline: "none" }}
+            />
+          </div>
+
+          {/* Note cards */}
+          {loading ? (
+            <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
+              <Loader2 size={24} className="animate-spin" style={{ color: "#A8997F" }} />
+            </div>
+          ) : data.entries.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "48px 0", color: "#A8997F", fontSize: 14 }}>
+              <BookOpen size={32} style={{ margin: "0 auto 12px", opacity: 0.4 }} />
+              <p style={{ fontWeight: 600, color: "#3D3228" }}>Блокнот пуст</p>
+              <p style={{ marginTop: 4, fontSize: 13 }}>Создайте первую запись</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {data.entries.map((entry) => (
+                <div key={entry.id} style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: "#3D3228", flex: 1, lineHeight: 1.3 }}>
+                      {entry.title || "Без заголовка"}
+                    </span>
+                    <span style={{ fontSize: 11, color: "#A8997F", whiteSpace: "nowrap", flexShrink: 0 }}>
+                      {new Date(entry.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                    </span>
+                  </div>
+                  {entry.clientName && (
+                    <span style={{ display: "inline-block", background: "#E8EDFF", color: "#3a5ff8", borderRadius: 6, fontSize: 11, fontWeight: 600, padding: "2px 7px", marginBottom: 6 }}>
+                      {entry.clientName}
+                    </span>
+                  )}
+                  <p style={{ fontSize: 13, color: "#6B5D4F", lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                    {entry.text}
+                  </p>
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+                    <button
+                      onClick={() => openEdit(entry)}
+                      style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "1px solid #CFC0A9", borderRadius: 8, padding: "5px 10px", fontSize: 12, color: "#6B5D4F", cursor: "pointer" }}
+                    >
+                      <Edit3 size={12} /> Изменить
+                    </button>
+                    <button
+                      onClick={() => initiateDelete(entry.id)}
+                      style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "1px solid #CFC0A9", borderRadius: 8, padding: "5px 10px", fontSize: 12, color: "#B42318", cursor: "pointer" }}
+                    >
+                      <Trash2 size={12} /> Удалить
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── DESKTOP LAYOUT ── */}
+      <div className="hidden lg:block flex-1 min-h-0 overflow-hidden">
       <div className="mx-auto flex h-full max-w-[1500px] flex-col overflow-visible px-4 py-6 sm:px-8 sm:py-8">
 
         {/* ── Page header ── */}
@@ -1722,6 +1802,7 @@ export default function NotebookPage() {
         </aside>
         </div>
       </div>
+      </div>{/* end hidden lg:block */}
 
       {/* ── Create / Edit modal ── */}
       {formOpen && (
