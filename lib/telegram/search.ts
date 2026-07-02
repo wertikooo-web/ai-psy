@@ -384,6 +384,80 @@ function sanitizeSupabaseSearch(value: string): string {
     .trim();
 }
 
+const SEARCH_STOP_WORDS = new Set([
+  "найди", "найти", "покажи", "показать", "все", "всё", "всю", "всех", "вся",
+  "про", "по", "о", "об", "обо", "что", "где", "кто", "там", "есть", "было",
+  "были", "была", "был", "упоминание", "упоминания", "тема", "темы",
+]);
+
+function meaningfulSearchTokens(query: string): string[] {
+  return normalize(cleanupSearchQuery(query))
+    .split(" ")
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 3 && !SEARCH_STOP_WORDS.has(part));
+}
+
+function tokenVariants(token: string): string[] {
+  const variants = new Set<string>([token]);
+  for (let cut = 1; cut <= Math.min(3, token.length - 3); cut += 1) {
+    variants.add(token.slice(0, -cut));
+  }
+  return Array.from(variants).filter((item) => item.length >= 3);
+}
+
+function searchNeedles(query: string): string[] {
+  const tokens = meaningfulSearchTokens(query);
+  const variants = tokens.flatMap(tokenVariants);
+  return Array.from(new Set(variants)).slice(0, 12);
+}
+
+function matchesSearchText(text: string, query: string): boolean {
+  return searchScore(text, query) > 0;
+}
+
+function searchScore(text: string, query: string): number {
+  const haystack = normalize(text);
+  const tokens = meaningfulSearchTokens(query);
+  if (!tokens.length) return haystack.includes(normalize(query)) ? 1 : 0;
+  let score = 0;
+  for (const token of tokens) {
+    const variants = tokenVariants(token);
+    const exactHit = haystack.includes(token);
+    const variantHit = variants.some((variant) => haystack.includes(variant));
+    if (!exactHit && !variantHit) return 0;
+    score += exactHit ? 10 : 4;
+  }
+  if (haystack.includes(normalize(query))) score += 20;
+  return score;
+}
+
+function snippetForSearch(value: unknown, query: string, max = 220): string {
+  const text = typeof value === "string" ? value : JSON.stringify(value ?? "");
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return "РўРµРєСЃС‚ РЅРµ Р·Р°РїРѕР»РЅРµРЅ.";
+  const lower = clean.toLowerCase().replace(/ё/g, "е");
+  const needles = searchNeedles(query).sort((a, b) => b.length - a.length);
+  const hit = needles
+    .map((needle) => lower.indexOf(needle))
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b)[0];
+  if (hit === undefined) return snippet(clean, max);
+  const start = Math.max(0, hit - Math.floor(max / 3));
+  const end = Math.min(clean.length, start + max);
+  return `${start > 0 ? "..." : ""}${clean.slice(start, end).trim()}${end < clean.length ? "..." : ""}`;
+}
+
+function analysisText(analysis: NonNullable<StoredConsultation["analyses"]>[number]): string {
+  const blockText = analysis.blocks?.map((block) => [
+    block.title,
+    block.content,
+    block.explanation,
+    block.evidenceTooltip?.join(" "),
+    block.tags?.join(" "),
+  ].filter(Boolean).join(" ")).join(" ");
+  return [analysis.result, blockText].filter(Boolean).join(" ");
+}
+
 function periodFromText(text: string): "month" | "week" | "today" | "all" {
   if (text.includes("сегодня")) return "today";
   if (text.includes("недел")) return "week";
@@ -430,7 +504,7 @@ function consultationText(consultation: StoredConsultation): string {
     consultation.notes,
     consultation.transcript?.text,
     consultation.transcriptFormatted?.map((segment) => segment.text).join(" "),
-    consultation.analyses?.map((analysis) => analysis.result).join(" "),
+    consultation.analyses?.map(analysisText).join(" "),
     consultation.analysisEvidence ? JSON.stringify(consultation.analysisEvidence) : "",
     consultation.compressedTranscript?.text,
   ].filter(Boolean).join(" ");
@@ -559,65 +633,85 @@ async function searchConsultations(query: string, clientId?: string): Promise<Se
   if (!q) return [];
   const consultations = clientId ? await getConsultationsForClient(clientId) : await getConsultations();
   return consultations
-    .filter((item) => normalize(consultationText(item)).includes(q))
+    .map((item) => ({ item, text: consultationText(item), score: searchScore(consultationText(item), query) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || new Date(b.item.createdAt).getTime() - new Date(a.item.createdAt).getTime())
     .slice(0, 5)
-    .map((item) => ({
+    .map(({ item, text }) => ({
       type: item.analyses?.length ? "analysis" : "consultation",
       title: item.analyses?.length ? `Анализ от ${formatDate(item.createdAt)}` : `Консультация от ${formatDate(item.createdAt)}`,
       clientName: item.clientName,
       date: item.createdAt,
-      snippet: snippet(consultationText(item)),
+      snippet: snippetForSearch(text, query),
       url: getConsultationUrl(item.id),
     }));
 }
 
 async function searchNotebook(query: string): Promise<SearchResult[]> {
-  const page = await getEntries({
-    page: 1,
-    pageSize: 5,
-    search: query,
-    sort: "newest",
-    group: "none",
-    date: "all",
-    status: "all",
-  });
-  return page.entries.map((entry) => ({
-    type: "notebook",
-    title: entry.title ? `Заметка: ${entry.title}` : `Заметка от ${formatDate(entry.createdAt)}`,
-    clientName: entry.clientName,
-    date: entry.createdAt,
-    snippet: snippet([entry.title, entry.text, entry.topic, ...(entry.tags ?? [])].filter(Boolean).join(" ")),
-    url: getNotebookUrl(query),
-  }));
+  const terms = Array.from(new Set([query, ...searchNeedles(query)])).filter(Boolean).slice(0, 8);
+  const found = new Map<string, Awaited<ReturnType<typeof getEntries>>["entries"][number]>();
+  for (const term of terms) {
+    if (found.size >= 8) break;
+    const page = await getEntries({
+      page: 1,
+      pageSize: 8,
+      search: term,
+      sort: "newest",
+      group: "none",
+      date: "all",
+      status: "all",
+    });
+    for (const entry of page.entries) {
+      const text = [entry.title, entry.text, entry.topic, ...(entry.tags ?? [])].filter(Boolean).join(" ");
+      if (matchesSearchText(text, query)) found.set(entry.id, entry);
+    }
+  }
+  return [...found.values()]
+    .sort((a, b) => searchScore([b.title, b.text, b.topic, ...(b.tags ?? [])].filter(Boolean).join(" "), query)
+      - searchScore([a.title, a.text, a.topic, ...(a.tags ?? [])].filter(Boolean).join(" "), query))
+    .slice(0, 5)
+    .map((entry) => ({
+      type: "notebook",
+      title: entry.title ? `Заметка: ${entry.title}` : `Заметка от ${formatDate(entry.createdAt)}`,
+      clientName: entry.clientName,
+      date: entry.createdAt,
+      snippet: snippetForSearch([entry.title, entry.text, entry.topic, ...(entry.tags ?? [])].filter(Boolean).join(" "), query),
+      url: getNotebookUrl(query),
+    }));
 }
-
 async function searchSupabaseTextTables(query: string): Promise<SearchResult[]> {
   if (!isSupabaseConfigured()) return [];
   const safeQuery = sanitizeSupabaseSearch(query);
   if (!safeQuery) return [];
-  const q = `%${safeQuery}%`;
+  const needles = searchNeedles(safeQuery).map(sanitizeSupabaseSearch).filter(Boolean);
+  const terms = needles.length ? needles : [safeQuery];
+  const orFor = (columns: string[]) => terms
+    .flatMap((term) => columns.map((column) => `${column}.ilike.%${term}%`))
+    .join(",");
   const [requests, history, materials, calendar] = await Promise.all([
-    supabaseServer!.from("client_requests").select("id,client_id,text,created_at").ilike("text", q).is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
-    supabaseServer!.from("client_history").select("id,client_id,section,text,created_at").ilike("text", q).order("created_at", { ascending: false }).limit(5),
-    supabaseServer!.from("client_materials").select("id,client_id,title,content,created_at").or(`title.ilike.${q},content.ilike.${q}`).order("created_at", { ascending: false }).limit(5),
-    supabaseServer!.from("calendar_events").select("id,client_name,title,notes,starts_at").or(`title.ilike.${q},notes.ilike.${q},client_name.ilike.${q}`).is("deleted_at", null).order("starts_at", { ascending: false }).limit(5),
+    supabaseServer!.from("client_requests").select("id,client_id,text,created_at").or(orFor(["text"])).is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
+    supabaseServer!.from("client_history").select("id,client_id,section,text,created_at").or(orFor(["text"])).order("created_at", { ascending: false }).limit(5),
+    supabaseServer!.from("client_materials").select("id,client_id,title,content,created_at").or(orFor(["title", "content"])).order("created_at", { ascending: false }).limit(5),
+    supabaseServer!.from("calendar_events").select("id,client_name,title,notes,starts_at").or(orFor(["title", "notes", "client_name"])).is("deleted_at", null).order("starts_at", { ascending: false }).limit(5),
   ]);
   const clients = await getClients();
   const clientName = (id?: string) => clients.find((client) => client.id === id)?.name;
   const rows: SearchResult[] = [];
   for (const row of requests.data ?? []) {
-    rows.push({ type: "client_request", title: "Запрос клиента", clientName: clientName(row.client_id as string), date: row.created_at as string, snippet: snippet(row.text), url: row.client_id ? getClientUrl(row.client_id as string) : undefined });
+    rows.push({ type: "client_request", title: "Запрос клиента", clientName: clientName(row.client_id as string), date: row.created_at as string, snippet: snippetForSearch(row.text, query), url: row.client_id ? getClientUrl(row.client_id as string) : undefined });
   }
   for (const row of history.data ?? []) {
-    rows.push({ type: "client_history", title: `История: ${row.section}`, clientName: clientName(row.client_id as string), date: row.created_at as string, snippet: snippet(row.text), url: row.client_id ? getClientUrl(row.client_id as string) : undefined });
+    rows.push({ type: "client_history", title: `История: ${row.section}`, clientName: clientName(row.client_id as string), date: row.created_at as string, snippet: snippetForSearch(row.text, query), url: row.client_id ? getClientUrl(row.client_id as string) : undefined });
   }
   for (const row of materials.data ?? []) {
-    rows.push({ type: "client_material", title: (row.title as string) || "Материал клиента", clientName: clientName(row.client_id as string), date: row.created_at as string, snippet: snippet(row.content), url: row.client_id ? getClientUrl(row.client_id as string) : undefined });
+    rows.push({ type: "client_material", title: (row.title as string) || "Материал клиента", clientName: clientName(row.client_id as string), date: row.created_at as string, snippet: snippetForSearch([row.title, row.content].filter(Boolean).join(" "), query), url: row.client_id ? getClientUrl(row.client_id as string) : undefined });
   }
   for (const row of calendar.data ?? []) {
-    rows.push({ type: "calendar", title: (row.title as string) || "Событие календаря", clientName: row.client_name as string, date: row.starts_at as string, snippet: snippet(row.notes || row.title), url: appUrl("/calendar") });
+    rows.push({ type: "calendar", title: (row.title as string) || "Событие календаря", clientName: row.client_name as string, date: row.starts_at as string, snippet: snippetForSearch([row.title, row.notes, row.client_name].filter(Boolean).join(" "), query), url: appUrl("/calendar") });
   }
-  return rows.slice(0, 5);
+  return rows
+    .sort((a, b) => searchScore(b.snippet, query) - searchScore(a.snippet, query))
+    .slice(0, 5);
 }
 
 function renderSearchResults(query: string, results: SearchResult[]): string {
@@ -642,13 +736,24 @@ async function sendSearch(chatId: number, query: string | undefined, onlyNoteboo
   }
   const client = clientName?.trim() ? await resolveSingleClient(chatId, clientName) : null;
   if (clientName?.trim() && !client) return;
-  const results = onlyNotebook
+  const rawResults = onlyNotebook
     ? await searchNotebook(cleaned)
     : [
       ...(await searchConsultations(cleaned, client?.id)),
       ...(await searchNotebook(cleaned)),
       ...(await searchSupabaseTextTables(cleaned)),
-    ].slice(0, 5);
+    ];
+  const seen = new Set<string>();
+  const results = rawResults
+    .filter((item) => {
+      const key = `${item.type}:${item.url ?? ""}:${item.title}:${item.snippet}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => searchScore([b.title, b.clientName, b.snippet].filter(Boolean).join(" "), cleaned)
+      - searchScore([a.title, a.clientName, a.snippet].filter(Boolean).join(" "), cleaned))
+    .slice(0, 5);
   await sendTelegramMessage(
     chatId,
     renderSearchResults(cleaned, results),
