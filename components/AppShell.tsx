@@ -123,9 +123,9 @@ export function AppShell({ children, initialSidebarMode = "full" }: AppShellProp
         {/* Bottom nav — mobile only */}
         <BottomNav onMoreClick={() => setSidebarOpen(true)} />
 
-        {/* Observation FAB */}
+        {/* Observation FAB — desktop only */}
         <div
-          className={`fixed right-4 lg:right-6 z-40 ${onConsultation ? "bottom-[76px] lg:bottom-[109px]" : "bottom-[76px] lg:bottom-[43px]"}`}
+          className={`hidden lg:block fixed right-6 z-40 ${onConsultation ? "bottom-[109px]" : "bottom-[43px]"}`}
         >
           {tooltip && (
             <div

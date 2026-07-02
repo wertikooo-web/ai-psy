@@ -503,7 +503,22 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
     const segments: import("@/lib/mockData").TranscriptSegment[] = [];
     return (
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-[#FAF8F5]">
-        <header className="border-b px-5 py-3 flex items-center gap-4 flex-shrink-0" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
+        {/* Mobile header — compact */}
+        <header className="lg:hidden border-b px-3 py-2 flex items-center gap-3 flex-shrink-0" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
+          <Link
+            href={clientHref}
+            className="flex items-center gap-1 text-sm font-medium transition-colors flex-shrink-0 hover:opacity-70"
+            style={{ color: "#6B5D4F" }}
+          >
+            <ArrowLeft size={16} />
+          </Link>
+          <div className="h-4 w-px flex-shrink-0" style={{ background: "#D8CFBE" }} />
+          <Avatar initials={c.clientInitials} color={c.clientColor} size="sm" />
+          <span className="text-sm font-semibold truncate flex-1" style={{ color: "#3D3228" }}>{c.clientName}</span>
+        </header>
+
+        {/* Desktop header */}
+        <header className="hidden lg:flex border-b px-5 py-3 items-center gap-4 flex-shrink-0" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
           <Link
             href={clientHref}
             className="flex items-center gap-1.5 text-sm font-medium transition-colors flex-shrink-0 hover:opacity-70"
@@ -529,11 +544,10 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               )}
             </div>
           </div>
-          {/* Reset layout button — desktop only */}
           <button
             onClick={resetLayout}
             title="Сбросить ширину колонок (34 / 33 / 33)"
-            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors flex-shrink-0"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors flex-shrink-0"
             style={{ color: "#9C8E80", border: "1px solid #D8CFBE", background: "transparent" }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#EDE7DA"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
@@ -548,18 +562,18 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
           {/* Tab bar */}
           <div className="flex flex-shrink-0 border-b" style={{ background: "#F5F0E8", borderColor: "#D8CFBE" }}>
             {([
-              { id: "transcript", label: "Транскрипт", icon: <Scroll size={13} /> },
-              { id: "analysis",   label: "AI-анализ",  icon: <BrainCircuit size={13} /> },
-              { id: "chat",       label: "Чат",        icon: <MessageSquare size={13} /> },
+              { id: "transcript", label: "Транскрипт", icon: <Scroll size={14} /> },
+              { id: "analysis",   label: "AI-анализ",  icon: <BrainCircuit size={14} /> },
+              { id: "chat",       label: "Чат",        icon: <MessageSquare size={14} /> },
             ] as const).map(t => (
               <button
                 key={t.id}
                 onClick={() => setMobileTab(t.id)}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs border-b-2 border-t-0 border-l-0 border-r-0 bg-transparent cursor-pointer"
+                className="flex-1 flex items-center justify-center gap-1.5 py-3 text-sm border-b-2 border-t-0 border-l-0 border-r-0 bg-transparent cursor-pointer"
                 style={{
                   color: mobileTab === t.id ? "#3a5ff8" : "#9C8E80",
                   borderBottomColor: mobileTab === t.id ? "#3a5ff8" : "transparent",
-                  fontWeight: mobileTab === t.id ? 600 : 400,
+                  fontWeight: mobileTab === t.id ? 700 : 400,
                 }}
               >
                 {t.icon} {t.label}

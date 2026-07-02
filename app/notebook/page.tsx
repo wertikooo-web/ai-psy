@@ -908,17 +908,6 @@ export default function NotebookPage() {
         </div>
 
         <div style={{ padding: "12px 16px", paddingBottom: 80 }}>
-          {/* Search */}
-          <div style={{ position: "relative", marginBottom: 12 }}>
-            <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#A8997F" }} />
-            <input
-              value={query.search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Поиск в блокноте..."
-              style={{ width: "100%", boxSizing: "border-box", background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 10, padding: "9px 12px 9px 32px", fontSize: 13, color: "#3D3228", outline: "none" }}
-            />
-          </div>
-
           {/* Note cards */}
           {loading ? (
             <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>

@@ -154,12 +154,12 @@ export function ObservationModal({ onClose, defaultClientId, consultationId }: P
             </div>
             <button
               onClick={handleCancel}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+              className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
               style={{ color: C.muted }}
               onMouseEnter={(e) => { e.currentTarget.style.background = C.divider; e.currentTarget.style.color = C.body; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.muted; }}
             >
-              <X size={15} />
+              <X size={20} />
             </button>
           </div>
 
@@ -210,10 +210,6 @@ export function ObservationModal({ onClose, defaultClientId, consultationId }: P
                 onFocus={(e)  => { e.currentTarget.style.borderColor = C.accent; }}
                 onBlur={(e)   => { e.currentTarget.style.borderColor = C.border; }}
               />
-              {/* Hint */}
-              <p className="text-xs leading-relaxed" style={{ color: C.hint }}>
-                {hintText}
-              </p>
             </div>
 
             {error && (
