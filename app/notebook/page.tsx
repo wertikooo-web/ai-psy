@@ -1466,28 +1466,7 @@ export default function NotebookPage() {
               </div>
 
               <div className="notebook-pagination">
-                <div className="notebook-pagination-left">
-                  <button
-                    type="button"
-                    onClick={() => goToPage(1)}
-                    disabled={query.page <= 1 || loading}
-                    className="notebook-pagination-button notebook-pagination-button-icon"
-                    aria-label="В начало"
-                    title="В начало"
-                  >
-                    <ChevronsLeft size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => goToPage(query.page - 1)}
-                    disabled={query.page <= 1 || loading}
-                    className="notebook-pagination-button"
-                  >
-                    <ChevronLeft size={15} />
-                    Предыдущая
-                  </button>
-                </div>
-
+                {/* Page indicator — centered above buttons */}
                 <div className="notebook-pagination-center">
                   <span>Страница {query.page} из {notebookTotalPages}</span>
                   <button
@@ -1501,26 +1480,51 @@ export default function NotebookPage() {
                   </button>
                 </div>
 
-                <div className="notebook-pagination-right">
-                  <button
-                    type="button"
-                    onClick={() => goToPage(query.page + 1)}
-                    disabled={query.page >= notebookTotalPages || loading}
-                    className="notebook-pagination-button"
-                  >
-                    Следующая
-                    <ChevronRight size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => goToPage(notebookTotalPages)}
-                    disabled={query.page >= notebookTotalPages || loading}
-                    className="notebook-pagination-button notebook-pagination-button-icon"
-                    aria-label="В конец"
-                    title="В конец"
-                  >
-                    <ChevronsRight size={15} />
-                  </button>
+                {/* Nav buttons — full-width row below */}
+                <div className="notebook-pagination-nav">
+                  <div className="notebook-pagination-left">
+                    <button
+                      type="button"
+                      onClick={() => goToPage(1)}
+                      disabled={query.page <= 1 || loading}
+                      className="notebook-pagination-button notebook-pagination-button-icon"
+                      aria-label="В начало"
+                      title="В начало"
+                    >
+                      <ChevronsLeft size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => goToPage(query.page - 1)}
+                      disabled={query.page <= 1 || loading}
+                      className="notebook-pagination-button"
+                    >
+                      <ChevronLeft size={15} />
+                      Предыдущая
+                    </button>
+                  </div>
+
+                  <div className="notebook-pagination-right">
+                    <button
+                      type="button"
+                      onClick={() => goToPage(query.page + 1)}
+                      disabled={query.page >= notebookTotalPages || loading}
+                      className="notebook-pagination-button"
+                    >
+                      Следующая
+                      <ChevronRight size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => goToPage(notebookTotalPages)}
+                      disabled={query.page >= notebookTotalPages || loading}
+                      className="notebook-pagination-button notebook-pagination-button-icon"
+                      aria-label="В конец"
+                      title="В конец"
+                    >
+                      <ChevronsRight size={15} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

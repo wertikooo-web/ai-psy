@@ -1443,22 +1443,15 @@
 .notebook-pagination {
   position: relative;
   z-index: 5;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   margin-top: auto;
   padding-top: 16px;
   border-top: 1px solid #e2d8c8;
   flex-shrink: 0;
-}
-
-.notebook-pagination-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: flex-start;
 }
 
 .notebook-pagination-center {
@@ -1470,6 +1463,21 @@
   font-weight: 600;
   color: #6b5d4f;
   white-space: nowrap;
+}
+
+.notebook-pagination-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.notebook-pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-start;
 }
 
 .notebook-pagination-right {

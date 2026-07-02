@@ -109,7 +109,7 @@ function SummaryCard({
     red: ["#E66B6B", "#FFF1F1"],
   }[tone];
   return (
-    <section className="rounded-xl border border-[#E6DDD0] bg-white px-3 py-3 shadow-sm">
+    <section className="rounded-xl border border-[#E6DDD0] bg-white px-4 py-4 shadow-sm">
       <div className="flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: colors[1], color: colors[0] }}>
           <Icon size={18} />
@@ -117,7 +117,7 @@ function SummaryCard({
         <div className="min-w-0">
           <p className="text-xs font-semibold text-[#4D4034]">{title}</p>
           <p className="mt-1 text-2xl font-bold leading-none text-[#111827]">{value}</p>
-          <p className="mt-1 truncate text-xs leading-snug text-[#7B6F60]">{note}</p>
+          <p className="mt-1 text-xs leading-snug text-[#7B6F60]">{note}</p>
         </div>
       </div>
     </section>
@@ -126,8 +126,8 @@ function SummaryCard({
 
 function Panel({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`min-h-0 overflow-hidden rounded-xl border border-[#E6DDD0] bg-white p-3 shadow-sm ${className}`}>
-      <h2 className="mb-2 text-sm font-bold text-[#2F261F]">{title}</h2>
+    <section className={`min-h-0 overflow-hidden rounded-xl border border-[#E6DDD0] bg-white p-4 shadow-sm ${className}`}>
+      <h2 className="mb-3 text-sm font-bold text-[#2F261F]">{title}</h2>
       {children}
     </section>
   );
@@ -137,7 +137,7 @@ function StackedBars({ data }: { data: AnalyticsResponse["consultationsTimeline"
   const max = Math.max(1, ...data.map((item) => item.completed + item.planned + item.cancelled + item.noShow));
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex min-h-0 flex-1 items-end gap-3 border-b border-[#ECE5DA] pl-2">
+      <div className="flex min-h-0 flex-1 items-end gap-3 border-b border-[#ECE5DA] pl-1">
         {data.map((item) => {
           const total = item.completed + item.planned + item.cancelled + item.noShow;
           const barHeight = total ? Math.max(34, (total / max) * 150) : 8;
@@ -549,11 +549,11 @@ export default function AnalyticsPage() {
               </Panel>
               <Panel title="Оплата за период" className="h-full">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-[#E6DDD0] bg-[#F8FBFF] p-3">
+                  <div className="rounded-xl border border-[#E6DDD0] bg-[#F8FBFF] p-4">
                     <p className="text-xs font-semibold text-[#4D4034]">Начислено</p>
                     <p className="mt-1 text-xl font-bold">{money.format(data.finance.charged)} <span className="text-sm">MDL</span></p>
                   </div>
-                  <div className="rounded-xl border border-[#E6DDD0] bg-[#F4FBF6] p-3">
+                  <div className="rounded-xl border border-[#E6DDD0] bg-[#F4FBF6] p-4">
                     <p className="text-xs font-semibold text-[#4D4034]">Получено</p>
                     <p className="mt-1 text-xl font-bold">{money.format(data.finance.received)} <span className="text-sm">MDL</span></p>
                   </div>
@@ -567,25 +567,25 @@ export default function AnalyticsPage() {
                   <table className="w-full min-w-[760px] text-left text-sm">
                     <thead className="text-xs text-[#8A7A66]">
                       <tr className="border-b border-[#ECE5DA]">
-                        <th className="py-2 pr-3">Дата консультации</th>
-                        <th className="py-2 pr-3">Клиент</th>
-                        <th className="py-2 pr-3">Консультация</th>
-                        <th className="py-2 pr-3">Стоимость</th>
-                        <th className="py-2 pr-3">Оплачено</th>
-                        <th className="py-2 pr-3">Статус</th>
-                        <th className="py-2">Комментарий</th>
+                        <th className="py-2.5 pr-4">Дата консультации</th>
+                        <th className="py-2.5 pr-4">Клиент</th>
+                        <th className="py-2.5 pr-4">Консультация</th>
+                        <th className="py-2.5 pr-4">Стоимость</th>
+                        <th className="py-2.5 pr-4">Оплачено</th>
+                        <th className="py-2.5 pr-4">Статус</th>
+                        <th className="py-2.5">Комментарий</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.payments.map((row) => (
                         <tr key={row.id} className="border-b border-[#F0E8DC]">
-                          <td className="py-2 pr-3">{formatDate(row.consultationDate)}</td>
-                          <td className="py-2 pr-3">{row.client}</td>
-                          <td className="py-2 pr-3">{row.consultation}</td>
-                          <td className="py-2 pr-3">{money.format(row.charged)}</td>
-                          <td className="py-2 pr-3">{money.format(row.paid)}</td>
-                          <td className="py-2 pr-3">{row.status}</td>
-                          <td className="py-2">{row.comment ?? "—"}</td>
+                          <td className="py-2.5 pr-4">{formatDate(row.consultationDate)}</td>
+                          <td className="py-2.5 pr-4">{row.client}</td>
+                          <td className="py-2.5 pr-4">{row.consultation}</td>
+                          <td className="py-2.5 pr-4">{money.format(row.charged)}</td>
+                          <td className="py-2.5 pr-4">{money.format(row.paid)}</td>
+                          <td className="py-2.5 pr-4">{row.status}</td>
+                          <td className="py-2.5">{row.comment ?? "—"}</td>
                         </tr>
                       ))}
                       {!data.payments.length && (

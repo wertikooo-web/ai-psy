@@ -245,6 +245,18 @@ export default function KnowledgeBasePage() {
                               <div className="flex items-center gap-1 justify-end">
                                 <a
                                   href={`/api/knowledge-base/${encodeURIComponent(file.name)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 rounded-lg transition-colors"
+                                  style={{ color: "#C9BBAA" }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.color = "#4A3C2E"; e.currentTarget.style.background = "#E4DDD0"; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.color = "#C9BBAA"; e.currentTarget.style.background = "transparent"; }}
+                                  title="Открыть"
+                                >
+                                  <ExternalLink size={13} />
+                                </a>
+                                <a
+                                  href={`/api/knowledge-base/${encodeURIComponent(file.name)}`}
                                   download={file.name}
                                   className="p-1.5 rounded-lg transition-colors"
                                   style={{ color: "#C9BBAA" }}

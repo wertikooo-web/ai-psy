@@ -164,7 +164,7 @@ export default function PaymentsPage() {
                     <th className="py-3 pr-3">Получено</th>
                     <th className="py-3 pr-3">Статус</th>
                     <th className="py-3 pr-3">Дата оплаты</th>
-                    <th className="py-3">Действия</th>
+                    <th className="py-3">Действия <span className="normal-case font-normal text-[#B0A090] ml-2">/ Открыть консультацию</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,8 +187,8 @@ export default function PaymentsPage() {
                       <td className="py-3">
                         <div className="flex items-center gap-2">
                           <button onClick={() => openEdit(row)} className="rounded-lg border border-[#D8CFBE] px-3 py-1.5 text-xs font-semibold text-[#6B5D4F] hover:bg-[#F7F3EA]">Изменить</button>
-                          <Link href={`/consultation/${row.consultationId}`} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-[#6B4E2E] hover:bg-[#F7F3EA]">
-                            Открыть <ArrowRight size={12} />
+                          <Link href={`/consultation/${row.consultationId}`} className="inline-flex items-center justify-center rounded-lg w-8 h-8 transition-colors text-[#8B735C] hover:bg-[#F0E8DC] hover:text-[#5C3D1E]" title="Открыть консультацию">
+                            <ArrowRight size={16} strokeWidth={2.5} />
                           </Link>
                         </div>
                       </td>

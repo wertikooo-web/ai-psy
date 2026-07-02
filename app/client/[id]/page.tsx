@@ -12,19 +12,17 @@ import { OverviewTab } from "@/components/client/tabs/OverviewTab";
 import { ConsultationsTab } from "@/components/client/tabs/ConsultationsTab";
 import { HistoryTab } from "@/components/client/tabs/HistoryTab";
 import { MaterialsTab } from "@/components/client/tabs/MaterialsTab";
-import { ObservationsTab } from "@/components/client/tabs/ObservationsTab";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mic, ArrowLeft, Trash2, Pause, Archive, RotateCcw } from "lucide-react";
 
-type Tab = "overview" | "consultations" | "history" | "observations" | "materials";
+type Tab = "overview" | "consultations" | "history" | "materials";
 
 const TABS: { id: Tab; label: string; tooltip: string }[] = [
   { id: "overview",      label: "Запрос",        tooltip: "Текущий запрос клиента и история его изменений.\nЗдесь фиксируется, с чем клиент пришёл и как это менялось."          },
   { id: "consultations", label: "Консультации",  tooltip: "Список всех сессий с транскриптами и AI-анализами.\nОткройте любую консультацию для детального разбора."                          },
   { id: "history",       label: "История",       tooltip: "Хронология важных событий и фактов жизни клиента.\nПомогает понимать контекст при подготовке к сессии."                           },
-  { id: "observations",  label: "Наблюдения",    tooltip: "Личные заметки о динамике, паттернах и гипотезах.\nФиксируйте наблюдения между сессиями, пока они свежие."                        },
-  { id: "materials",     label: "Материалы",     tooltip: "Дополнительные документы: старые анализы, транскрипты, тексты.\nПодключаются как контекст при AI-анализе новых сессий."             },
+  { id: "materials",     label: "Материалы",     tooltip: "Наблюдения и доп. документы: старые анализы, транскрипты, тексты.\nПодключаются как контекст при AI-анализе новых сессий."        },
 ];
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
@@ -91,6 +89,26 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
       }
     }).catch(() => {}).finally(() => setDataLoading(false));
   }, [id, isMock]);
+
+  // Keep materials state in sync with observations created/updated via FAB
+  useEffect(() => {
+    function onCreated(e: CustomEvent) {
+      const obs = e.detail?.observation as import("@/lib/types").ClientMaterial;
+      if (!obs || obs.clientId !== id) return;
+      setMaterials((prev) => [obs, ...prev.filter((m) => m.id !== obs.id)]);
+    }
+    function onUpdated(e: CustomEvent) {
+      if (e.detail?.clientId !== id) return;
+      const { tempId, observation } = e.detail as { tempId: string; observation: import("@/lib/types").ClientMaterial };
+      setMaterials((prev) => prev.map((m) => m.id === tempId ? observation : m));
+    }
+    window.addEventListener("observation-created", onCreated as EventListener);
+    window.addEventListener("observation-updated", onUpdated as EventListener);
+    return () => {
+      window.removeEventListener("observation-created", onCreated as EventListener);
+      window.removeEventListener("observation-updated", onUpdated as EventListener);
+    };
+  }, [id]);
 
   if (dataLoading) {
     return (
@@ -315,17 +333,10 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
           />
         )}
 
-        {tab === "observations" && (
-          <ObservationsTab
-            clientId={id}
-            isMock={isMock}
-          />
-        )}
-
         {tab === "materials" && (
           <MaterialsTab
             clientId={id}
-            materials={materials.filter((m) => m.type !== "observation")}
+            materials={materials}
             isMock={isMock}
             onAdd={(m) => setMaterials((prev) => [m, ...prev])}
             onDelete={(mid) => setMaterials((prev) => prev.filter((m) => m.id !== mid))}
