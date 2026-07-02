@@ -908,16 +908,16 @@ export default function NotebookPage() {
               <h1 className="text-xl font-bold text-[#3D3228]">Блокнот психолога</h1>
               <p className="whitespace-nowrap text-sm text-[#8F7F69]">Личные записи, идеи, мысли...</p>
             </div>
-          </div>
-
             <button
               type="button"
               onClick={openNewEntry}
               className="notebook-primary-action"
+              style={{ marginLeft: 32, alignSelf: "center" }}
             >
               <Plus size={15} />
               Новая запись
             </button>
+          </div>
           </div>
 
           <div className="notebook-toolbar">
@@ -1036,39 +1036,36 @@ export default function NotebookPage() {
 
         {/* ── Filter panel ── */}
         {filtersOpen && (
-          <div className="notebook-filter-panel grid gap-3 rounded-2xl border border-[#D8CFBE] bg-[#FBF8F2] p-4 shadow-sm md:grid-cols-5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[#8F7F69]">
-              Клиент
+          <div className="notebook-filter-panel">
+            <label className="notebook-filter-field">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#8F7F69]">Клиент</span>
               <select
                 value={query.client}
                 onChange={(e) => updateQuery({ client: e.target.value })}
-                className="mt-1 h-10 w-full rounded-xl border border-[#D8CFBE] bg-white px-3 text-sm normal-case tracking-normal text-[#3D3228]"
+                className="notebook-filter-control"
               >
                 <option value="">Все записи</option>
                 <option value="none">Без клиента</option>
                 {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </label>
-            <label className="text-xs font-semibold uppercase tracking-wide text-[#8F7F69]">
-              Тема
+            <label className="notebook-filter-field">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#8F7F69]">Тема</span>
               <select
                 value={query.topic}
                 onChange={(e) => updateQuery({ topic: e.target.value })}
-                className="mt-1 h-10 w-full rounded-xl border border-[#D8CFBE] bg-white px-3 text-sm normal-case tracking-normal text-[#3D3228]"
+                className="notebook-filter-control"
               >
                 <option value="">Все темы</option>
                 {TOPICS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
-              <span className="mt-1 block text-[11px] normal-case tracking-normal text-[#A8997F]">
-                Тема задаётся при создании или редактировании записи.
-              </span>
             </label>
-            <label className="text-xs font-semibold uppercase tracking-wide text-[#8F7F69]">
-              Дата
+            <label className="notebook-filter-field">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#8F7F69]">Дата</span>
               <select
                 value={query.date}
                 onChange={(e) => updateQuery({ date: e.target.value as DateMode })}
-                className="mt-1 h-10 w-full rounded-xl border border-[#D8CFBE] bg-white px-3 text-sm normal-case tracking-normal text-[#3D3228]"
+                className="notebook-filter-control"
               >
                 <option value="all">Все даты</option>
                 <option value="today">Сегодня</option>
@@ -1077,36 +1074,44 @@ export default function NotebookPage() {
                 <option value="custom">Произвольный период</option>
               </select>
             </label>
-            <label className="text-xs font-semibold uppercase tracking-wide text-[#8F7F69]">
-              Теги
+            <label className="notebook-filter-field">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#8F7F69]">Теги</span>
               <input
                 value={query.tags}
                 onChange={(e) => updateQuery({ tags: e.target.value })}
                 placeholder="СДВГ, группа"
-                className="mt-1 h-10 w-full rounded-xl border border-[#D8CFBE] bg-white px-3 text-sm normal-case tracking-normal text-[#3D3228] outline-none"
+                className="notebook-filter-control"
               />
             </label>
-            <div className="flex items-end">
-              <button
-                onClick={resetFilters}
-                className="h-10 w-full rounded-xl border border-[#CBBBA4] bg-white px-3 text-sm font-medium text-[#4D4034] hover:bg-[#F5F0E6]"
+            <label className="notebook-filter-field">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#8F7F69]">Статус</span>
+              <select
+                value={query.status}
+                onChange={(e) => updateQuery({ status: e.target.value as StatusMode })}
+                className="notebook-filter-control"
               >
-                Сбросить фильтры
+                <option value="all">Все статусы</option>
+                {ATTENTION_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </label>
+            <div className="notebook-filter-reset-wrap">
+              <button onClick={resetFilters} className="notebook-filter-reset">
+                Сбросить
               </button>
             </div>
             {query.date === "custom" && (
-              <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
                 <input
                   type="date"
                   value={query.from}
                   onChange={(e) => updateQuery({ from: e.target.value })}
-                  className="h-10 rounded-xl border border-[#D8CFBE] bg-white px-3 text-sm text-[#3D3228]"
+                  className="notebook-filter-control"
                 />
                 <input
                   type="date"
                   value={query.to}
                   onChange={(e) => updateQuery({ to: e.target.value })}
-                  className="h-10 rounded-xl border border-[#D8CFBE] bg-white px-3 text-sm text-[#3D3228]"
+                  className="notebook-filter-control"
                 />
               </div>
             )}
@@ -1461,61 +1466,62 @@ export default function NotebookPage() {
               </div>
 
               <div className="notebook-pagination">
-                <button
-                  type="button"
-                  onClick={() => goToPage(1)}
-                  disabled={query.page <= 1 || loading}
-                  className="notebook-pagination-button notebook-pagination-button-icon"
-                  aria-label="В начало"
-                  title="В начало"
-                >
-                  <ChevronsLeft size={15} />
-                </button>
+                <div className="notebook-pagination-left">
+                  <button
+                    type="button"
+                    onClick={() => goToPage(1)}
+                    disabled={query.page <= 1 || loading}
+                    className="notebook-pagination-button notebook-pagination-button-icon"
+                    aria-label="В начало"
+                    title="В начало"
+                  >
+                    <ChevronsLeft size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goToPage(query.page - 1)}
+                    disabled={query.page <= 1 || loading}
+                    className="notebook-pagination-button"
+                  >
+                    <ChevronLeft size={15} />
+                    Предыдущая
+                  </button>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => goToPage(query.page - 1)}
-                  disabled={query.page <= 1 || loading}
-                  className="notebook-pagination-button"
-                >
-                  <ChevronLeft size={15} />
-                  Предыдущая
-                </button>
+                <div className="notebook-pagination-center">
+                  <span>Страница {query.page} из {notebookTotalPages}</span>
+                  <button
+                    type="button"
+                    onClick={closeNotebook}
+                    className="notebook-cover-button"
+                    aria-label="Закрыть блокнот"
+                    title="Закрыть блокнот"
+                  >
+                    <BookOpen size={16} />
+                  </button>
+                </div>
 
-                <span className="text-sm font-semibold text-[#6B5D4F]">
-                  Страница {query.page} из {notebookTotalPages}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={closeNotebook}
-                  className="notebook-cover-button"
-                  aria-label="Закрыть блокнот"
-                  title="Закрыть блокнот"
-                >
-                  <BookOpen size={16} />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => goToPage(query.page + 1)}
-                  disabled={query.page >= notebookTotalPages || loading}
-                  className="notebook-pagination-button"
-                >
-                  Следующая
-                  <ChevronRight size={15} />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => goToPage(notebookTotalPages)}
-                  disabled={query.page >= notebookTotalPages || loading}
-                  className="notebook-pagination-button notebook-pagination-button-icon"
-                  aria-label="В конец"
-                  title="В конец"
-                >
-                  <ChevronsRight size={15} />
-                </button>
+                <div className="notebook-pagination-right">
+                  <button
+                    type="button"
+                    onClick={() => goToPage(query.page + 1)}
+                    disabled={query.page >= notebookTotalPages || loading}
+                    className="notebook-pagination-button"
+                  >
+                    Следующая
+                    <ChevronRight size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goToPage(notebookTotalPages)}
+                    disabled={query.page >= notebookTotalPages || loading}
+                    className="notebook-pagination-button notebook-pagination-button-icon"
+                    aria-label="В конец"
+                    title="В конец"
+                  >
+                    <ChevronsRight size={15} />
+                  </button>
+                </div>
               </div>
             </div>
 
