@@ -14,6 +14,7 @@ export interface TelegramAccount {
   telegramUsername?: string;
   telegramFirstName?: string;
   telegramLastName?: string;
+  naturalLanguageEnabled: boolean;
   linkedAt: string;
   disabledAt?: string;
 }
@@ -73,6 +74,7 @@ function rowToAccount(row: Record<string, unknown>): TelegramAccount {
     telegramUsername: (row.telegram_username as string | null) ?? undefined,
     telegramFirstName: (row.telegram_first_name as string | null) ?? undefined,
     telegramLastName: (row.telegram_last_name as string | null) ?? undefined,
+    naturalLanguageEnabled: row.natural_language_enabled !== false,
     linkedAt: row.linked_at as string,
     disabledAt: (row.disabled_at as string | null) ?? undefined,
   };
@@ -145,6 +147,20 @@ export async function findTelegramAccountByTelegramId(telegramId: number): Promi
 
   if (error) throw new Error(`[DAL/findTelegramAccountByTelegramId] ${error.message}`);
   return data ? rowToAccount(data as Record<string, unknown>) : null;
+}
+
+export async function setTelegramNaturalLanguageEnabled(telegramId: number, enabled: boolean): Promise<TelegramAccount> {
+  ensureSupabase();
+  const { data, error } = await supabaseServer!
+    .from("telegram_accounts")
+    .update({ natural_language_enabled: enabled })
+    .eq("telegram_id", telegramId)
+    .is("disabled_at", null)
+    .select("*")
+    .single();
+
+  if (error) throw new Error(`[DAL/setTelegramNaturalLanguageEnabled] ${error.message}`);
+  return rowToAccount(data as Record<string, unknown>);
 }
 
 export async function linkTelegramAccount(code: string, identity: TelegramIdentity): Promise<TelegramLinkResult> {

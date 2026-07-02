@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2, Plus, RefreshCw, Search, WalletCards } from "lucide-react";
-import { PaymentDialog, type PaymentConsultationOption, type PaymentRow, type PaymentStatus } from "@/components/payments/PaymentDialog";
+import {
+  PaymentDialog,
+  paymentStatusLabels,
+  paymentStatusStyles,
+  type PaymentConsultationOption,
+  type PaymentRow,
+  type PaymentStatus,
+} from "@/components/payments/PaymentDialog";
 
 type EnrichedPayment = PaymentRow & {
   consultationTitle: string;
@@ -19,22 +26,6 @@ type StoredConsultation = {
   clientId?: string;
   clientName?: string;
   createdAt?: string;
-};
-
-const statusLabels: Record<PaymentStatus, string> = {
-  unpaid: "Не оплачено",
-  partial: "Частично",
-  paid: "Оплачено",
-  free: "Бесплатно",
-  cancelled: "Отменено",
-};
-
-const statusStyles: Record<PaymentStatus, string> = {
-  unpaid: "bg-rose-50 text-rose-600 border-rose-100",
-  partial: "bg-amber-50 text-amber-700 border-amber-100",
-  paid: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  free: "bg-sky-50 text-sky-700 border-sky-100",
-  cancelled: "bg-stone-100 text-stone-500 border-stone-200",
 };
 
 const money = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
@@ -150,7 +141,7 @@ export default function PaymentsPage() {
             </label>
             <select value={status} onChange={(e) => setStatus(e.target.value as "all" | PaymentStatus)} className="h-10 rounded-xl border border-[#D8CFBE] bg-white px-3 text-sm outline-none">
               <option value="all">Все статусы</option>
-              {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              {Object.entries(paymentStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </div>
 
@@ -191,7 +182,7 @@ export default function PaymentsPage() {
                       </td>
                       <td className="py-3 pr-3 font-semibold">{money.format(row.chargedAmount)} MDL</td>
                       <td className="py-3 pr-3 font-semibold">{money.format(row.paidAmount)} MDL</td>
-                      <td className="py-3 pr-3"><span className={`rounded-full border px-2 py-1 text-xs font-semibold ${statusStyles[row.paymentStatus]}`}>{statusLabels[row.paymentStatus]}</span></td>
+                      <td className="py-3 pr-3"><span className={`rounded-full border px-2 py-1 text-xs font-semibold ${paymentStatusStyles[row.paymentStatus]}`}>{paymentStatusLabels[row.paymentStatus]}</span></td>
                       <td className="py-3 pr-3">{formatDate(row.paymentDate)}</td>
                       <td className="py-3">
                         <div className="flex items-center gap-2">
@@ -220,4 +211,3 @@ export default function PaymentsPage() {
     </div>
   );
 }
-

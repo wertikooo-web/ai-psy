@@ -498,20 +498,20 @@ async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedReq
 
 export async function handleTelegramReadOnlySearch(message: TelegramMessage, text: string): Promise<boolean> {
   if (!message.from?.id) return false;
-  await requireLinkedTelegramAccount(message.from.id);
-  if (!isTelegramSearchCommand(text) && !isTelegramNaturalLanguageEnabled()) {
+  const account = await requireLinkedTelegramAccount(message.from.id);
+  if (!isTelegramSearchCommand(text) && (!isTelegramNaturalLanguageEnabled() || !account.naturalLanguageEnabled)) {
     await sendTelegramMessage(
       message.chat.id,
       [
-        "Сейчас проверяем Telegram-поиск по шагам.",
+        account.naturalLanguageEnabled ? "Обычные фразы временно выключены на сервере." : "Обычные фразы выключены в настройках Telegram.",
         "",
-        "Доступны команды:",
+        "Используйте команды:",
         "/client Имя",
         "/last Имя",
         "/consultations Имя",
         "/search запрос",
         "",
-        "Обычные фразы и голосовые вопросы подключим после проверки команд и поиска.",
+        "Включить обычные фразы можно через /settings.",
       ].join("\n"),
     );
     return true;

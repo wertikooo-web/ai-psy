@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
 import { getConsultations } from "@/lib/data/consultations";
 import { getClients } from "@/lib/data/clients";
-import { getPayments, upsertPayment, type PaymentInput, type PaymentStatus } from "@/lib/data/payments";
-
-const STATUSES: PaymentStatus[] = ["unpaid", "partial", "paid", "free", "cancelled"];
-
-function statusFromBody(value: unknown): PaymentStatus {
-  return STATUSES.includes(value as PaymentStatus) ? value as PaymentStatus : "unpaid";
-}
+import { getPayments, upsertPayment, type PaymentInput } from "@/lib/data/payments";
 
 export async function GET(req: Request) {
   try {
@@ -56,7 +50,6 @@ export async function POST(req: Request) {
       consultationId: String(body.consultationId),
       chargedAmount: Number(body.chargedAmount || 0),
       paidAmount: Number(body.paidAmount || 0),
-      paymentStatus: statusFromBody(body.paymentStatus),
       paymentDate: typeof body.paymentDate === "string" ? body.paymentDate : undefined,
       comment: typeof body.comment === "string" ? body.comment : undefined,
     };
@@ -70,4 +63,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
 import { AnalysisBlockRenderer } from "@/components/analysis/AnalysisBlockRenderer";
-import { PaymentDialog, type PaymentRow } from "@/components/payments/PaymentDialog";
+import { PaymentDialog, paymentStatusLabels, type PaymentRow } from "@/components/payments/PaymentDialog";
 import Link from "next/link";
 
 // ── Analysis mode definitions ─────────────────────────────────────────────────
@@ -640,11 +640,11 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
           <button
             onClick={() => setPaymentOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors hover:bg-white"
-            style={{ borderColor: "#D8CFBE", color: "#6B5D4F", background: payment?.paymentStatus === "paid" ? "#EFFAF3" : "#FFF8EA" }}
+            style={{ borderColor: "#D8CFBE", color: "#6B5D4F", background: payment?.paymentStatus === "paid" ? "#EFFAF3" : payment?.paymentStatus === "partial" ? "#FFF7E0" : "#FFF8EA" }}
             title="Внести или изменить оплату"
           >
             <WalletCards size={14} />
-            {payment?.paymentStatus === "paid" ? "Оплачено" : "Оплата"}
+            {payment ? paymentStatusLabels[payment.paymentStatus] : "Оплата"}
           </button>
           {dateStr && (
             <span className="text-xs text-slate-400">

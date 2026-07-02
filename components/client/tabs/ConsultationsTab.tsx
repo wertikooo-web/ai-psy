@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Trash2, CheckCircle2, CircleDashed, WalletCards } from "lucide-react";
 import Link from "next/link";
 import type { StoredConsultation } from "@/lib/consultationStore";
-import { PaymentDialog, type PaymentRow } from "@/components/payments/PaymentDialog";
+import { PaymentDialog, paymentStatusLabels, type PaymentRow } from "@/components/payments/PaymentDialog";
 
 // ── Craft palette ─────────────────────────────────────────────────────────────
 const S = {
@@ -162,13 +162,13 @@ export function ConsultationsTab({
         return (
           <div
             key={c.id}
-            className="rounded-2xl border overflow-hidden"
+            className="rounded-2xl border p-4 transition-colors hover:bg-[#FFFDF8]"
             style={{ background: S.bg, borderColor: S.border }}
           >
-            <div className="flex items-center gap-3 p-4" style={{ background: S.header }}>
+            <div className="flex items-start gap-3">
               <SessionNumber n={idx + 1} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: S.title }}>{displayTitle}</p>
+                <p className="text-sm font-semibold leading-snug" style={{ color: S.title }}>{displayTitle}</p>
                 <p className="text-xs text-stone-400 mt-0.5">{formatDate(c.createdAt ?? c.uploadedAt ?? "")}</p>
                 {c.requestId && requestsMap[c.requestId] && (
                   <p
@@ -179,30 +179,19 @@ export function ConsultationsTab({
                     Запрос: {requestsMap[c.requestId].slice(0, 50)}{requestsMap[c.requestId].length > 50 ? "…" : ""}
                   </p>
                 )}
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <MiniStatus ok={hasAudio}       label="Аудио" />
-                  <MiniStatus ok={hasTranscript}  label="Транскрипт" />
-                  <MiniStatus ok={hasAnalysis}    label="Анализ" />
-                </div>
               </div>
-              <Link
-                href={`/consultation/${c.id}`}
-                className="flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 font-medium flex-shrink-0 transition-colors"
-              >
-                Открыть <ArrowRight size={12} />
-              </Link>
               <button
                 onClick={() => setPaymentFor(c)}
                 className="flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors flex-shrink-0"
                 style={{
                   borderColor: "#D8CFBE",
                   color: "#6B5D4F",
-                  background: payments[c.id]?.paymentStatus === "paid" ? "#EFFAF3" : "#FFF8EA",
+                  background: payments[c.id]?.paymentStatus === "paid" ? "#EFFAF3" : payments[c.id]?.paymentStatus === "partial" ? "#FFF7E0" : "#FFF8EA",
                 }}
                 title="Внести оплату"
               >
                 <WalletCards size={12} />
-                {payments[c.id]?.paymentStatus === "paid" ? "Оплачено" : "Оплата"}
+                {payments[c.id] ? paymentStatusLabels[payments[c.id].paymentStatus] : "Оплата"}
               </button>
               <button
                 onClick={() => handleDelete(c.id)}
@@ -215,6 +204,19 @@ export function ConsultationsTab({
               >
                 <Trash2 size={13} />
               </button>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3 pl-11">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <MiniStatus ok={hasAudio}       label="Аудио" />
+                <MiniStatus ok={hasTranscript}  label="Транскрипт" />
+                <MiniStatus ok={hasAnalysis}    label="Анализ" />
+              </div>
+              <Link
+                href={`/consultation/${c.id}`}
+                className="flex flex-shrink-0 items-center gap-1 text-xs font-medium text-brand-500 transition-colors hover:text-brand-600"
+              >
+                Открыть <ArrowRight size={12} />
+              </Link>
             </div>
           </div>
         );

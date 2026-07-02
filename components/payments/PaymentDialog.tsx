@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Loader2, X } from "lucide-react";
 
-export type PaymentStatus = "unpaid" | "partial" | "paid" | "free" | "cancelled";
+export type PaymentStatus = "unpaid" | "partial" | "paid";
 
 export interface PaymentRow {
   id: string;
@@ -24,13 +24,26 @@ export interface PaymentConsultationOption {
   createdAt?: string;
 }
 
-const statusOptions: Array<{ value: PaymentStatus; label: string }> = [
-  { value: "unpaid", label: "Не оплачено" },
-  { value: "partial", label: "Частично" },
-  { value: "paid", label: "Оплачено" },
-  { value: "free", label: "Бесплатно" },
-  { value: "cancelled", label: "Отменено" },
-];
+export function derivePaymentStatus(amountDue: number | null | undefined, amountPaid: number | null | undefined): PaymentStatus {
+  const due = Number(amountDue ?? 0);
+  const paid = Number(amountPaid ?? 0);
+  if (paid <= 0) return "unpaid";
+  if (due <= 0) return "paid";
+  if (paid < due) return "partial";
+  return "paid";
+}
+
+export const paymentStatusLabels: Record<PaymentStatus, string> = {
+  unpaid: "Не оплачено",
+  partial: "Частичная оплата",
+  paid: "Оплачено",
+};
+
+export const paymentStatusStyles: Record<PaymentStatus, string> = {
+  unpaid: "bg-rose-50 text-rose-600 border-rose-100",
+  partial: "bg-amber-50 text-amber-700 border-amber-100",
+  paid: "bg-emerald-50 text-emerald-700 border-emerald-100",
+};
 
 export function PaymentDialog({
   open,
@@ -51,7 +64,6 @@ export function PaymentDialog({
   const [consultationId, setConsultationId] = useState(defaultConsultationId);
   const [chargedAmount, setChargedAmount] = useState("0");
   const [paidAmount, setPaidAmount] = useState("0");
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("unpaid");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
@@ -68,13 +80,14 @@ export function PaymentDialog({
     setConsultationId(nextConsultationId);
     setChargedAmount(String(initial?.chargedAmount ?? 0));
     setPaidAmount(String(initial?.paidAmount ?? 0));
-    setPaymentStatus(initial?.paymentStatus ?? "unpaid");
     setPaymentDate(initial?.paymentDate ?? new Date().toISOString().slice(0, 10));
     setComment(initial?.comment ?? "");
     setError("");
   }, [open, initial, fixedConsultationId, consultations]);
 
   if (!open) return null;
+
+  const derivedStatus = derivePaymentStatus(Number(chargedAmount || 0), Number(paidAmount || 0));
 
   async function save() {
     if (!consultationId) {
@@ -92,7 +105,6 @@ export function PaymentDialog({
           clientId: selectedConsultation?.clientId,
           chargedAmount: Number(chargedAmount || 0),
           paidAmount: Number(paidAmount || 0),
-          paymentStatus,
           paymentDate,
           comment,
         }),
@@ -152,9 +164,9 @@ export function PaymentDialog({
           <div className="grid grid-cols-2 gap-3">
             <label>
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#8A7A66]">Статус</span>
-              <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)} className="h-11 w-full rounded-xl border border-[#D8CFBE] bg-white px-3 text-sm outline-none">
-                {statusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-              </select>
+              <div className={`flex h-11 items-center rounded-xl border px-3 text-sm font-semibold ${paymentStatusStyles[derivedStatus]}`}>
+                {paymentStatusLabels[derivedStatus]}
+              </div>
             </label>
             <label>
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#8A7A66]">Дата оплаты</span>
@@ -181,4 +193,3 @@ export function PaymentDialog({
     </div>
   );
 }
-

@@ -10,7 +10,7 @@ import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 const DATA_DIR = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "consultation-payments.json");
 
-export type PaymentStatus = "unpaid" | "partial" | "paid" | "free" | "cancelled";
+export type PaymentStatus = "unpaid" | "partial" | "paid";
 
 export interface ConsultationPayment {
   id: string;
@@ -30,15 +30,18 @@ export interface PaymentInput {
   consultationId: string;
   chargedAmount: number;
   paidAmount: number;
-  paymentStatus: PaymentStatus;
+  paymentStatus?: PaymentStatus;
   paymentDate?: string;
   comment?: string;
 }
 
-const STATUSES: PaymentStatus[] = ["unpaid", "partial", "paid", "free", "cancelled"];
-
-function normalizeStatus(value: unknown): PaymentStatus {
-  return STATUSES.includes(value as PaymentStatus) ? value as PaymentStatus : "unpaid";
+export function derivePaymentStatus(amountDue: number | null | undefined, amountPaid: number | null | undefined): PaymentStatus {
+  const due = Number(amountDue ?? 0);
+  const paid = Number(amountPaid ?? 0);
+  if (paid <= 0) return "unpaid";
+  if (due <= 0) return "paid";
+  if (paid < due) return "partial";
+  return "paid";
 }
 
 function rowToPayment(row: Record<string, unknown>): ConsultationPayment {
@@ -50,7 +53,7 @@ function rowToPayment(row: Record<string, unknown>): ConsultationPayment {
     consultationId: row.consultation_id as string,
     chargedAmount:  Number(row.charged_amount ?? 0),
     paidAmount:     Number(row.paid_amount ?? 0),
-    paymentStatus:  normalizeStatus(row.payment_status),
+    paymentStatus:  derivePaymentStatus(Number(row.charged_amount ?? 0), Number(row.paid_amount ?? 0)),
     paymentDate:    (row.payment_date as string | null) ?? undefined,
     comment:        (row.comment as string | null) ?? undefined,
   };
@@ -62,7 +65,7 @@ function paymentToRow(input: PaymentInput) {
     consultation_id:  input.consultationId,
     charged_amount:   Number(input.chargedAmount || 0),
     paid_amount:      Number(input.paidAmount || 0),
-    payment_status:   normalizeStatus(input.paymentStatus),
+    payment_status:   derivePaymentStatus(input.chargedAmount, input.paidAmount),
     payment_date:     input.paymentDate || null,
     comment:          input.comment?.trim() || null,
   };
@@ -143,7 +146,7 @@ export async function upsertPayment(input: PaymentInput): Promise<ConsultationPa
     consultationId: input.consultationId,
     chargedAmount: Number(input.chargedAmount || 0),
     paidAmount: Number(input.paidAmount || 0),
-    paymentStatus: normalizeStatus(input.paymentStatus),
+    paymentStatus: derivePaymentStatus(input.chargedAmount, input.paidAmount),
     paymentDate: input.paymentDate || undefined,
     comment: input.comment?.trim() || undefined,
   };
@@ -152,4 +155,3 @@ export async function upsertPayment(input: PaymentInput): Promise<ConsultationPa
   await writeAllLocal(all);
   return next;
 }
-

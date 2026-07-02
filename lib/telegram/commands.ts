@@ -2,12 +2,15 @@ import fs from "fs";
 import { unlink } from "fs/promises";
 import OpenAI from "openai";
 import { getLinkedTelegramAccount } from "@/lib/telegram/auth";
-import { linkTelegramAccount, type TelegramIdentity } from "@/lib/data/telegramLinks";
+import { linkTelegramAccount, setTelegramNaturalLanguageEnabled, type TelegramAccount, type TelegramIdentity } from "@/lib/data/telegramLinks";
 import {
+  answerTelegramCallback,
   downloadTelegramFileToTemp,
+  editTelegramMessage,
   getTelegramFile,
   parseTelegramCommand,
   sendTelegramMessage,
+  type TelegramCallbackQuery,
   type TelegramMessage,
 } from "@/lib/telegram/bot";
 import { handleTelegramAudioMessage } from "@/lib/telegram/audioFlow";
@@ -55,6 +58,7 @@ const HELP_TEXT = [
 ].join("\n");
 
 const VOICE_QUERY_MAX_SECONDS = 180;
+const SETTINGS_NL_PREFIX = "settings:nl:";
 
 function identityFromMessage(message: TelegramMessage): TelegramIdentity | null {
   if (!message.from?.id || message.from.is_bot) return null;
@@ -72,6 +76,74 @@ function linkErrorText(reason: string): string {
   if (reason === "already_linked") return "Telegram уже подключён.";
   if (reason === "rate_limited") return "Слишком много попыток. Попробуйте позже.";
   return "Код неверный.";
+}
+
+function settingsText(account: TelegramAccount): string {
+  return [
+    "Настройки Telegram",
+    "",
+    `Обычные фразы через LLM: ${account.naturalLanguageEnabled ? "включены" : "выключены"}`,
+    "",
+    "Команды /client, /last, /consultations и /search работают всегда.",
+  ].join("\n");
+}
+
+function settingsKeyboard(account: TelegramAccount) {
+  const next = account.naturalLanguageEnabled ? "off" : "on";
+  return {
+    inline_keyboard: [
+      [
+        {
+          text: account.naturalLanguageEnabled ? "LLM-фразы: выключить" : "LLM-фразы: включить",
+          callback_data: `${SETTINGS_NL_PREFIX}${next}`,
+        },
+      ],
+      [{ text: "Статус", callback_data: "settings:status" }],
+    ],
+  };
+}
+
+async function sendTelegramSettings(chatId: number, telegramId: number): Promise<void> {
+  const account = await getLinkedTelegramAccount(telegramId);
+  if (!account) {
+    await sendTelegramMessage(chatId, INTRO_TEXT);
+    return;
+  }
+  await sendTelegramMessage(chatId, settingsText(account), settingsKeyboard(account));
+}
+
+export async function handleTelegramSettingsCallback(query: TelegramCallbackQuery): Promise<boolean> {
+  const data = query.data ?? "";
+  if (!data.startsWith("settings:")) return false;
+
+  try {
+    const account = await getLinkedTelegramAccount(query.from.id);
+    if (!account) {
+      await answerTelegramCallback(query.id, "Telegram не подключён");
+      return true;
+    }
+
+    let nextAccount = account;
+    if (data.startsWith(SETTINGS_NL_PREFIX)) {
+      nextAccount = await setTelegramNaturalLanguageEnabled(query.from.id, data.endsWith("on"));
+      await answerTelegramCallback(query.id, nextAccount.naturalLanguageEnabled ? "LLM-фразы включены" : "LLM-фразы выключены");
+    } else if (data === "settings:status") {
+      await answerTelegramCallback(query.id, account.naturalLanguageEnabled ? "LLM-фразы включены" : "LLM-фразы выключены");
+    } else {
+      await answerTelegramCallback(query.id);
+      return true;
+    }
+
+    const chatId = query.message?.chat.id;
+    const messageId = query.message?.message_id;
+    if (chatId && messageId) {
+      await editTelegramMessage(chatId, messageId, settingsText(nextAccount), settingsKeyboard(nextAccount));
+    }
+  } catch (error) {
+    console.error("[telegram/settings callback]", error);
+    await answerTelegramCallback(query.id, "Не удалось изменить настройку");
+  }
+  return true;
 }
 
 function getOpenAI(): OpenAI {
@@ -108,11 +180,12 @@ async function transcribeVoiceQuery(message: TelegramMessage): Promise<string> {
 async function handleVoiceSearch(message: TelegramMessage): Promise<void> {
   const chatId = message.chat.id;
   try {
-    if (!message.from?.id || !(await getLinkedTelegramAccount(message.from.id))) {
+    const account = message.from?.id ? await getLinkedTelegramAccount(message.from.id) : null;
+    if (!message.from?.id || !account) {
       await sendTelegramMessage(chatId, INTRO_TEXT);
       return;
     }
-    if (!isTelegramNaturalLanguageEnabled()) {
+    if (!isTelegramNaturalLanguageEnabled() || !account.naturalLanguageEnabled) {
       await sendTelegramMessage(
         chatId,
         [
@@ -173,6 +246,11 @@ export async function handleTelegramMessage(message: TelegramMessage): Promise<v
 
   if (parsed?.command === "/help") {
     await sendTelegramMessage(chatId, HELP_TEXT);
+    return;
+  }
+
+  if (parsed?.command === "/settings") {
+    await sendTelegramSettings(chatId, identity.id);
     return;
   }
 
