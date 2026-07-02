@@ -126,7 +126,7 @@ function SummaryCard({
 
 function Panel({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`min-h-0 overflow-hidden rounded-xl border border-[#E6DDD0] bg-white p-4 shadow-sm ${className}`}>
+    <section className={`flex min-h-0 flex-col overflow-hidden rounded-xl border border-[#E6DDD0] bg-white p-4 shadow-sm ${className}`}>
       <h2 className="mb-3 text-sm font-bold text-[#2F261F]">{title}</h2>
       {children}
     </section>
@@ -137,12 +137,12 @@ function StackedBars({ data }: { data: AnalyticsResponse["consultationsTimeline"
   const max = Math.max(1, ...data.map((item) => item.completed + item.planned + item.cancelled + item.noShow));
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex min-h-0 flex-1 items-end gap-3 border-b border-[#ECE5DA] pl-1">
+      <div className="grid min-h-0 flex-1 auto-cols-[72px] grid-flow-col items-end gap-3 overflow-x-auto border-b border-[#ECE5DA] px-1 pb-1">
         {data.map((item) => {
           const total = item.completed + item.planned + item.cancelled + item.noShow;
           const barHeight = total ? Math.max(34, (total / max) * 150) : 8;
           return (
-            <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+            <div key={item.label} className="flex min-w-0 flex-col items-center gap-2">
               <div className="flex h-[clamp(112px,18vh,168px)] w-full flex-col items-center justify-end">
                 <span className="mb-1 flex h-5 min-w-5 items-center justify-center rounded-full border border-[#D9CDBE] bg-white px-1.5 text-[11px] font-bold text-[#6F6255] shadow-sm">
                   {total}
@@ -180,9 +180,9 @@ function StackedBars({ data }: { data: AnalyticsResponse["consultationsTimeline"
 function WorkloadChart({ data }: { data: AnalyticsResponse["workloadByWeekday"] }) {
   const max = Math.max(1, ...data.map((item) => item.count));
   return (
-    <div className="space-y-1.5 pb-1">
+    <div className="flex h-full min-h-0 flex-col justify-between gap-1 pr-1">
       {data.map((item) => (
-        <div key={item.day} className="grid grid-cols-[95px_1fr_28px] items-center gap-3 text-xs">
+        <div key={item.day} className="grid grid-cols-[95px_1fr_28px] items-center gap-3 text-xs leading-none">
           <span className="text-[#4D4034]">{item.day}</span>
           <span className="h-2.5 overflow-hidden rounded-full bg-[#F2EDE4]">
             <span className="block h-full rounded-full bg-[#8B5CF6]" style={{ width: `${(item.count / max) * 100}%` }} />
@@ -206,7 +206,7 @@ function AnalysisDonut({ data }: { data: AnalyticsResponse["analysisTypes"] }) {
     }).join(", ")
     : "#EDE7DA 0 100%";
   return (
-    <div className="grid grid-cols-[112px_1fr] gap-4">
+    <div className="grid h-full min-h-0 grid-cols-[112px_1fr] items-start gap-4">
       <div className="relative h-28 w-28 rounded-full" style={{ background: `conic-gradient(${gradient})` }}>
         <div className="absolute inset-7 rounded-full bg-white" />
       </div>
@@ -291,7 +291,7 @@ export default function AnalyticsPage() {
       ["Консультаций за период", data.summary.consultations, `${data.filters.from} — ${data.filters.to}`, "#EEF6FF"],
       ["Новых клиентов", data.summary.newClients, "По дате создания клиента", "#EFFAF3"],
       ["Предстоящих консультаций", data.summary.upcomingConsultations, data.summary.nearestUpcoming ? `Ближайшая ${formatDateTime(data.summary.nearestUpcoming)}` : "Будущих встреч нет", "#FFF6EA"],
-      ["Незавершённые консультации", data.summary.incompleteConsultations, "Без транскрипта, анализа или с ошибкой", "#FFF1F1"],
+      ["Незавершённые консультации", data.summary.incompleteConsultations, "Без транскрипта, анализов либо материалов", "#FFF1F1"],
     ];
     const html = `
       <div style="font-family:Arial,sans-serif;color:#2F261F;background:#F7F3EA;padding:16px;border-radius:14px;">
@@ -486,7 +486,7 @@ export default function AnalyticsPage() {
               <SummaryCard icon={CalendarDays} title="Консультаций за период" value={data.summary.consultations} note={`${data.filters.from} — ${data.filters.to}`} tone="blue" />
               <SummaryCard icon={UserPlus} title="Новых клиентов" value={data.summary.newClients} note="По дате создания клиента" tone="green" />
               <SummaryCard icon={CalendarClock} title="Предстоящих консультаций" value={data.summary.upcomingConsultations} note={data.summary.nearestUpcoming ? `Ближайшая ${formatDateTime(data.summary.nearestUpcoming)}` : "Будущих встреч нет"} tone="orange" />
-              <SummaryCard icon={AlertTriangle} title="Незавершённые консультации" value={data.summary.incompleteConsultations} note="Без транскрипта, анализа или с ошибкой" tone="red" />
+              <SummaryCard icon={AlertTriangle} title="Незавершённые консультации" value={data.summary.incompleteConsultations} note="Без транскрипта, анализов либо материалов" tone="red" />
             </div>
 
             <div className="grid min-h-0 flex-[1.28] grid-cols-1 gap-3 xl:grid-cols-[1.02fr_1.55fr]">
@@ -499,7 +499,13 @@ export default function AnalyticsPage() {
                     <Search size={14} className="text-[#9A8A72]" />
                     <input value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Поиск по имени клиента" className="w-full bg-transparent outline-none" />
                   </label>
-                  <button onClick={copyClients} className="text-sm font-semibold text-[#6B4E2E] hover:underline">Скопировать таблицу</button>
+                  <button
+                    onClick={copyClients}
+                    title="Копируется как форматированная HTML-таблица; если браузер не поддерживает форматирование, будет скопирован TSV-текст."
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#6B4E2E] hover:underline"
+                  >
+                    <Clipboard size={14} /> Скопировать
+                  </button>
                 </div>
                 <div className="max-h-[calc(100%-52px)] overflow-auto pb-1 pr-1">
                   <table className="w-full min-w-[760px] text-left text-[13px] [&_td]:py-1.5 [&_th]:py-1.5">
@@ -563,7 +569,7 @@ export default function AnalyticsPage() {
 
             <div className="grid min-h-0 flex-[0.56] grid-cols-1 gap-3 xl:grid-cols-[1.5fr_1fr]">
               <Panel title="Оплаты по консультациям" className="h-full">
-                <div className="overflow-x-auto">
+                <div className="h-[calc(100%-34px)] min-h-0 overflow-auto pr-1">
                   <table className="w-full min-w-[760px] text-left text-sm">
                     <thead className="text-xs text-[#8A7A66]">
                       <tr className="border-b border-[#ECE5DA]">
@@ -597,7 +603,7 @@ export default function AnalyticsPage() {
               </Panel>
 
               <Panel title="Доход по месяцам (получено)" className="h-full">
-                <div className="flex h-[calc(100%-44px)] min-h-[96px] items-end gap-3 border-b border-[#ECE5DA] px-3">
+                <div className="grid h-[calc(100%-44px)] min-h-[96px] auto-cols-[58px] grid-flow-col items-end gap-3 overflow-x-auto border-b border-[#ECE5DA] px-3 pb-1">
                   {data.incomeTimeline.map((item) => (
                     <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
                       <div className="w-full max-w-[42px] rounded-t-md bg-[#8B5CF6]" style={{ height: `${Math.max(4, (item.received / maxIncome) * 110)}px` }} title={`${item.label}: ${nf.format(item.received)} MDL`} />

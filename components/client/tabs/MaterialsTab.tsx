@@ -160,14 +160,17 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
               const isTranscribing = obs.status === "transcribing";
               const isError        = obs.status === "error";
               const isOpen         = expandedObs === obs.id;
-              const preview        = obs.content.slice(0, 280);
-              const hasMore        = obs.content.length > 280;
+              const preview        = obs.content.trim().slice(0, 150);
+              const hasMore        = obs.content.trim().length > 150;
 
               return (
                 <div
                   key={obs.id}
-                  className="flex items-start gap-3 px-5 py-3.5"
+                  className="flex cursor-pointer items-start gap-3 px-5 py-3.5 transition-colors hover:bg-white/55"
                   style={{ borderTop: i > 0 ? `1px solid ${S.divider}` : undefined }}
+                  onClick={() => {
+                    if (!isTranscribing && !isError) setExpandedObs(isOpen ? null : obs.id);
+                  }}
                 >
                   <span
                     className="mt-0.5 flex-shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full"
@@ -197,28 +200,32 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
                       <>
                         <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
                           {isOpen ? obs.content : preview}
-                          {!isOpen && hasMore && <span style={{ color: S.muted }}>…</span>}
+                          {!isOpen && hasMore && <span style={{ color: S.muted }}>...</span>}
                         </p>
-                        {hasMore && (
-                          <button
-                            onClick={() => setExpandedObs(isOpen ? null : obs.id)}
-                            className="mt-1.5 flex items-center gap-1 text-xs font-medium transition-colors"
-                            style={{ color: S.muted }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = S.title; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = S.muted; }}
-                          >
-                            {isOpen
-                              ? <><ChevronUp size={11} /> Свернуть</>
-                              : <><ChevronDown size={11} /> Показать полностью</>}
-                          </button>
-                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedObs(isOpen ? null : obs.id);
+                          }}
+                          className="mt-1.5 flex items-center gap-1 text-xs font-medium transition-colors"
+                          style={{ color: S.muted }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = S.title; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = S.muted; }}
+                        >
+                          {isOpen
+                            ? <><ChevronUp size={11} /> Свернуть</>
+                            : <><ChevronDown size={11} /> Развернуть</>}
+                        </button>
                       </>
                     )}
                   </div>
 
                   {!isMock && !isTranscribing && (
                     <button
-                      onClick={() => handleDeleteObs(obs.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteObs(obs.id);
+                      }}
                       className="flex-shrink-0 flex items-center justify-center rounded-lg transition-colors"
                       style={{ width: 26, height: 26, background: "#FEF2F2", border: "1px solid #FECACA", color: "#EF4444" }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = "#FEE2E2"; e.currentTarget.style.borderColor = "#FCA5A5"; }}

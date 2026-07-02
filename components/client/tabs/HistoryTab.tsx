@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, Bot, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp, Plus, Trash2, Bot, User } from "lucide-react";
 import {
   HISTORY_SECTIONS_ORDER,
   HISTORY_SECTION_LABELS,
@@ -34,8 +34,19 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
   const [draftText, setDraftText]         = useState("");
   const [saving, setSaving]               = useState(false);
   const [deletingId, setDeletingId]       = useState<string | null>(null);
+  const [expandedItem, setExpandedItem]   = useState<string | null>(null);
 
   const bySection = (section: HistorySection) => items.filter((i) => i.section === section);
+
+  useEffect(() => {
+    if (!expandedItem) return;
+    function onOutside(e: MouseEvent) {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest("[data-history-entry]")) setExpandedItem(null);
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [expandedItem]);
 
   async function handleAdd(section: HistorySection) {
     const text = draftText.trim();
@@ -121,19 +132,45 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
 
             {/* Items */}
             <div>
-              {sectionItems.map((item, i) => (
+              {sectionItems.map((item, i) => {
+                const isOpen = expandedItem === item.id;
+                const preview = item.text.trim().slice(0, 150);
+                const hasMore = item.text.trim().length > 150;
+
+                return (
                 <div
                   key={item.id}
-                  className="flex items-start gap-3 px-5 py-3.5 group"
+                  data-history-entry
+                  className="flex cursor-pointer items-start gap-3 px-5 py-3.5 group transition-colors hover:bg-white/55"
                   style={{
                     borderTop: i > 0 ? `1px solid ${S.divider}` : undefined,
                   }}
+                  onClick={() => setExpandedItem(isOpen ? null : item.id)}
                 >
                   <SourceBadge source={item.source} />
-                  <p className="flex-1 text-sm text-stone-700 leading-relaxed">{item.text}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
+                      {isOpen ? item.text : preview}
+                      {!isOpen && hasMore && <span style={{ color: S.countTxt }}>...</span>}
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium transition-colors"
+                      style={{ color: S.countTxt }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedItem(isOpen ? null : item.id);
+                      }}
+                    >
+                      {isOpen ? <><ChevronUp size={11} /> Свернуть</> : <><ChevronDown size={11} /> Развернуть</>}
+                    </button>
+                  </div>
                   {!isMock && (
                     <button
-                      onClick={() => handleDelete(item.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(item.id);
+                      }}
                       disabled={deletingId === item.id}
                       className="flex-shrink-0 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
                       style={{ width: 26, height: 26, background: "#FEF2F2", border: "1px solid #FECACA", color: "#EF4444" }}
@@ -145,7 +182,8 @@ export function HistoryTab({ clientId, items, isMock, onAdd, onDelete }: Props) 
                     </button>
                   )}
                 </div>
-              ))}
+                );
+              })}
 
               {sectionItems.length === 0 && !isAdding && (
                 <p className="px-5 py-3.5 text-xs text-stone-300 italic">Нет записей</p>
