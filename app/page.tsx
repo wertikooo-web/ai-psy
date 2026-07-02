@@ -317,7 +317,7 @@ export default function HomePage() {
         <div className="relative z-10 flex flex-col h-full overflow-y-auto">
 
           {/* Welcome */}
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-4 sm:pb-6 text-center">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-14 sm:pt-16 pb-4 sm:pb-6 text-center">
             <div className="flex items-center justify-center gap-3 mb-2">
               {photoUrl ? (
                 <img src={photoUrl} alt={greeting}

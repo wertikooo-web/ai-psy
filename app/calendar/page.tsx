@@ -337,7 +337,7 @@ function WeekView({
   return (
     <div className="flex-1 flex flex-col overflow-hidden border-t border-[#E5E7EB]">
       {/* Day headers */}
-      <div className="flex border-b border-[#E5E7EB] bg-white" style={{ paddingLeft: 56 }}>
+      <div className="flex border-b border-[#E5E7EB]" style={{ background: "#F0EAE0", paddingLeft: 56 }}>
         {weekDays.map((day, i) => {
           const isToday    = isSameDay(day, today);
           const isWeekend  = i >= 5;
@@ -360,7 +360,7 @@ function WeekView({
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="flex" style={{ minHeight: GRID_H }}>
           {/* Time axis */}
-          <div className="flex-shrink-0 bg-white" style={{ width: 56 }}>
+          <div className="flex-shrink-0" style={{ width: 56, background: "#F7F3EA" }}>
             {hours.map((h) => (
               <div key={h} style={{ height: HOUR_H }} className="flex items-start justify-end pr-2 pt-0.5">
                 <span className="text-xs" style={{ color: "#9CA3AF" }}>{h}:00</span>
@@ -375,7 +375,7 @@ function WeekView({
               <div
                 key={di}
                 className="flex-1 relative border-r border-[#F3F4F6] last:border-r-0"
-                style={{ background: di >= 5 ? "#FEFEFE" : "white" }}
+                style={{ background: di >= 5 ? "#F2EDE4" : "#F7F3EA" }}
                 onClick={(e) => {
                   if ((e.target as HTMLElement) === e.currentTarget) {
                     const rect = e.currentTarget.getBoundingClientRect();
@@ -452,7 +452,7 @@ function DayView({
   return (
     <div className="flex-1 flex flex-col overflow-hidden border-t border-[#E5E7EB]">
       {/* Header */}
-      <div className="border-b border-[#E5E7EB] py-2 px-4 flex items-center gap-3 bg-white">
+      <div className="border-b border-[#E5E7EB] py-2 px-4 flex items-center gap-3" style={{ background: "#F0EAE0" }}>
         <span className={`text-2xl font-bold w-10 h-10 flex items-center justify-center rounded-full
           ${isToday ? "bg-[#4F46E5] text-white" : "text-gray-800"}`}>
           {current.getDate()}
@@ -1165,9 +1165,9 @@ export default function CalendarPage() {
     </div>
 
     {/* ── DESKTOP LAYOUT ── */}
-    <div className="hidden lg:flex flex-col h-full overflow-hidden bg-[#F9FAFB]">
+    <div className="hidden lg:flex flex-col h-full overflow-hidden" style={{ background: "#F7F3EA" }}>
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <header className="flex items-center gap-3 px-4 py-3 bg-white border-b border-[#E5E7EB] flex-shrink-0">
+      <header className="flex items-center gap-3 px-4 py-3 border-b border-[#E5E7EB] flex-shrink-0" style={{ background: "#EDE7DA" }}>
         {/* Nav buttons */}
         <div className="flex items-center gap-1">
           <button onClick={goToday}
