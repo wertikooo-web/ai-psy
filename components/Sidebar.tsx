@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Home, Users, FileText, Bot,
   Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, BookOpenText,
-  PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays, BarChart3, WalletCards,
+  PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays, BarChart3, WalletCards, Search,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
@@ -110,9 +110,25 @@ function DecoBtn({
 }
 
 // ── Nav groups ────────────────────────────────────────────────────────────────
-function NavGroups({ onNavigate, onUpload }: { onNavigate?: () => void; onUpload: () => void }) {
+function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void; onUpload: () => void; onSearch?: () => void }) {
   return (
     <nav className="flex-1 px-3 py-5 overflow-y-auto flex flex-col gap-8">
+
+      {/* ── Global search button ── */}
+      {onSearch && (
+        <button
+          onClick={() => { onSearch(); onNavigate?.(); }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors"
+          style={{ background: "#EEEBE5", border: "1px solid #E0D9CE", color: "#8A7A6A" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "#E8E2D8"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "#EEEBE5"; }}
+        >
+          <Search size={14} strokeWidth={2} style={{ flexShrink: 0 }} />
+          <span className="flex-1 text-left" style={{ color: "#9C8E80" }}>Поиск...</span>
+          <kbd className="hidden sm:inline text-[10px] font-mono" style={{ color: "#B8AA99" }}>Ctrl+K</kbd>
+        </button>
+      )}
+
       <div className="space-y-0.5">
         <div className="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Основное
@@ -159,9 +175,10 @@ interface SidebarProps {
   onClose?: () => void;
   mode: SidebarMode;
   onModeChange: (m: SidebarMode) => void;
+  onSearch?: () => void;
 }
 
-export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
+export function Sidebar({ open, onClose, mode, onModeChange, onSearch }: SidebarProps) {
   const [uploadOpen, setUploadOpen] = useState(false);
   // Delay enabling transitions until after first paint — prevents layout flash
   const [transitionEnabled, setTransitionEnabled] = useState(false);
@@ -249,7 +266,7 @@ export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
             </button>
           </div>
 
-          <NavGroups onUpload={() => setUploadOpen(true)} />
+          <NavGroups onUpload={() => setUploadOpen(true)} onSearch={onSearch} />
 
           <div className="px-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
             <UserChip />
@@ -398,7 +415,7 @@ export function Sidebar({ open, onClose, mode, onModeChange }: SidebarProps) {
               </button>
             </Link>
 
-            <NavGroups onNavigate={onClose} onUpload={() => setUploadOpen(true)} />
+            <NavGroups onNavigate={onClose} onUpload={() => setUploadOpen(true)} onSearch={onSearch} />
 
             <div className="px-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
               <UserChip />

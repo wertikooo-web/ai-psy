@@ -113,7 +113,7 @@ export async function sendCapabilityHelp(chatId: number, capId: string): Promise
   const urlMap: Record<string, string> = {
     clients: "/clients",
     consultations: "/analytics",
-    search: "/notebook",
+    search: "/",
     analytics: "/analytics",
   };
   const path = urlMap[capId];

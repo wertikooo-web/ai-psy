@@ -6,6 +6,7 @@ import { Menu, Eye, ChevronRight } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import type { SidebarMode } from "@/components/Sidebar";
 import { ObservationModal } from "@/components/observation/ObservationModal";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ interface AppShellProps {
 export function AppShell({ children, initialSidebarMode = "full" }: AppShellProps) {
   const pathname = usePathname();
   const [sidebarOpen,     setSidebarOpen]     = useState(false);
+  const [searchOpen,      setSearchOpen]      = useState(false);
   const [observationOpen, setObservationOpen] = useState(false);
   const [tooltip,         setTooltip]         = useState(false);
   const [sidebarMode,     setSidebarMode]     = useState<SidebarMode>(initialSidebarMode);
@@ -34,6 +36,17 @@ export function AppShell({ children, initialSidebarMode = "full" }: AppShellProp
     return () => window.removeEventListener("open-observation-modal", handler);
   }, []);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Auto-detect current client from URL: /client/[id]
   const clientMatch        = pathname.match(/^\/client\/([^/]+)/);
   const currentClientId    = clientMatch?.[1] ?? undefined;
@@ -51,6 +64,7 @@ export function AppShell({ children, initialSidebarMode = "full" }: AppShellProp
           onClose={() => setSidebarOpen(false)}
           mode={sidebarMode}
           onModeChange={handleModeChange}
+          onSearch={() => setSearchOpen(true)}
         />
       </div>
 
@@ -167,6 +181,8 @@ export function AppShell({ children, initialSidebarMode = "full" }: AppShellProp
           consultationId={currentConsultationId}
         />
       )}
+
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
