@@ -385,9 +385,17 @@ function sanitizeSupabaseSearch(value: string): string {
 }
 
 const SEARCH_STOP_WORDS = new Set([
-  "найди", "найти", "покажи", "показать", "все", "всё", "всю", "всех", "вся",
-  "про", "по", "о", "об", "обо", "что", "где", "кто", "там", "есть", "было",
-  "были", "была", "был", "упоминание", "упоминания", "тема", "темы",
+  "найди", "найти", "покажи", "показать", "найдите", "поищи", "поискать",
+  "все", "всё", "всю", "всех", "вся", "весь",
+  "про", "по", "о", "об", "обо", "что", "где", "кто", "там", "тут", "здесь",
+  "есть", "было", "были", "была", "был", "есть", "нет",
+  "упоминание", "упоминания", "тема", "темы",
+  "нас", "нам", "наш", "наша", "наше", "наши", "нашего", "нашей", "нашем",
+  "вас", "вам", "ваш", "ваша", "ваше", "ваши",
+  "нас", "них", "ним", "ними", "них", "него", "ней",
+  "у", "в", "к", "с", "из", "от", "до", "за", "под", "над", "при", "через",
+  "как", "так", "же", "ли", "бы", "вот", "вообще", "вдруг", "уже", "ещё",
+  "только", "даже", "именно", "тоже", "также", "ведь", "хоть", "хотя",
 ]);
 
 function meaningfulSearchTokens(query: string): string[] {
@@ -420,13 +428,21 @@ function searchScore(text: string, query: string): number {
   const tokens = meaningfulSearchTokens(query);
   if (!tokens.length) return haystack.includes(normalize(query)) ? 1 : 0;
   let score = 0;
+  let matched = 0;
   for (const token of tokens) {
     const variants = tokenVariants(token);
     const exactHit = haystack.includes(token);
-    const variantHit = variants.some((variant) => haystack.includes(variant));
-    if (!exactHit && !variantHit) return 0;
-    score += exactHit ? 10 : 4;
+    const variantHit = !exactHit && variants.some((variant) => haystack.includes(variant));
+    if (exactHit || variantHit) {
+      matched++;
+      score += exactHit ? 10 : 4;
+    }
   }
+  // At least one meaningful token must match
+  if (matched === 0) return 0;
+  // Bonus when all tokens matched (high-confidence hit)
+  if (matched === tokens.length && tokens.length > 1) score += 15;
+  // Bonus for exact phrase match
   if (haystack.includes(normalize(query))) score += 20;
   return score;
 }
@@ -969,6 +985,10 @@ export async function handleTelegramReadOnlySearch(message: TelegramMessage, tex
   let parsed: ParsedRequest;
   if (isTelegramSearchCommand(text)) {
     parsed = parseTextRequest(text);
+  } else if (/^(найди|найдите|поищи|поиск)\s+.{2,}/i.test(text)) {
+    // "найди..." is always a search — skip LLM to avoid misclassification as conversation
+    const q = cleanupSearchQuery(text);
+    parsed = { intent: "search_consultations", query: q || text };
   } else {
     const llmResult = await parseTelegramIntentWithLlm(text, prior.length ? prior : undefined);
     if (llmResult) {
