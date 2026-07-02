@@ -1,7 +1,17 @@
+import fs from "fs";
+import { unlink } from "fs/promises";
+import OpenAI from "openai";
 import { getLinkedTelegramAccount } from "@/lib/telegram/auth";
 import { linkTelegramAccount, type TelegramIdentity } from "@/lib/data/telegramLinks";
-import { parseTelegramCommand, sendTelegramMessage, type TelegramMessage } from "@/lib/telegram/bot";
+import {
+  downloadTelegramFileToTemp,
+  getTelegramFile,
+  parseTelegramCommand,
+  sendTelegramMessage,
+  type TelegramMessage,
+} from "@/lib/telegram/bot";
 import { handleTelegramAudioMessage } from "@/lib/telegram/audioFlow";
+import { handleTelegramReadOnlySearch, isTelegramNaturalLanguageEnabled } from "@/lib/telegram/search";
 
 const INTRO_TEXT = [
   "Здравствуйте! Это Telegram-помощник TRANSCRIPT AI · PSY.",
@@ -15,7 +25,16 @@ const INTRO_TEXT = [
 const LINKED_TEXT = [
   "Telegram подключён к TRANSCRIPT AI · PSY.",
   "",
-  "На первом этапе доступны:",
+  "Сейчас проверяем поиск по командам:",
+  "/client Анна",
+  "/last Анна",
+  "/consultations Анна",
+  "/search тревога",
+  "/stats month",
+  "",
+  "Обычные фразы и голосовые вопросы подключим отдельным шагом после проверки команд.",
+  "Для транскрибации консультации прикрепите аудиофайл.",
+  "",
   "/help",
   "/status",
 ].join("\n");
@@ -25,8 +44,17 @@ const HELP_TEXT = [
   "/start — проверить подключение",
   "/link 123456 — подключить Telegram по одноразовому коду",
   "/status — статус подключения",
-  "/help — помощь",
+  "/client Имя — краткая карточка клиента",
+  "/last Имя — последняя консультация клиента",
+  "/consultations Имя — последние консультации клиента",
+  "/search запрос — поиск по консультациям, анализам, заметкам и материалам",
+  "/stats month — простая статистика",
+  "",
+  "Обычные фразы и голосовые вопросы включим после проверки команд и /search.",
+  "Прикреплённый аудиофайл — это загрузка консультации на транскрибацию.",
 ].join("\n");
+
+const VOICE_QUERY_MAX_SECONDS = 180;
 
 function identityFromMessage(message: TelegramMessage): TelegramIdentity | null {
   if (!message.from?.id || message.from.is_bot) return null;
@@ -46,40 +74,109 @@ function linkErrorText(reason: string): string {
   return "Код неверный.";
 }
 
+function getOpenAI(): OpenAI {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey || apiKey.startsWith("sk-...")) {
+    throw new Error("OPENAI_API_KEY is not configured");
+  }
+  return new OpenAI({ apiKey });
+}
+
+async function transcribeVoiceQuery(message: TelegramMessage): Promise<string> {
+  if (!message.voice?.file_id) throw new Error("Voice message is missing");
+  if ((message.voice.duration ?? 0) > VOICE_QUERY_MAX_SECONDS) {
+    throw new Error("Voice query is too long");
+  }
+
+  let tempPath: string | null = null;
+  try {
+    const file = await getTelegramFile(message.voice.file_id);
+    if (!file.file_path) throw new Error("Telegram voice file path is missing");
+    tempPath = await downloadTelegramFileToTemp(file.file_path);
+    const openai = getOpenAI();
+    const result = await openai.audio.transcriptions.create({
+      file: fs.createReadStream(tempPath),
+      model: "whisper-1",
+      language: "ru",
+    });
+    return (result.text ?? "").trim();
+  } finally {
+    if (tempPath) await unlink(tempPath).catch(() => {});
+  }
+}
+
+async function handleVoiceSearch(message: TelegramMessage): Promise<void> {
+  const chatId = message.chat.id;
+  try {
+    if (!message.from?.id || !(await getLinkedTelegramAccount(message.from.id))) {
+      await sendTelegramMessage(chatId, INTRO_TEXT);
+      return;
+    }
+    if (!isTelegramNaturalLanguageEnabled()) {
+      await sendTelegramMessage(
+        chatId,
+        [
+          "Голосовые вопросы подключим после проверки команд.",
+          "",
+          "Сейчас используйте:",
+          "/client Имя",
+          "/last Имя",
+          "/consultations Имя",
+          "/search запрос",
+          "",
+          "Если это запись консультации, прикрепите её как аудиофайл.",
+        ].join("\n"),
+      );
+      return;
+    }
+    const text = await transcribeVoiceQuery(message);
+    if (!text) {
+      await sendTelegramMessage(chatId, "Не удалось распознать голосовой вопрос. Попробуйте сказать короче или написать текстом.");
+      return;
+    }
+    await sendTelegramMessage(chatId, `Распознал: «${text}»`);
+    await handleTelegramReadOnlySearch(message, text);
+  } catch (error) {
+    console.error("[telegram/voice query]", error);
+    const text = error instanceof Error && error.message === "Voice query is too long"
+      ? "Голосовой вопрос слишком длинный. Для поиска отправьте короткий вопрос, а запись консультации прикрепите как аудиофайл."
+      : "Не удалось обработать голосовой вопрос. Попробуйте написать запрос текстом.";
+    await sendTelegramMessage(chatId, text);
+  }
+}
+
+async function handleAudioUpload(message: TelegramMessage): Promise<boolean> {
+  try {
+    return await handleTelegramAudioMessage(message);
+  } catch (error) {
+    console.error("[telegram/audio command]", error);
+    await sendTelegramMessage(
+      message.chat.id,
+      "Аудиофайл получен, но не удалось подготовить загрузку. Проверьте подключение Telegram на сайте и попробуйте ещё раз.",
+    );
+    return true;
+  }
+}
+
 export async function handleTelegramMessage(message: TelegramMessage): Promise<void> {
   const chatId = message.chat.id;
   const identity = identityFromMessage(message);
   if (!identity) return;
 
-  try {
-    if (await handleTelegramAudioMessage(message)) return;
-  } catch (error) {
-    console.error("[telegram/audio command]", error);
-    await sendTelegramMessage(
-      chatId,
-      "Голосовое сообщение получено, но не удалось подготовить загрузку. Проверьте подключение Telegram на сайте и попробуйте ещё раз.",
-    );
-    return;
-  }
-
   const parsed = parseTelegramCommand(message.text);
-  if (!parsed) {
-    await sendTelegramMessage(chatId, "На первом этапе доступны только команды /start, /help, /link и /status.");
-    return;
-  }
 
-  if (parsed.command === "/start") {
+  if (parsed?.command === "/start") {
     const account = await getLinkedTelegramAccount(identity.id);
     await sendTelegramMessage(chatId, account ? LINKED_TEXT : INTRO_TEXT);
     return;
   }
 
-  if (parsed.command === "/help") {
+  if (parsed?.command === "/help") {
     await sendTelegramMessage(chatId, HELP_TEXT);
     return;
   }
 
-  if (parsed.command === "/status") {
+  if (parsed?.command === "/status") {
     const account = await getLinkedTelegramAccount(identity.id);
     await sendTelegramMessage(
       chatId,
@@ -90,7 +187,7 @@ export async function handleTelegramMessage(message: TelegramMessage): Promise<v
     return;
   }
 
-  if (parsed.command === "/link") {
+  if (parsed?.command === "/link") {
     const code = parsed.args.trim();
     try {
       const result = await linkTelegramAccount(code, identity);
@@ -108,5 +205,25 @@ export async function handleTelegramMessage(message: TelegramMessage): Promise<v
     return;
   }
 
-  await sendTelegramMessage(chatId, "Эта команда пока недоступна. Используйте /help.");
+  if (message.voice) {
+    await handleVoiceSearch(message);
+    return;
+  }
+
+  if (await handleAudioUpload(message)) return;
+
+  if (message.text) {
+    try {
+      await handleTelegramReadOnlySearch(message, message.text);
+    } catch (error) {
+      console.error("[telegram/read-only search]", error);
+      await sendTelegramMessage(
+        chatId,
+        "Сначала подключите Telegram в настройках приложения. После получения кода отправьте /link 123456.",
+      );
+    }
+    return;
+  }
+
+  await sendTelegramMessage(chatId, "Пришлите текстовый вопрос, короткое голосовое для поиска или прикрепите аудиофайл консультации.");
 }

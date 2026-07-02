@@ -59,16 +59,6 @@ function row(...items: TelegramInlineKeyboardButton[]): TelegramInlineKeyboardBu
 }
 
 function audioFromMessage(message: TelegramMessage): AudioPayload | null {
-  if (message.voice) {
-    return {
-      fileId: message.voice.file_id,
-      fileUniqueId: message.voice.file_unique_id,
-      fileName: `telegram-voice-${message.message_id}.ogg`,
-      mimeType: message.voice.mime_type || "audio/ogg",
-      fileSize: message.voice.file_size,
-      durationSeconds: message.voice.duration,
-    };
-  }
   if (message.audio) {
     return {
       fileId: message.audio.file_id,
@@ -77,16 +67,6 @@ function audioFromMessage(message: TelegramMessage): AudioPayload | null {
       mimeType: message.audio.mime_type,
       fileSize: message.audio.file_size,
       durationSeconds: message.audio.duration,
-    };
-  }
-  if (message.video_note) {
-    return {
-      fileId: message.video_note.file_id,
-      fileUniqueId: message.video_note.file_unique_id,
-      fileName: `telegram-video-note-${message.message_id}.mp4`,
-      mimeType: message.video_note.mime_type || "video/mp4",
-      fileSize: message.video_note.file_size,
-      durationSeconds: message.video_note.duration,
     };
   }
   const doc = message.document as TelegramDocumentLike | undefined;
