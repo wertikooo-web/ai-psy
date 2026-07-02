@@ -422,13 +422,13 @@ export default function AnalyticsPage() {
   return (
     <>
     {/* ── MOBILE LAYOUT ── */}
-    <div className="lg:hidden flex-1 min-h-0 overflow-y-auto" style={{ background: "#FBF8F5" }}>
-      {/* Sticky header */}
-      <div className="sticky top-0 z-10" style={{ background: "#FBF8F5", borderBottom: "1px solid #CFC0A9", padding: "12px 16px" }}>
+    <div className="lg:hidden flex-1 min-h-0 flex flex-col overflow-hidden pb-16" style={{ background: "#FBF8F5" }}>
+      {/* Header */}
+      <div className="flex-shrink-0" style={{ background: "#FBF8F5", borderBottom: "1px solid #CFC0A9", padding: "12px 16px" }}>
         <span style={{ fontSize: 18, fontWeight: 700, color: "#3D3228" }}>Аналитика</span>
       </div>
 
-      <div style={{ padding: "12px 16px", paddingBottom: 80 }}>
+      <div className="flex-1 min-h-0 flex flex-col" style={{ padding: "12px 16px", gap: 10, overflow: "hidden" }}>
         {loading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
             <Loader2 className="animate-spin" style={{ color: "#A8997F" }} size={28} />
@@ -436,40 +436,42 @@ export default function AnalyticsPage() {
         ) : data ? (
           <>
             {/* 2×2 KPI grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
-              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px" }}>
-                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 4 }}>Клиентов</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#8B5CF6" }}>{data.summary.totalClients}</div>
-                <div style={{ fontSize: 10, color: "#C9BBAA", marginTop: 2 }}>{data.summary.activeClients} активных</div>
+            <div className="flex-shrink-0" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "10px 12px" }}>
+                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 2 }}>Клиентов</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#8B5CF6" }}>{data.summary.totalClients}</div>
+                <div style={{ fontSize: 10, color: "#C9BBAA" }}>{data.summary.activeClients} активных</div>
               </div>
-              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px" }}>
-                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 4 }}>Консультаций</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#3a5ff8" }}>{data.summary.consultations}</div>
-                <div style={{ fontSize: 10, color: "#C9BBAA", marginTop: 2 }}>за период</div>
+              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "10px 12px" }}>
+                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 2 }}>Консультаций</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#3a5ff8" }}>{data.summary.consultations}</div>
+                <div style={{ fontSize: 10, color: "#C9BBAA" }}>за период</div>
               </div>
-              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px" }}>
-                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 4 }}>Получено</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#16a34a" }}>{money.format(data.finance.received)}</div>
-                <div style={{ fontSize: 10, color: "#C9BBAA", marginTop: 2 }}>MDL</div>
+              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "10px 12px" }}>
+                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 2 }}>Получено</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#16a34a" }}>{money.format(data.finance.received)}</div>
+                <div style={{ fontSize: 10, color: "#C9BBAA" }}>MDL</div>
               </div>
-              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px" }}>
-                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 4 }}>Новых клиентов</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#d97706" }}>{data.summary.newClients}</div>
-                <div style={{ fontSize: 10, color: "#C9BBAA", marginTop: 2 }}>за период</div>
+              <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "10px 12px" }}>
+                <div style={{ fontSize: 11, color: "#A8997F", marginBottom: 2 }}>Новых клиентов</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#d97706" }}>{data.summary.newClients}</div>
+                <div style={{ fontSize: 10, color: "#C9BBAA" }}>за период</div>
               </div>
             </div>
 
-            {/* Bar chart section */}
-            <div style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#3D3228", marginBottom: 12 }}>Доход по месяцам</div>
+            {/* Bar chart — takes remaining space */}
+            <div className="flex-1 min-h-0 flex flex-col" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, padding: "12px 14px", overflow: "hidden" }}>
+              <div className="flex-shrink-0" style={{ fontSize: 13, fontWeight: 700, color: "#3D3228", marginBottom: 8 }}>Доход по месяцам</div>
               {mobileBarData.length === 0 ? (
                 <div style={{ fontSize: 13, color: "#A8997F", textAlign: "center", padding: "16px 0" }}>Нет данных</div>
               ) : (
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 80 }}>
+                <div className="flex-1 min-h-0 flex items-end" style={{ gap: 6, overflow: "hidden" }}>
                   {mobileBarData.map((item) => (
-                    <div key={item.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                      <div style={{ width: "100%", background: "#8B5CF6", borderRadius: "4px 4px 0 0", height: Math.max(4, (item.received / mobileBarMax) * 60) }} title={`${item.label}: ${money.format(item.received)}`} />
-                      <span style={{ fontSize: 10, color: "#A8997F" }}>{item.label}</span>
+                    <div key={item.label} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, height: "100%" }}>
+                      <div style={{ flex: 1, minHeight: 4, width: "100%", display: "flex", alignItems: "flex-end" }}>
+                        <div style={{ width: "100%", background: "#8B5CF6", borderRadius: "4px 4px 0 0", height: `${Math.max(4, (item.received / mobileBarMax) * 100)}%` }} title={`${item.label}: ${money.format(item.received)}`} />
+                      </div>
+                      <span className="flex-shrink-0" style={{ fontSize: 10, color: "#A8997F" }}>{item.label}</span>
                     </div>
                   ))}
                 </div>
