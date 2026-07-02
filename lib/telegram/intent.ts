@@ -1,8 +1,15 @@
 import { openaiProvider } from "@/lib/llm/openai";
 import type { TelegramIntent } from "@/lib/telegram/search";
 
+export type ConversationMode =
+  | "project_data"
+  | "product_help"
+  | "general_conversation"
+  | "clarification";
+
 export type TelegramLlmIntentResult = {
-  intent: TelegramIntent;
+  mode: ConversationMode;
+  intent: TelegramIntent | null;
   clientName?: string;
   clientStatus?: "all" | "active" | "archived";
   query?: string;
@@ -11,7 +18,7 @@ export type TelegramLlmIntentResult = {
   dateTo?: string;
 };
 
-const ALLOWED_INTENTS: TelegramIntent[] = [
+const ALLOWED_INTENTS: Array<TelegramIntent | null> = [
   "list_clients",
   "find_client",
   "get_client_summary",
@@ -26,6 +33,14 @@ const ALLOWED_INTENTS: TelegramIntent[] = [
   "get_session_brief",
   "add_notebook_entry",
   "unknown",
+  null,
+];
+
+const ALLOWED_MODES: ConversationMode[] = [
+  "project_data",
+  "product_help",
+  "general_conversation",
+  "clarification",
 ];
 
 function hasOpenAiKey(): boolean {
@@ -55,11 +70,20 @@ function asClientStatus(value: unknown): TelegramLlmIntentResult["clientStatus"]
 
 function parseIntentJson(text: string): TelegramLlmIntentResult | null {
   const parsed = JSON.parse(stripJsonFence(text)) as Record<string, unknown>;
-  const intent = typeof parsed.intent === "string" ? parsed.intent : "unknown";
-  if (!ALLOWED_INTENTS.includes(intent as TelegramIntent)) return { intent: "unknown" };
+
+  const rawMode = typeof parsed.mode === "string" ? parsed.mode : "project_data";
+  const mode: ConversationMode = ALLOWED_MODES.includes(rawMode as ConversationMode)
+    ? (rawMode as ConversationMode)
+    : "project_data";
+
+  const rawIntent = typeof parsed.intent === "string" ? parsed.intent : null;
+  const intent = rawIntent === null || !ALLOWED_INTENTS.includes(rawIntent as TelegramIntent)
+    ? (mode === "project_data" ? "unknown" : null)
+    : (rawIntent as TelegramIntent | null);
 
   return {
-    intent: intent as TelegramIntent,
+    mode,
+    intent,
     clientName: asString(parsed.client_name) ?? asString(parsed.clientName),
     clientStatus: asClientStatus(parsed.client_status) ?? asClientStatus(parsed.clientStatus),
     query: asString(parsed.query),
@@ -73,65 +97,42 @@ const SYSTEM_PROMPT = `
 Ты классификатор намерений для Telegram-бота психолога. Пользователь пишет на русском разговорном языке.
 
 ЗАДАЧА: Вернуть ТОЛЬКО валидный JSON без пояснений. Не отвечай пользователю. Не генерируй SQL.
-Выбери intent и извлеки параметры из запроса.
 
-ДОПУСТИМЫЕ INTENTS:
+ШАГ 1 — ОПРЕДЕЛИ РЕЖИМ (поле mode):
+- "general_conversation": приветствие, благодарность, короткая реплика, не требующая данных
+  Примеры: "привет", "спасибо", "ты здесь?", "помоги", "понял", "отлично", "хорошо", "ок"
+- "product_help": вопросы о возможностях и функциях самого бота
+  Примеры: "что ты умеешь?", "какие возможности?", "как пользоваться?", "покажи функции", "а ещё?", "расскажи подробнее о функциях"
+- "clarification": запрос частично понятен, но не хватает ключевого параметра
+  Примеры: "покажи последнее" (без контекста), "что было?" (неясно о чём), "открой" (неясно что)
+- "project_data": любой запрос о клиентах, консультациях, анализах, заметках, оплатах, аналитике, календаре
+
+ШАГ 2 — ОПРЕДЕЛИ INTENT (только если mode = "project_data"):
 - list_clients: пользователь хочет список клиентов (все / активные / архивные)
-  Примеры: "кто наши клиенты", "список всех клиентов", "покажи клиентов", "мои клиенты", "кто в работе", "активные клиенты"
   Параметр client_status: "all" | "active" | "archived" (по умолчанию "all")
-
-- get_last_consultation: последняя консультация с конкретным клиентом или вообще
-  Примеры: "когда была последняя консультация с клиентом", "последняя встреча с именем клиента", "когда видел этого клиента"
-  Если клиент не указан — client_name = null
-
+- get_last_consultation: последняя консультация с клиентом или вообще
 - get_consultations: список консультаций клиента
-  Примеры: "консультации клиента", "покажи встречи с именем клиента"
-
 - find_client / get_client_summary: информация о конкретном клиенте
-  Примеры: "/client имя клиента", "имя клиента", "расскажи про клиента"
-
 - search_consultations: поиск по содержимому консультаций
-  Примеры: "найди тревогу", "что обсуждали с клиентом про маму", "о самостоятельности"
-
 - search_analyses: поиск по анализам
-  Примеры: "анализ про депрессию", "выводы по клиенту"
-
 - search_notebook: поиск по заметкам/блокноту
-  Примеры: "заметки про тревогу", "найди в блокноте", "записи по Анне"
-
 - get_consultation_count: сколько консультаций
-  Примеры: "сколько консультаций было в июне", "количество встреч за месяц"
-
 - get_payment_total: оплаты / доходы
-  Примеры: "оплаты за июль", "сколько получено за месяц", "доход за июнь", "деньги за неделю"
-
 - get_upcoming_consultation: ближайшая консультация
-  Примеры: "следующая консультация", "ближайшая встреча"
-
-- get_session_brief: краткая сводка по клиенту перед сессией
-  Примеры: "что помнить про клиента", "подготовка к сессии с именем клиента", "напомни про клиента", "кратко по клиенту", "что важно по клиенту"
-  Параметры: client_name = имя клиента (обязателен)
-
-- add_notebook_entry: записать заметку в блокнот
-  Примеры: "запиши: клиент упомянул важную тему", "сохрани заметку: ...", "добавь в блокнот: ...", "заметка: ..."
-  Параметры: query = текст заметки (всё после "запиши:"), client_name = имя клиента если упомянут
-
-- unknown: ТОЛЬКО если запрос явно не относится к ни одной функции выше, или это запрос на изменение/удаление данных
+- get_session_brief: сводка по клиенту перед сессией ("что помнить", "подготовка к сессии")
+- add_notebook_entry: записать заметку ("запиши:", "добавь в блокнот:")
+- unknown: если запрос явно не относится ни к одной функции выше
 
 ПРАВИЛА:
-- Пользователь пишет разговорно, без знаков препинания, с опечатками и сокращениями
+- Если mode != "project_data" — intent можно установить в null
 - Понимай смысл, а не только точные слова
-- "клиенты", "пациенты", "люди в работе" = одно и то же
-- "встреча", "сессия", "приём", "разговор" = консультация
-- "деньги", "доход", "получено", "начислено" = оплаты
-- "заметки", "блокнот", "записи", "напоминания" = notebook
-- Месяцы: "июнь" → период "month" с датой июня; если не указан месяц — текущий месяц
-- Имена в разных падежах нормализуй в именительный падеж
-- НЕ возвращай unknown, если запрос явно про клиентов/консультации/оплаты/заметки
-- Если ТЕКУЩИЙ запрос — короткое уточнение (начинается с "а", "ещё", "тоже", "а что", "а в", "а за", "предыдущая", "прошлая" и т.п.) — прочитай КОНТЕКСТ РАЗГОВОРА и определи intent на основе предыдущих сообщений
+- "клиенты"/"пациенты" = одно и то же; "встреча"/"сессия"/"приём" = консультация
+- "деньги"/"доход"/"получено" = оплаты; "заметки"/"блокнот" = notebook
+- Имена нормализуй в именительный падеж
+- Если ТЕКУЩИЙ запрос — короткое уточнение (начинается с "а", "ещё", "а что") — используй КОНТЕКСТ РАЗГОВОРА
 
-JSON SHAPE (верни только это):
-{"intent":"list_clients","client_name":null,"client_status":"all","query":null,"period":null,"date_from":null,"date_to":null}
+JSON SHAPE:
+{"mode":"project_data","intent":"list_clients","client_name":null,"client_status":"all","query":null,"period":null,"date_from":null,"date_to":null}
 `.trim();
 
 export async function parseTelegramIntentWithLlm(

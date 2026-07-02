@@ -14,7 +14,7 @@ import {
   type TelegramMessage,
 } from "@/lib/telegram/bot";
 import { handleTelegramAudioMessage } from "@/lib/telegram/audioFlow";
-import { handleTelegramReadOnlySearch, isTelegramNaturalLanguageEnabled } from "@/lib/telegram/search";
+import { handleTelegramReadOnlySearch, isTelegramNaturalLanguageEnabled, sendCapabilitiesOverview, sendCapabilityHelp } from "@/lib/telegram/search";
 
 const INTRO_TEXT = [
   "Здравствуйте! Это Telegram-помощник TRANSCRIPT AI · PSY.",
@@ -28,33 +28,34 @@ const INTRO_TEXT = [
 const LINKED_TEXT = [
   "Telegram подключён к TRANSCRIPT AI · PSY.",
   "",
-  "Сейчас проверяем поиск по командам:",
-  "/client Анна",
-  "/last Анна",
-  "/consultations Анна",
-  "/search тревога",
-  "/stats month",
+  "Можно писать обычными фразами, например:",
+  "«Последняя консультация Анны»",
+  "«Найди всё про тревогу»",
+  "«Сколько консультаций было в июне?»",
   "",
-  "Обычные фразы и голосовые вопросы подключим отдельным шагом после проверки команд.",
-  "Для транскрибации консультации прикрепите аудиофайл.",
+  "Для транскрибации — прикрепите аудиофайл.",
   "",
-  "/help",
-  "/status",
+  "Что умею → напишите «Что ты умеешь?»",
 ].join("\n");
 
 const HELP_TEXT = [
-  "Доступные команды:",
-  "/start — проверить подключение",
-  "/link 123456 — подключить Telegram по одноразовому коду",
-  "/status — статус подключения",
-  "/client Имя — краткая карточка клиента",
-  "/last Имя — последняя консультация клиента",
-  "/consultations Имя — последние консультации клиента",
-  "/search запрос — поиск по консультациям, анализам, заметкам и материалам",
-  "/stats month — простая статистика",
+  "Можно писать обычными фразами — команды необязательны.",
   "",
-  "Обычные фразы и голосовые вопросы включим после проверки команд и /search.",
-  "Прикреплённый аудиофайл — это загрузка консультации на транскрибацию.",
+  "Примеры:",
+  "«Последняя консультация Анны»",
+  "«Найди всё про тревогу»",
+  "«Сколько консультаций было в июне?»",
+  "«Что помнить про клиента перед сессией?»",
+  "",
+  "Команды (резерв):",
+  "/client Имя — карточка клиента",
+  "/last Имя — последняя консультация",
+  "/consultations Имя — список консультаций",
+  "/search запрос — поиск",
+  "/stats month — статистика",
+  "/settings — настройки",
+  "",
+  "Аудиофайл → транскрибация консультации.",
 ].join("\n");
 
 const VOICE_QUERY_MAX_SECONDS = 180;
@@ -110,6 +111,22 @@ async function sendTelegramSettings(chatId: number, telegramId: number): Promise
     return;
   }
   await sendTelegramMessage(chatId, settingsText(account), settingsKeyboard(account));
+}
+
+export async function handleHelpCallback(query: TelegramCallbackQuery): Promise<boolean> {
+  const data = query.data ?? "";
+  if (!data.startsWith("help:")) return false;
+
+  const chatId = query.message?.chat.id;
+  await answerTelegramCallback(query.id);
+  if (!chatId) return true;
+
+  if (data === "help:capabilities") {
+    await sendCapabilitiesOverview(chatId);
+  } else {
+    await sendCapabilityHelp(chatId, data.slice(5));
+  }
+  return true;
 }
 
 export async function handleTelegramSettingsCallback(query: TelegramCallbackQuery): Promise<boolean> {

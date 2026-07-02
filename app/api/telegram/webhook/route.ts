@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleTelegramMessage, handleTelegramSettingsCallback } from "@/lib/telegram/commands";
+import { handleTelegramMessage, handleTelegramSettingsCallback, handleHelpCallback } from "@/lib/telegram/commands";
 import { handleTelegramAudioCallback } from "@/lib/telegram/audioFlow";
 import { markTelegramUpdateProcessed } from "@/lib/data/telegramUpdates";
 import type { TelegramUpdate } from "@/lib/telegram/bot";
@@ -42,7 +42,9 @@ export async function POST(req: NextRequest) {
     console.info(`[telegram/webhook] update=${update.update_id} type=${telegramMessageTypes(update)}`);
 
     if (update.callback_query) {
-      const handled = await handleTelegramSettingsCallback(update.callback_query);
+      const handled =
+        (await handleHelpCallback(update.callback_query)) ||
+        (await handleTelegramSettingsCallback(update.callback_query));
       if (!handled) await handleTelegramAudioCallback(update.callback_query);
     }
     if (update.message) {

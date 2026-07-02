@@ -6,7 +6,12 @@ import { getPayments } from "@/lib/data/payments";
 import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 import { requireLinkedTelegramAccount } from "@/lib/telegram/auth";
 import { sendTelegramMessage, type TelegramInlineKeyboardButton, type TelegramMessage } from "@/lib/telegram/bot";
-import { parseTelegramIntentWithLlm } from "@/lib/telegram/intent";
+import { parseTelegramIntentWithLlm, type ConversationMode } from "@/lib/telegram/intent";
+import {
+  buildCapabilitiesIntroText,
+  getCapabilityHelpText,
+  getEnabledCapabilities,
+} from "@/lib/telegram/capabilities";
 import type { StoredClient } from "@/lib/clientStore";
 import type { StoredConsultation } from "@/lib/consultationStore";
 
@@ -27,6 +32,7 @@ export type TelegramIntent =
   | "unknown";
 
 type ParsedRequest = {
+  mode?: ConversationMode;
   intent: TelegramIntent;
   clientName?: string;
   clientStatus?: "all" | "active" | "archived";
@@ -65,18 +71,83 @@ function pushChatHistory(chatId: number, text: string): void {
   chatHistory.set(chatId, entries);
 }
 
-const UNKNOWN_TEXT = [
-  "Не смог точно понять запрос.",
-  "",
-  "Можно написать, например:",
-  "— Покажи всех клиентов",
-  "— Что помнить про клиента? (сводка перед сессией)",
-  "— Последняя консультация клиента",
-  "— Сколько консультаций было в июне?",
-  "— Оплаты за июль",
-  "— Найди заметки про тревогу",
-  "— Запиши: клиент упомянул важную тему",
-].join("\n");
+function navKeyboard(): { inline_keyboard: TelegramInlineKeyboardButton[][] } {
+  return {
+    inline_keyboard: [
+      [
+        { text: "Клиенты", callback_data: "help:clients" },
+        { text: "Консультации", callback_data: "help:consultations" },
+        { text: "Поиск", callback_data: "help:search" },
+      ],
+      [
+        { text: "Оплаты", callback_data: "help:analytics" },
+        { text: "Аналитика", callback_data: "help:analytics" },
+        { text: "Что ты умеешь?", callback_data: "help:capabilities" },
+      ],
+    ],
+  };
+}
+
+async function sendUnknownResponse(chatId: number): Promise<void> {
+  await sendTelegramMessage(chatId, "Не совсем понял, что вы хотите.\n\nВыберите направление:", navKeyboard());
+}
+
+export async function sendCapabilitiesOverview(chatId: number): Promise<void> {
+  const caps = getEnabledCapabilities();
+  const keyboard: { inline_keyboard: TelegramInlineKeyboardButton[][] } = {
+    inline_keyboard: [
+      caps.slice(0, 3).map((c) => ({ text: c.title, callback_data: `help:${c.id}` })),
+      caps.slice(3).map((c) => ({ text: c.title, callback_data: `help:${c.id}` })),
+    ].filter((row) => row.length > 0),
+  };
+  await sendTelegramMessage(chatId, buildCapabilitiesIntroText(), keyboard);
+}
+
+export async function sendCapabilityHelp(chatId: number, capId: string): Promise<void> {
+  const helpText = getCapabilityHelpText(capId);
+  if (!helpText) {
+    await sendCapabilitiesOverview(chatId);
+    return;
+  }
+  const base = appBaseUrl();
+  const urlMap: Record<string, string> = {
+    clients: "/clients",
+    consultations: "/analytics",
+    search: "/notebook",
+    analytics: "/analytics",
+  };
+  const path = urlMap[capId];
+  const keyboard = base && path
+    ? { inline_keyboard: [[{ text: "Открыть на сайте", url: `${base}${path}` }]] }
+    : undefined;
+  await sendTelegramMessage(chatId, helpText, keyboard);
+}
+
+const CONVERSATIONAL_RESPONSES: Array<{ pattern: RegExp; response: string }> = [
+  { pattern: /^(привет|здравствуй|добрый|хай|хэй|hello|hi)\b/, response: "Привет! Я здесь. Могу помочь найти клиента, консультацию, заметку или принять аудио." },
+  { pattern: /^(спасибо|благодарю|спс)\b/, response: "Пожалуйста. Можно продолжить обычной фразой — команды помнить необязательно." },
+  { pattern: /^(отлично|хорошо|понял|ок|окей|ладно|класс|супер|👍|🙏)/, response: "Хорошо. Если нужна помощь — просто напишите." },
+  { pattern: /^(ты здесь|ты работаешь|есть кто|ау|работаешь)\b/, response: "Здесь. Готов помочь." },
+  { pattern: /^(помоги|помогите|помощь|не знаю|с чего начать|что делать)\b/, response: "Помогу. Напишите, что вы хотите найти или сделать — даже своими словами." },
+];
+
+async function sendConversationalResponse(chatId: number, lower: string): Promise<void> {
+  const match = CONVERSATIONAL_RESPONSES.find((item) => item.pattern.test(lower));
+  const text = match?.response ?? "Слушаю. Чем могу помочь?";
+  await sendTelegramMessage(chatId, text, navKeyboard());
+}
+
+function detectConversationMode(lower: string): ConversationMode | null {
+  if (/^(привет|здравствуй|добрый|хай|хэй|hello|hi)\b/.test(lower)) return "general_conversation";
+  if (/^(спасибо|благодарю|спс)\b/.test(lower)) return "general_conversation";
+  if (/^(отлично|хорошо|понял|ок|окей|ладно|класс|супер|👍|🙏)/.test(lower)) return "general_conversation";
+  if (/^(ты здесь|ты работаешь|есть кто|ау|работаешь)\b/.test(lower)) return "general_conversation";
+  if (/^(помоги|помогите|помощь|не знаю|с чего начать|что делать)\b/.test(lower)) return "general_conversation";
+  if (/что ты умеешь|какие (твои |у тебя |есть )?возможности|чем (ты )?(можешь )?помочь|что можно (у тебя )?спросить|покажи (свои )?функции|как (тобой|тебя|тебе) пользоваться/.test(lower)) return "product_help";
+  if (/^(а ещё|ещё что|и ещё|что ещё умеешь|покажи примеры|расскажи подробнее о|как это работает)\b/.test(lower)) return "product_help";
+  if (/^покажи последнее\.?$|^последнее\.?$|^что было\?*$|^открой\.?$/.test(lower)) return "clarification";
+  return null;
+}
 
 function appBaseUrl(): string {
   return (process.env.APP_BASE_URL || "").replace(/\/$/, "");
@@ -207,6 +278,10 @@ function parseClientListRequest(lower: string): ParsedRequest | null {
 function parseTextRequest(text: string): ParsedRequest {
   const raw = text.trim();
   const lower = normalize(raw);
+
+  // 0. Conversational patterns (no LLM needed)
+  const conversationalMode = detectConversationMode(lower);
+  if (conversationalMode) return { mode: conversationalMode, intent: "unknown" };
 
   // 1. Slash commands
   const command = raw.match(/^\/([a-z_]+)(?:@\w+)?\s*(.*)$/i);
@@ -711,7 +786,11 @@ async function saveNotebookEntry(chatId: number, text: string | undefined, clien
 
 async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedRequest): Promise<void> {
   const chatId = message.chat.id;
-  if (parsed.intent === "unknown") return sendTelegramMessage(chatId, UNKNOWN_TEXT);
+  const lower = normalize(message.text ?? "");
+
+  if (parsed.mode === "general_conversation") return sendConversationalResponse(chatId, lower);
+  if (parsed.mode === "product_help") return sendCapabilitiesOverview(chatId);
+  if (parsed.mode === "clarification" || parsed.intent === "unknown") return sendUnknownResponse(chatId);
   if (parsed.intent === "list_clients") return sendClientList(chatId, parsed.clientStatus);
   if (parsed.intent === "find_client" || parsed.intent === "get_client_summary") return sendClientSummary(chatId, parsed.clientName || parsed.query);
   if (parsed.intent === "get_consultations") return sendClientConsultations(chatId, parsed.clientName);
@@ -723,7 +802,7 @@ async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedReq
   if (parsed.intent === "get_payment_total") return sendPaymentTotal(chatId, parsed.period);
   if (parsed.intent === "get_session_brief") return sendSessionBrief(chatId, parsed.clientName);
   if (parsed.intent === "add_notebook_entry") return saveNotebookEntry(chatId, parsed.query, parsed.clientName);
-  return sendTelegramMessage(chatId, UNKNOWN_TEXT);
+  return sendUnknownResponse(chatId);
 }
 
 export async function handleTelegramReadOnlySearch(message: TelegramMessage, text: string): Promise<boolean> {
@@ -747,12 +826,44 @@ export async function handleTelegramReadOnlySearch(message: TelegramMessage, tex
     return true;
   }
   const chatId = message.chat.id;
+
+  // Quick local check for obvious conversational patterns — skip LLM
+  const lower = normalize(text);
+  const earlyMode = !isTelegramSearchCommand(text) ? detectConversationMode(lower) : null;
+  if (earlyMode === "general_conversation") {
+    pushChatHistory(chatId, text);
+    await sendConversationalResponse(chatId, lower);
+    return true;
+  }
+  if (earlyMode === "product_help") {
+    pushChatHistory(chatId, text);
+    await sendCapabilitiesOverview(chatId);
+    return true;
+  }
+
   const prior = getChatHistory(chatId);
   pushChatHistory(chatId, text);
 
-  const parsed = isTelegramSearchCommand(text)
-    ? parseTextRequest(text)
-    : (await parseTelegramIntentWithLlm(text, prior.length ? prior : undefined)) ?? parseTextRequest(text);
+  let parsed: ParsedRequest;
+  if (isTelegramSearchCommand(text)) {
+    parsed = parseTextRequest(text);
+  } else {
+    const llmResult = await parseTelegramIntentWithLlm(text, prior.length ? prior : undefined);
+    if (llmResult) {
+      parsed = {
+        mode: llmResult.mode,
+        intent: llmResult.intent ?? "unknown",
+        clientName: llmResult.clientName,
+        clientStatus: llmResult.clientStatus,
+        query: llmResult.query,
+        period: llmResult.period,
+        dateFrom: llmResult.dateFrom,
+        dateTo: llmResult.dateTo,
+      };
+    } else {
+      parsed = parseTextRequest(text);
+    }
+  }
   await dispatchSearchRequest(message, parsed);
   return true;
 }
