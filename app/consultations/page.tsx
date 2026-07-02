@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { UploadModal } from "@/components/upload/UploadModal";
 import {
   Mic, ArrowRight, ArrowLeft, CheckCircle2, Clock, AlertCircle, ChevronDown, Trash2,
+  ChevronRight, Search,
 } from "lucide-react";
 import { CalendarButtons } from "@/components/ui/CalendarButtons";
 
@@ -325,22 +326,65 @@ export default function ConsultationsPage() {
     }
   }
 
+  const mobileSorted = [...consultations].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
-      <div
-        className="px-4 sm:p-8 max-w-3xl mx-auto"
-        style={{ paddingTop: "max(1.5rem, env(safe-area-inset-top, 0px) + 1rem)" }}
-      >
-        {/* Mobile upload button */}
-        <div className="flex justify-end mb-3 sm:hidden">
-          <button
-            onClick={() => setUploadOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
-          >
-            <Mic size={15} />
-            Загрузить
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{ background: "inherit" }}>
+
+      {/* ── Mobile layout ────────────────────────────────────────── */}
+      <div className="lg:hidden flex-1 min-h-0 overflow-y-auto" style={{ background: "#FBF8F5" }}>
+
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b" style={{ background: "#FBF8F5", borderColor: "#CFC0A9" }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: "#3D3228" }}>Консультации</span>
+          <button onClick={() => setUploadOpen(true)} style={{ display: "flex", alignItems: "center", gap: 5, background: "#3a5ff8", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            <Mic size={13} /> Загрузить
           </button>
         </div>
+
+        {/* Card list */}
+        <div style={{ padding: "10px 16px 80px", display: "flex", flexDirection: "column", gap: 8 }}>
+          {loading ? (
+            [1, 2, 3].map((i) => (
+              <div key={i} style={{ height: 72, borderRadius: 14, background: "#F3EBDD", border: "1px solid #CFC0A9", animation: "pulse 1.5s ease-in-out infinite" }} />
+            ))
+          ) : mobileSorted.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 0", color: "#C9BBAA", fontSize: 13 }}>Консультаций пока нет</div>
+          ) : (
+            mobileSorted.map((c) => {
+              const hasAnalysis = !!((c as StoredConsultation).analyses?.length) || c.isMock;
+              const label = c.title || c.topic || "Консультация";
+              const dateStr = new Date(c.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+              return (
+                <button key={c.id} onClick={() => router.push(`/consultation/${c.id}`)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%" }}>
+                  <Avatar initials={c.clientInitials ?? "?"} color={c.clientColor ?? "#94a3b8"} size="md" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#3D3228", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.clientName}</div>
+                    <div style={{ fontSize: 11, color: "#A8997F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{label}</div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 11, color: "#C9BBAA" }}>{dateStr}</div>
+                    <div style={{ marginTop: 3 }}>
+                      {hasAnalysis
+                        ? <span style={{ fontSize: 10, color: "#16a34a", background: "#dcfce7", borderRadius: 99, padding: "2px 7px", fontWeight: 600 }}>анализ</span>
+                        : <span style={{ fontSize: 10, color: "#d97706", background: "#fef3c7", borderRadius: 99, padding: "2px 7px", fontWeight: 600 }}>транскрипт</span>}
+                    </div>
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* ── Desktop layout ────────────────────────────────────────── */}
+      <div className="hidden lg:block flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
+      <div
+        className="px-8 max-w-3xl mx-auto"
+        style={{ paddingTop: "max(1.5rem, env(safe-area-inset-top, 0px) + 1rem)" }}
+      >
 
         {/* Title row */}
         <div className="flex items-center justify-between mb-6">
@@ -360,7 +404,7 @@ export default function ConsultationsPage() {
           </div>
           <button
             onClick={() => setUploadOpen(true)}
-            className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
           >
             <Mic size={15} />
             Загрузить запись
@@ -460,6 +504,7 @@ export default function ConsultationsPage() {
           </>
         )}
       </div>
+      </div>{/* end desktop */}
 
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
 

@@ -6,7 +6,7 @@ import { ModalPortal } from "@/components/ui/ModalPortal";
 import {
   Plus, Trash2, ArrowRight, ArrowLeft, Users,
   Pause, Archive, RotateCcw, CheckCircle2,
-  Search, ChevronDown,
+  Search, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { AddClientModal } from "@/components/client/AddClientModal";
@@ -462,16 +462,86 @@ export default function ClientsPage() {
       .map(([label, clients]) => ({ label, clients }));
   }, [processed, group]);
 
+  const mobileClients = processed.filter((c) =>
+    filter === "archived"
+      ? (c.status === "archived" || c.status === "completed" || c.status === "paused")
+      : c.status === "active"
+  );
+
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
-      <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{ background: "inherit" }}>
+
+      {/* ── Mobile layout ────────────────────────────────────────── */}
+      <div className="lg:hidden flex-1 min-h-0 overflow-y-auto" style={{ background: "#FBF8F5" }}>
+
+        {/* Sticky header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b" style={{ background: "#FBF8F5", borderColor: "#CFC0A9" }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: "#3D3228" }}>Клиенты</span>
+          <button onClick={() => setAddOpen(true)} style={{ display: "flex", alignItems: "center", gap: 5, background: "#3a5ff8", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            <Plus size={13} /> Новый
+          </button>
+        </div>
+
+        {/* Search */}
+        <div style={{ padding: "10px 16px 8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 12, padding: "8px 12px" }}>
+            <Search size={14} color="#A8997F" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Поиск клиентов..."
+              style={{ flex: 1, background: "none", border: "none", outline: "none", fontSize: 14, color: "#3D3228" }}
+            />
+            {search && <button onClick={() => setSearch("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#A8997F", padding: 0 }}>✕</button>}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", borderBottom: "1px solid #CFC0A9" }}>
+          {([["active", "Активные"], ["archived", "Архив"]] as const).map(([id, label]) => (
+            <button key={id} onClick={() => setFilter(id)} style={{ flex: 1, padding: "9px 0", fontSize: 13, fontWeight: filter === id || (id === "active" && filter === "all") ? 600 : 400, color: filter === id || (id === "active" && filter === "all") ? "#3a5ff8" : "#A8997F", borderBottom: filter === id || (id === "active" && filter === "all") ? "2px solid #3a5ff8" : "2px solid transparent", background: "none", border: "none", cursor: "pointer" }}>
+              {label}
+              <span style={{ marginLeft: 5, fontSize: 11, opacity: 0.7 }}>
+                {id === "active" ? count.active : count.archived + count.paused}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Card list */}
+        <div style={{ padding: "10px 16px 80px", display: "flex", flexDirection: "column", gap: 8 }}>
+          {mobileClients.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 0", color: "#C9BBAA", fontSize: 13 }}>
+              {filter === "archived" ? "Нет клиентов в архиве" : "Нет активных клиентов"}
+            </div>
+          ) : (
+            mobileClients.map((client) => (
+              <button key={client.id} onClick={() => router.push(`/client/${client.id}`)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, cursor: "pointer", textAlign: "left", width: "100%" }}>
+                <Avatar initials={client.initials} color={client.color} size="md" />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "#3D3228", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{client.name}</div>
+                  <div style={{ fontSize: 11, color: "#A8997F", marginTop: 2 }}>
+                    {pluralMeetings(client.totalConsultations ?? 0)}
+                    {client.lastConsultation ? ` · ${new Date(client.lastConsultation).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}` : ""}
+                  </div>
+                </div>
+                <ChevronRight size={16} color="#C9BBAA" />
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ── Desktop layout ────────────────────────────────────────── */}
+      <div className="hidden lg:block flex-1 min-h-0 overflow-y-auto" style={{ background: "inherit" }}>
+      <div className="p-6 lg:p-8 max-w-6xl mx-auto">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              className="hidden sm:flex items-center gap-1.5 text-sm transition-colors"
+              className="flex items-center gap-1.5 text-sm transition-colors"
               style={{ color: "#A8997F" }}
               onMouseEnter={(e) => { e.currentTarget.style.color = "#4A3C2E"; }}
               onMouseLeave={(e) => { e.currentTarget.style.color = "#A8997F"; }}
@@ -479,7 +549,7 @@ export default function ClientsPage() {
               <ArrowLeft size={16} />
               Назад
             </button>
-            <div className="hidden sm:block w-px h-5" style={{ background: "#DDD4C6" }} />
+            <div className="w-px h-5" style={{ background: "#DDD4C6" }} />
             <h1 className="text-xl font-bold text-slate-800">Клиенты</h1>
           </div>
         </div>
@@ -663,6 +733,7 @@ export default function ClientsPage() {
           </div>
         )}
       </div>
+      </div>{/* end desktop */}
 
       <AddClientModal
         open={addOpen}
