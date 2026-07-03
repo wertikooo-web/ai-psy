@@ -559,31 +559,11 @@ export default function AnalyticsPage() {
               <SummaryCard icon={AlertTriangle} title="Незавершённые консультации" value={data.summary.incompleteConsultations} note="Без транскрипта, анализов либо материалов" tone="red" />
             </div>
 
-            <div className="grid min-h-0 flex-[1.28] grid-cols-1 gap-3">
+            <div className="grid min-h-0 flex-[1.28] grid-cols-1 gap-3 xl:grid-cols-[1.4fr_1.4fr_1fr]">
               <Panel title="Консультации по месяцам" className="h-full">
                 <StackedBars data={data.yearTimeline} />
               </Panel>
-            </div>
 
-            <div className="grid min-h-0 flex-[0.82] grid-cols-1 gap-3 xl:grid-cols-[1fr_1.08fr]">
-              <Panel title="Нагрузка по дням недели" className="h-full">
-                <WorkloadChart data={data.workloadByWeekday} />
-              </Panel>
-              <Panel title="Оплата за период" className="h-full">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-[#E6DDD0] bg-[#F8FBFF] p-4">
-                    <p className="text-xs font-semibold text-[#4D4034]">Начислено</p>
-                    <p className="mt-1 text-xl font-bold">{money.format(data.finance.charged)} <span className="text-sm">MDL</span></p>
-                  </div>
-                  <div className="rounded-xl border border-[#E6DDD0] bg-[#F4FBF6] p-4">
-                    <p className="text-xs font-semibold text-[#4D4034]">Получено</p>
-                    <p className="mt-1 text-xl font-bold">{money.format(data.finance.received)} <span className="text-sm">MDL</span></p>
-                  </div>
-                </div>
-              </Panel>
-            </div>
-
-            <div className="grid min-h-0 flex-[0.56] grid-cols-1 gap-3 xl:grid-cols-[1.5fr_1fr]">
               <Panel title="Оплаты по консультациям" className="h-full">
                 <div className="h-[calc(100%-34px)] min-h-0 overflow-auto pr-1">
                   <table className="w-full min-w-[760px] text-left text-sm">
@@ -649,6 +629,24 @@ export default function AnalyticsPage() {
                 <div className="mt-2 flex items-center gap-2 text-xs text-[#7B6F60]">
                   <WalletCards size={14} />
                   Доход считается по сохранённым оплатам консультаций.
+                </div>
+              </Panel>
+            </div>
+
+            <div className="grid min-h-0 flex-[0.7] grid-cols-1 gap-3 xl:grid-cols-[1fr_1.08fr]">
+              <Panel title="Нагрузка по дням недели" className="h-full">
+                <WorkloadChart data={data.workloadByWeekday} />
+              </Panel>
+              <Panel title="Оплата за период" className="h-full">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-[#E6DDD0] bg-[#F8FBFF] p-4">
+                    <p className="text-xs font-semibold text-[#4D4034]">Начислено</p>
+                    <p className="mt-1 text-xl font-bold">{money.format(data.finance.charged)} <span className="text-sm">MDL</span></p>
+                  </div>
+                  <div className="rounded-xl border border-[#E6DDD0] bg-[#F4FBF6] p-4">
+                    <p className="text-xs font-semibold text-[#4D4034]">Получено</p>
+                    <p className="mt-1 text-xl font-bold">{money.format(data.finance.received)} <span className="text-sm">MDL</span></p>
+                  </div>
                 </div>
               </Panel>
             </div>
