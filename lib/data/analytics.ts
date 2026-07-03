@@ -92,6 +92,7 @@ export interface AnalyticsResponse {
   };
   payments: AnalyticsPaymentRow[];
   incomeTimeline: AnalyticsIncomeItem[];
+  yearIncomeTimeline: AnalyticsIncomeItem[];
   generatedAt: string;
 }
 
@@ -435,6 +436,11 @@ export async function getAnalytics(filters: AnalyticsFilters): Promise<Analytics
     },
     payments: paymentRows,
     incomeTimeline: incomeTimeline(from, to, filteredPayments),
+    yearIncomeTimeline: incomeTimeline(
+      new Date(now.getFullYear(), 0, 1),
+      new Date(now.getFullYear(), 11, 31),
+      paymentsResult.rows,
+    ),
     generatedAt: new Date().toISOString(),
   };
 }

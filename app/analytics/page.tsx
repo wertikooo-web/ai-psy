@@ -619,14 +619,33 @@ export default function AnalyticsPage() {
               </Panel>
 
               <Panel title="Доход по месяцам (получено)" className="h-full">
-                <div className="flex h-[calc(100%-44px)] min-h-[96px] items-end gap-1.5 overflow-x-auto border-b border-[#ECE5DA] px-2 pb-1">
-                  {data.incomeTimeline.map((item) => (
-                    <div key={item.label} className="flex flex-col items-center gap-1 flex-shrink-0" style={{ width: `${Math.max(28, Math.floor(100 / Math.max(data.incomeTimeline.length, 6)))}%`, maxWidth: 48 }}>
-                      <div className="w-full rounded-t-md bg-[#8B5CF6]" style={{ height: `${Math.max(4, (item.received / maxIncome) * 110)}px` }} title={`${item.label}: ${nf.format(item.received)} MDL`} />
-                      <span className="text-[10px] text-[#7B6F60] truncate w-full text-center">{item.label}</span>
+                {(() => {
+                  const timeline = data.yearIncomeTimeline;
+                  const max = Math.max(1, ...timeline.map(i => i.received));
+                  return (
+                    <div className="flex h-[calc(100%-44px)] min-h-[96px] items-end gap-1 border-b border-[#ECE5DA] px-1 pb-1">
+                      {timeline.map((item) => {
+                        const hasData = item.received > 0;
+                        const barH = hasData ? Math.max(6, (item.received / max) * 100) : 0;
+                        return (
+                          <div key={item.label} className="flex flex-1 flex-col items-center gap-0.5">
+                            <div className="w-full relative" style={{ height: 100 }}>
+                              {hasData ? (
+                                <div className="absolute bottom-0 w-full rounded-t-md bg-[#8B5CF6]"
+                                  style={{ height: barH }}
+                                  title={`${item.label}: ${nf.format(item.received)} MDL`} />
+                              ) : (
+                                <div className="absolute bottom-0 w-full rounded-t-md"
+                                  style={{ height: 14, border: "1px dashed #CFC0A9", borderBottom: "none" }} />
+                              )}
+                            </div>
+                            <span className="text-[9px] text-[#7B6F60] truncate w-full text-center">{item.label}</span>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
                 <div className="mt-2 flex items-center gap-2 text-xs text-[#7B6F60]">
                   <WalletCards size={14} />
                   Доход считается по сохранённым оплатам консультаций.
