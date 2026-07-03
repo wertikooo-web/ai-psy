@@ -81,6 +81,7 @@ export interface AnalyticsResponse {
   filters: AnalyticsFilters & { from: string; to: string };
   summary: AnalyticsSummary;
   consultationsTimeline: AnalyticsTimelineItem[];
+  yearTimeline: AnalyticsTimelineItem[];
   clients: AnalyticsClientRow[];
   workloadByWeekday: AnalyticsWorkloadItem[];
   analysisTypes: AnalyticsAnalysisType[];
@@ -418,6 +419,12 @@ export async function getAnalytics(filters: AnalyticsFilters): Promise<Analytics
       nearestUpcoming: filteredFutureEvents[0]?.startsAt,
     },
     consultationsTimeline: bucketTimeline(filteredConsultations, filteredPeriodEvents, from, to),
+    yearTimeline: bucketTimeline(
+      consultations.filter(c => consultationMatchesClient(c, clientIds)),
+      await safeCalendarEvents(new Date(now.getFullYear(), 0, 1), new Date(now.getFullYear(), 11, 31)),
+      new Date(now.getFullYear(), 0, 1),
+      new Date(now.getFullYear(), 11, 31),
+    ),
     clients: rows,
     workloadByWeekday: workload(filteredConsultations, from, to),
     analysisTypes: analysisTypes(filteredConsultations),

@@ -559,69 +559,15 @@ export default function AnalyticsPage() {
               <SummaryCard icon={AlertTriangle} title="Незавершённые консультации" value={data.summary.incompleteConsultations} note="Без транскрипта, анализов либо материалов" tone="red" />
             </div>
 
-            <div className="grid min-h-0 flex-[1.28] grid-cols-1 gap-3 xl:grid-cols-[1.02fr_1.55fr]">
-              <Panel title="Консультации по неделям" className="h-full">
-                <StackedBars data={data.consultationsTimeline} />
-              </Panel>
-              <Panel title="Клиенты" className="h-full">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <label className="flex w-full max-w-[330px] items-center gap-2 rounded-lg border border-[#E6DDD0] bg-white px-3 py-2 text-sm">
-                    <Search size={14} className="text-[#9A8A72]" />
-                    <input value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} placeholder="Поиск по имени клиента" className="w-full bg-transparent outline-none" />
-                  </label>
-                  <button
-                    onClick={copyClients}
-                    title="Копируется как форматированная HTML-таблица; если браузер не поддерживает форматирование, будет скопирован TSV-текст."
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#6B4E2E] hover:underline"
-                  >
-                    <Clipboard size={14} /> Скопировать
-                  </button>
-                </div>
-                <div className="max-h-[calc(100%-52px)] overflow-auto pb-1 pr-1">
-                  <table className="w-full min-w-[760px] text-left text-[13px] [&_td]:py-1.5 [&_th]:py-1.5">
-                    <thead className="text-xs text-[#8A7A66]">
-                      <tr className="border-b border-[#ECE5DA]">
-                        <th className="py-2 pr-3">Клиент</th>
-                        <th className="py-2 pr-3">Статус</th>
-                        <th className="py-2 pr-3">Консультаций</th>
-                        <th className="py-2 pr-3">Последняя встреча</th>
-                        <th className="py-2 pr-3">Следующая встреча</th>
-                        <th className="py-2 pr-3">Текущий запрос</th>
-                        <th className="py-2">Последняя активность</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibleClients.map((row) => (
-                        <tr key={row.id} className="border-b border-[#F0E8DC] hover:bg-[#FBF8F5]">
-                          <td className="py-2 pr-3">
-                            <Link href={`/client/${row.id}`} className="flex items-center gap-2 font-semibold text-[#2F261F]">
-                              <span className="flex h-7 w-7 items-center justify-center rounded-full text-xs text-white" style={{ background: row.color }}>{row.initials}</span>
-                              {row.name}
-                            </Link>
-                          </td>
-                          <td className="py-2 pr-3"><span className="rounded-full bg-[#EFFAF3] px-2 py-1 text-xs font-semibold text-[#2C7A4B]">{statusLabels[row.status] ?? row.status}</span></td>
-                          <td className="py-2 pr-3 font-semibold">{row.consultations}</td>
-                          <td className="py-2 pr-3">{formatDate(row.lastMeeting)}</td>
-                          <td className="py-2 pr-3">{formatDateTime(row.nextMeeting)}</td>
-                          <td className="max-w-[210px] truncate py-2 pr-3">{row.currentRequest}</td>
-                          <td className="py-2">{formatDate(row.lastActivity)}</td>
-                        </tr>
-                      ))}
-                      {!visibleClients.length && (
-                        <tr><td colSpan={7} className="py-8 text-center text-[#7B6F60]">Клиенты не найдены</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+            <div className="grid min-h-0 flex-[1.28] grid-cols-1 gap-3">
+              <Panel title="Консультации по месяцам" className="h-full">
+                <StackedBars data={data.yearTimeline} />
               </Panel>
             </div>
 
-            <div className="grid min-h-0 flex-[0.82] grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_1.08fr]">
+            <div className="grid min-h-0 flex-[0.82] grid-cols-1 gap-3 xl:grid-cols-[1fr_1.08fr]">
               <Panel title="Нагрузка по дням недели" className="h-full">
                 <WorkloadChart data={data.workloadByWeekday} />
-              </Panel>
-              <Panel title="Типы анализа" className="h-full">
-                <AnalysisDonut data={data.analysisTypes} />
               </Panel>
               <Panel title="Оплата за период" className="h-full">
                 <div className="grid grid-cols-2 gap-3">
