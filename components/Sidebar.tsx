@@ -134,7 +134,7 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         </button>
       )}
 
-      <div className="space-y-0.5">
+      <div className="space-y-0.5 mt-[14px]">
         <div className="px-3 mb-0.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Основное
         </div>
