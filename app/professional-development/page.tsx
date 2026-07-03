@@ -221,22 +221,27 @@ function ProfDevInner() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="border-b" style={{ borderColor: "#E5E5E5" }}>
-          <div className="flex flex-wrap gap-1">
-            {TABS.map(({ key, label, icon: Icon }) => {
-              const active = key === activeTab;
-              return (
-                <button key={key} onClick={() => setTab(key)}
-                  className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors flex-shrink-0 relative"
-                  style={{ color: active ? "#3a5ff8" : "#6B7280" }}>
-                  <Icon size={14} strokeWidth={active ? 2.3 : 1.8} />
-                  <span>{label}</span>
-                  {active && <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t" style={{ background: "#3a5ff8" }} />}
-                </button>
-              );
-            })}
-          </div>
+        {/* Tabs — 2 rows: 5 + 4 */}
+        <div>
+          {([TABS.slice(0, 5), TABS.slice(5)] as typeof TABS[]).map((row, rowIdx) => (
+            <div key={rowIdx} className="flex border-b" style={{ borderColor: "#E5E5E5" }}>
+              {row.map(({ key, label, icon: Icon }) => {
+                const active = key === activeTab;
+                return (
+                  <button key={key} onClick={() => setTab(key)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors flex-shrink-0"
+                    style={{
+                      color: active ? "#3a5ff8" : "#6B7280",
+                      borderBottom: active ? "2px solid #3a5ff8" : "2px solid transparent",
+                      marginBottom: "-1px",
+                    }}>
+                    <Icon size={14} strokeWidth={active ? 2.3 : 1.8} />
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </header>
 
@@ -335,15 +340,33 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
         </div>
       )}
 
+      {/* PDF export — moved to top */}
+      <div className="rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3"
+        style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
+        <Download size={15} style={{ color: "#3a5ff8", flexShrink: 0 }} />
+        <span className="text-sm font-medium flex-1" style={{ color: "#3D3228" }}>Отчёт для аккредитации</span>
+        <select value={pdfYear} onChange={e => setPdfYear(Number(e.target.value))}
+          className="rounded-xl border px-2.5 py-1 text-sm outline-none"
+          style={{ background: "#EAE0D0", borderColor: "#CFC0A9", color: "#3D3228" }}>
+          {YEAR_OPTIONS.filter(y => y > 0).map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <button onClick={handleExport} disabled={pdfLoading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold disabled:opacity-60"
+          style={{ background: "#3a5ff8", color: "#fff" }}>
+          {pdfLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+          Экспорт PDF
+        </button>
+      </div>
+
       {/* KPI */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="flex flex-wrap gap-2">
         {kpis.map(k => (
-          <div key={k.label} className="rounded-2xl p-4" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-2" style={{ background: `${k.color}18` }}>
-              <k.icon size={15} style={{ color: k.color }} />
+          <div key={k.label} className="rounded-2xl p-3 flex-1 min-w-[110px]" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-1.5" style={{ background: `${k.color}18` }}>
+              <k.icon size={13} style={{ color: k.color }} />
             </div>
-            <div className="text-2xl font-bold" style={{ color: "#3D3228" }}>{k.value}</div>
-            <div className="text-xs mt-0.5" style={{ color: "#A8997F" }}>{k.label}</div>
+            <div className="text-xl font-bold" style={{ color: "#3D3228" }}>{k.value}</div>
+            <div className="text-xs mt-0.5 leading-tight" style={{ color: "#A8997F" }}>{k.label}</div>
           </div>
         ))}
       </div>
@@ -367,24 +390,6 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
           </div>
         </div>
       )}
-
-      {/* PDF export */}
-      <div className="rounded-2xl p-4 flex flex-wrap items-center gap-3"
-        style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-        <Download size={16} style={{ color: "#3a5ff8", flexShrink: 0 }} />
-        <span className="text-sm font-medium flex-1" style={{ color: "#3D3228" }}>Отчёт для аккредитации</span>
-        <select value={pdfYear} onChange={e => setPdfYear(Number(e.target.value))}
-          className="rounded-xl border px-2.5 py-1.5 text-sm outline-none"
-          style={{ background: "#EAE0D0", borderColor: "#CFC0A9", color: "#3D3228" }}>
-          {YEAR_OPTIONS.filter(y => y > 0).map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <button onClick={handleExport} disabled={pdfLoading}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold disabled:opacity-60"
-          style={{ background: "#3a5ff8", color: "#fff" }}>
-          {pdfLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-          Экспорт PDF
-        </button>
-      </div>
 
       {/* Next event */}
       {data.next_event && (
