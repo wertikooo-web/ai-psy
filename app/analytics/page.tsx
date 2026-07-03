@@ -137,7 +137,7 @@ function StackedBars({ data }: { data: AnalyticsResponse["consultationsTimeline"
   const max = Math.max(1, ...data.map((item) => item.completed + item.planned + item.cancelled + item.noShow));
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="grid min-h-0 flex-1 auto-cols-[72px] grid-flow-col items-end gap-3 overflow-x-auto border-b border-[#ECE5DA] px-1 pb-1">
+      <div className="grid min-h-0 flex-1 grid-flow-col items-end gap-1 overflow-x-hidden border-b border-[#ECE5DA] px-1 pb-1" style={{ gridTemplateColumns: `repeat(${data.length}, 1fr)` }}>
         {data.map((item) => {
           const total = item.completed + item.planned + item.cancelled + item.noShow;
           const barHeight = total ? Math.max(34, (total / max) * 150) : 8;
