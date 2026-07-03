@@ -673,9 +673,9 @@ export default function AnalyticsPage() {
               </Panel>
 
               <Panel title="Доход по месяцам (получено)" className="h-full">
-                <div className="flex h-[calc(100%-44px)] min-h-[96px] items-end gap-1.5 overflow-hidden border-b border-[#ECE5DA] px-2 pb-1">
+                <div className="flex h-[calc(100%-44px)] min-h-[96px] items-end gap-1.5 overflow-x-auto border-b border-[#ECE5DA] px-2 pb-1">
                   {data.incomeTimeline.map((item) => (
-                    <div key={item.label} className="flex flex-1 min-w-0 flex-col items-center gap-1">
+                    <div key={item.label} className="flex flex-col items-center gap-1 flex-shrink-0" style={{ width: `${Math.max(28, Math.floor(100 / Math.max(data.incomeTimeline.length, 6)))}%`, maxWidth: 48 }}>
                       <div className="w-full rounded-t-md bg-[#8B5CF6]" style={{ height: `${Math.max(4, (item.received / maxIncome) * 110)}px` }} title={`${item.label}: ${nf.format(item.received)} MDL`} />
                       <span className="text-[10px] text-[#7B6F60] truncate w-full text-center">{item.label}</span>
                     </div>
