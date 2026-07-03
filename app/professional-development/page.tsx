@@ -201,8 +201,19 @@ function ProfDevInner() {
   const activeTab    = (searchParams.get("tab") ?? "overview") as Tab;
   const { toasts, show } = useToast();
 
+  const [pdfYear, setPdfYear]       = useState(CURRENT_YEAR);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfOpen, setPdfOpen]       = useState(false);
+
   function setTab(t: Tab) {
     router.push(`/professional-development?tab=${t}`, { scroll: false });
+  }
+
+  async function handleExport() {
+    setPdfLoading(true);
+    try { await generatePDF(pdfYear); }
+    catch { show("Ошибка экспорта", "err"); }
+    finally { setPdfLoading(false); setPdfOpen(false); }
   }
 
   return (
@@ -218,6 +229,35 @@ function ProfDevInner() {
           <div>
             <h1 className="text-lg font-bold leading-tight" style={{ color: "#3D3228" }}>Профессиональное развитие</h1>
             <p className="text-xs" style={{ color: "#A8997F" }}>Обучение, супервизии, документы и цели</p>
+          </div>
+
+          {/* PDF export button — top right */}
+          <div className="ml-auto relative">
+            <button
+              title="Отчёт для аккредитации"
+              onClick={() => setPdfOpen(p => !p)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors"
+              style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", color: "#3D3228" }}>
+              <Download size={13} style={{ color: "#3a5ff8" }} />
+              Отчёт
+            </button>
+            {pdfOpen && (
+              <div className="absolute right-0 top-full mt-1 z-30 rounded-xl shadow-xl p-3 flex flex-col gap-2 w-56"
+                style={{ background: "#FBF8F5", border: "1px solid #CFC0A9" }}>
+                <div className="text-xs font-semibold" style={{ color: "#3D3228" }}>Отчёт для аккредитации</div>
+                <select value={pdfYear} onChange={e => setPdfYear(Number(e.target.value))}
+                  className="rounded-xl border px-2.5 py-1.5 text-sm outline-none"
+                  style={{ background: "#F3EBDD", borderColor: "#CFC0A9", color: "#3D3228" }}>
+                  {YEAR_OPTIONS.filter(y => y > 0).map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <button onClick={handleExport} disabled={pdfLoading}
+                  className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold disabled:opacity-60"
+                  style={{ background: "#3a5ff8", color: "#fff" }}>
+                  {pdfLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                  Экспорт PDF
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -277,22 +317,13 @@ function ProfDevInner() {
 // TAB: OVERVIEW
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; onToast: (m: string, t?: "ok"|"err") => void }) {
-  const [data, setData]         = useState<OverviewData | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState("");
-  const [pdfYear, setPdfYear]   = useState(CURRENT_YEAR);
-  const [pdfLoading, setPdfLoading] = useState(false);
+function OverviewTab({ onNavigate }: { onNavigate: (t: Tab) => void; onToast?: (m: string, t?: "ok"|"err") => void }) {
+  const [data, setData]       = useState<OverviewData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState("");
   useEffect(() => {
     apiFetch("/overview").then(setData).catch(e => setError(e.message)).finally(() => setLoading(false));
   }, []);
-
-  async function handleExport() {
-    setPdfLoading(true);
-    try { await generatePDF(pdfYear); }
-    catch { onToast("Ошибка экспорта", "err"); }
-    finally { setPdfLoading(false); }
-  }
 
   if (loading) return <TabSkeleton rows={6} />;
   if (error)   return <TabError msg={error} />;
@@ -339,24 +370,6 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
           ))}
         </div>
       )}
-
-      {/* PDF export — moved to top */}
-      <div className="rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3"
-        style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-        <Download size={15} style={{ color: "#3a5ff8", flexShrink: 0 }} />
-        <span className="text-sm font-medium flex-1" style={{ color: "#3D3228" }}>Отчёт для аккредитации</span>
-        <select value={pdfYear} onChange={e => setPdfYear(Number(e.target.value))}
-          className="rounded-xl border px-2.5 py-1 text-sm outline-none"
-          style={{ background: "#EAE0D0", borderColor: "#CFC0A9", color: "#3D3228" }}>
-          {YEAR_OPTIONS.filter(y => y > 0).map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <button onClick={handleExport} disabled={pdfLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold disabled:opacity-60"
-          style={{ background: "#3a5ff8", color: "#fff" }}>
-          {pdfLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-          Экспорт PDF
-        </button>
-      </div>
 
       {/* KPI */}
       <div className="grid grid-cols-2 gap-2">
