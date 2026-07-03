@@ -1222,15 +1222,15 @@ function GoalsTab({ onToast, year }: { onToast: (m: string, t?: "ok"|"err") => v
   if (loading) return <TabSkeleton rows={4} />;
   if (error)   return <TabError msg={error} />;
 
-  const groups: { status: string; label: string }[] = [
-    { status: "in_progress", label: "В работе" },
-    { status: "planned",     label: "Запланировано" },
-    { status: "completed",   label: "Достигнуто" },
-    { status: "postponed",   label: "Отложено" },
+  const groups: { status: string; label: string; bg: string; color: string }[] = [
+    { status: "in_progress", label: "В работе",      bg: "#E8F4EA", color: "#2E7D32" },
+    { status: "planned",     label: "Запланировано", bg: "#EEF2FF", color: "#3A5FF8" },
+    { status: "completed",   label: "Достигнуто",    bg: "#F3EBDD", color: "#7A6A52" },
+    { status: "postponed",   label: "Отложено",      bg: "#FFF3E0", color: "#E65100" },
   ];
 
   const visibleGroups = filterStatus
-    ? [{ status: filterStatus, label: groups.find(g => g.status === filterStatus)?.label ?? filterStatus }]
+    ? [groups.find(g => g.status === filterStatus) ?? { status: filterStatus, label: filterStatus, bg: "#F3EBDD", color: "#7A6A52" }]
     : groups;
 
   return (
@@ -1257,36 +1257,32 @@ function GoalsTab({ onToast, year }: { onToast: (m: string, t?: "ok"|"err") => v
         <EmptyState icon={Target} title="Целей пока нет" desc="Создайте первую профессиональную цель"
           action={{ label: "Добавить цель", onClick: () => { setEditing(null); setFormOpen(true); } }} />
       ) : (
-        <div className="space-y-6">
-          {visibleGroups.map(g => {
+        <div className="space-y-3">
+          {visibleGroups.flatMap(g => {
             const items = filtered.filter(goal => goal.status === g.status);
-            if (items.length === 0) return null;
-            return (
-              <div key={g.status}>
-                <h3 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#7A6A52" }}>{g.label}</h3>
-                <div className="space-y-3">
-                  {items.map(goal => (
-                    <div key={goal.id} className="rounded-2xl p-4" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="font-semibold text-sm" style={{ color: "#3D3228" }}>{goal.title}</div>
-                          {goal.motivation && <div className="text-xs mt-0.5 line-clamp-1" style={{ color: "#7A6A52" }}>{goal.motivation}</div>}
-                          {goal.target_date && (
-                            <div className="text-xs mt-0.5" style={{ color: "#7A6A52" }}>
-                              Срок: {new Date(goal.target_date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <IconBtn icon={Pencil} onClick={() => { setEditing(goal); setFormOpen(true); }} title="Редактировать" />
-                          <IconBtn icon={X} onClick={() => deleteGoal(goal.id)} title="Удалить" />
-                        </div>
+            return items.map(goal => (
+              <div key={goal.id} className="rounded-2xl p-4" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-sm" style={{ color: "#3D3228" }}>{goal.title}</div>
+                    {goal.motivation && <div className="text-xs mt-0.5 line-clamp-1" style={{ color: "#7A6A52" }}>{goal.motivation}</div>}
+                    {goal.target_date && (
+                      <div className="text-xs mt-0.5" style={{ color: "#7A6A52" }}>
+                        Срок: {new Date(goal.target_date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
                       </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs font-medium px-2.5 py-0.5 rounded-full"
+                      style={{ background: g.bg, color: g.color }}>
+                      {g.label}
+                    </span>
+                    <IconBtn icon={Pencil} onClick={() => { setEditing(goal); setFormOpen(true); }} title="Редактировать" />
+                    <IconBtn icon={X} onClick={() => deleteGoal(goal.id)} title="Удалить" />
+                  </div>
                 </div>
               </div>
-            );
+            ));
           })}
         </div>
       )}
