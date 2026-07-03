@@ -65,13 +65,16 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "overview",      label: "Обзор",          icon: TrendingUp   },
   { key: "courses",       label: "Обучение",        icon: BookOpen     },
   { key: "supervisions",  label: "Супервизии",      icon: Users        },
-  { key: "calendar",      label: "Календарь",       icon: CalendarDays },
   { key: "documents",     label: "Документы",       icon: FileText     },
-  { key: "goals",         label: "План развития",   icon: Target       },
   { key: "associations",  label: "Ассоциации",      icon: Building2    },
+  { key: "calendar",      label: "Календарь",       icon: CalendarDays },
+  { key: "goals",         label: "План развития",   icon: Target       },
   { key: "finances",      label: "Финансы",         icon: Wallet       },
   { key: "library",       label: "Библиотека",      icon: BookMarked   },
 ];
+
+const PRIMARY_TABS  = TABS.slice(0, 5);
+const SECONDARY_TABS = TABS.slice(5);
 
 const STATUS_LABELS: Record<string, string> = {
   planned: "Запланирован", in_progress: "В процессе", completed: "Завершён",
@@ -211,6 +214,24 @@ function ProfDevInner() {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(LS_PANEL) === "true";
   });
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMoreOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [moreOpen]);
 
   function setTab(t: Tab) {
     router.push(`/professional-development?tab=${t}`, { scroll: false });
@@ -240,7 +261,7 @@ function ProfDevInner() {
           </div>
           <div>
             <h1 className="text-lg font-bold leading-tight" style={{ color: "#3D3228" }}>Профессиональное развитие</h1>
-            <p className="text-xs" style={{ color: "#A8997F" }}>Обучение, супервизии, документы и цели</p>
+            <p className="text-xs" style={{ color: "#7A6A52" }}>Обучение, супервизии, документы и цели</p>
           </div>
 
           {/* Right header buttons */}
@@ -288,11 +309,12 @@ function ProfDevInner() {
           </div>
         </div>
 
-        {/* Tabs — 2 rows: 5 + 4 */}
-        <div>
-          {([TABS.slice(0, 5), TABS.slice(5)] as typeof TABS[]).map((row, rowIdx) => (
-            <div key={rowIdx} className="flex border-b" style={{ borderColor: "#E5E5E5" }}>
-              {row.map(({ key, label, icon: Icon }) => {
+        {/* Tabs — primary row + "Ещё" dropdown for secondary */}
+        {(() => {
+          const secondaryActive = SECONDARY_TABS.find(t => t.key === activeTab);
+          return (
+            <div className="flex border-b" style={{ borderColor: "#E5E5E5" }}>
+              {PRIMARY_TABS.map(({ key, label, icon: Icon }) => {
                 const active = key === activeTab;
                 return (
                   <button key={key} onClick={() => setTab(key)}
@@ -307,9 +329,42 @@ function ProfDevInner() {
                   </button>
                 );
               })}
+
+              {/* "Ещё" dropdown */}
+              <div ref={moreRef} className="relative ml-auto flex-shrink-0">
+                <button onClick={() => setMoreOpen(p => !p)}
+                  className="flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors"
+                  style={{
+                    color: secondaryActive ? "#3a5ff8" : "#6B7280",
+                    borderBottom: secondaryActive ? "2px solid #3a5ff8" : "2px solid transparent",
+                    marginBottom: "-1px",
+                  }}>
+                  {secondaryActive
+                    ? <><secondaryActive.icon size={14} strokeWidth={2.3} /><span>{secondaryActive.label}</span></>
+                    : <span>Ещё</span>
+                  }
+                  <ChevronDown size={12} style={{ transform: moreOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                </button>
+                {moreOpen && (
+                  <div className="absolute right-0 top-full mt-1 z-30 rounded-xl shadow-xl py-1 w-48"
+                    style={{ background: "#FFFFFF", border: "1px solid #E5E5E5" }}>
+                    {SECONDARY_TABS.map(({ key, label, icon: Icon }) => (
+                      <button key={key} onClick={() => { setTab(key); setMoreOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium"
+                        style={{ color: key === activeTab ? "#3a5ff8" : "#3D3228",
+                          background: key === activeTab ? "#EEF4FB" : "transparent" }}
+                        onMouseEnter={e => { if (key !== activeTab) e.currentTarget.style.background = "#F7F4F0"; }}
+                        onMouseLeave={e => { if (key !== activeTab) e.currentTarget.style.background = "transparent"; }}>
+                        <Icon size={14} />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          ))}
-        </div>
+          );
+        })()}
       </header>
 
       {/* Content — 2-column on xl+ */}
@@ -322,7 +377,7 @@ function ProfDevInner() {
           {activeTab === "supervisions"  && <SupervisionsTab  onToast={show} />}
           {activeTab === "calendar"      && <CalendarTab />}
           {activeTab === "documents"     && <DocumentsTab     onToast={show} />}
-          {activeTab === "goals"         && <GoalsTab         onToast={show} />}
+          {activeTab === "goals"         && <GoalsTab         onToast={show} year={selectedYear} />}
           {activeTab === "associations"  && <AssociationsTab  onToast={show} />}
           {activeTab === "finances"      && <FinancesTab      onToast={show} />}
           {activeTab === "library"       && <LibraryTab       onToast={show} />}
@@ -378,10 +433,10 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
   }
 
   const kpis = [
-    { label: "Часы обучения (год)",    value: `${data.learning_hours_this_year} ч`,    icon: BookOpen,   color: "#3a5ff8" },
-    { label: "Часы супервизий (год)",  value: `${data.supervision_hours_this_year} ч`, icon: Users,      color: "#7C3AED" },
-    { label: "Курсов в процессе",      value: String(data.courses_in_progress),        icon: TrendingUp, color: "#D97706" },
-    { label: "Сертификатов всего",     value: String(data.certificates_total),         icon: Award,      color: "#16A34A" },
+    { label: "Часы обучения",    num: data.learning_hours_this_year,    unit: "ч", icon: BookOpen,   color: "#3a5ff8", tab: "courses"      as Tab, cta: "+ Добавить курс"        },
+    { label: "Часы супервизий",  num: data.supervision_hours_this_year, unit: "ч", icon: Users,      color: "#7C3AED", tab: "supervisions"  as Tab, cta: "+ Добавить супервизию"  },
+    { label: "Курсов в процессе",num: data.courses_in_progress,         unit: "",  icon: TrendingUp, color: "#D97706", tab: "courses"      as Tab, cta: "+ Начать курс"          },
+    { label: "Сертификатов",     num: data.certificates_total,          unit: "",  icon: Award,      color: "#16A34A", tab: "documents"    as Tab, cta: "+ Загрузить документ"   },
   ];
 
   const CAT_LABELS_SHORT: Record<string, string> = {
@@ -393,7 +448,7 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
   const maxCatH = catEntries[0]?.[1] ?? 1;
 
   return (
-    <div className="px-4 lg:px-6 py-4 space-y-5 max-w-lg">
+    <div className="px-4 lg:px-6 py-4 space-y-5 max-w-2xl">
 
       {/* Reminders */}
       {reminders.length > 0 && (
@@ -409,16 +464,29 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
       )}
 
       {/* KPI */}
-      <div className="grid grid-cols-2 gap-2">
-        {kpis.map(k => (
-          <div key={k.label} className="rounded-2xl p-3" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-1.5" style={{ background: `${k.color}18` }}>
-              <k.icon size={13} style={{ color: k.color }} />
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
+        {kpis.map(k => {
+          const isEmpty = k.num === 0;
+          return (
+            <div key={k.label} className="rounded-2xl p-3" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-1.5" style={{ background: `${k.color}18` }}>
+                <k.icon size={13} style={{ color: k.color }} />
+              </div>
+              {isEmpty ? (
+                <button onClick={() => onNavigate(k.tab)}
+                  className="text-xs font-semibold mt-0.5 mb-0.5 leading-tight block"
+                  style={{ color: k.color, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+                  {k.cta}
+                </button>
+              ) : (
+                <div className="text-xl font-bold leading-none" style={{ color: "#3D3228" }}>
+                  {k.num}{k.unit && <span className="text-sm font-medium ml-0.5" style={{ color: "#7B6F60" }}>{k.unit}</span>}
+                </div>
+              )}
+              <div className="text-xs mt-0.5 leading-tight" style={{ color: "#7A6A52" }}>{k.label}</div>
             </div>
-            <div className="text-xl font-bold" style={{ color: "#3D3228" }}>{k.value}</div>
-            <div className="text-xs mt-0.5 leading-tight" style={{ color: "#A8997F" }}>{k.label}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Hours breakdown */}
@@ -460,11 +528,11 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
         <div className="grid grid-cols-2 gap-2">
           {([["Добавить обучение","courses"],["Добавить супервизию","supervisions"],["Добавить документ","documents"],["Добавить цель","goals"],["Ассоциации","associations"]] as [string,Tab][]).map(([label, tab]) => (
             <button key={tab} onClick={() => onNavigate(tab)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors"
-              style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", color: "#3D3228" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#EAE0D0"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#F3EBDD"; }}>
-              <Plus size={13} /> {label}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors"
+              style={{ background: "#FFFFFF", border: "1.5px solid #C5D5F5", color: "#3a5ff8" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#EEF4FB"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#FFFFFF"; }}>
+              <Plus size={13} style={{ color: "#3a5ff8" }} /> {label}
             </button>
           ))}
         </div>
@@ -496,9 +564,48 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TAB: COURSES
+// ── Confirm delete hook ────────────────────────────────────────────────────────
+
+function useConfirmDelete() {
+  const [pending, setPending] = useState<{ msg: string; resolve: (v: boolean) => void } | null>(null);
+
+  function confirmDelete(msg: string): Promise<boolean> {
+    return new Promise(resolve => setPending({ msg, resolve }));
+  }
+
+  const dialog = pending ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.25)" }}
+      onClick={() => { pending.resolve(false); setPending(null); }}>
+      <div className="rounded-2xl p-5 shadow-xl max-w-xs w-full"
+        style={{ background: "#FBF8F5", border: "1px solid #CFC0A9" }}
+        onClick={e => e.stopPropagation()}>
+        <p className="text-sm font-medium mb-4 text-center" style={{ color: "#3D3228" }}>
+          {pending.msg}
+        </p>
+        <div className="flex gap-2">
+          <button onClick={() => { pending.resolve(false); setPending(null); }}
+            className="flex-1 py-2 rounded-xl text-sm font-medium"
+            style={{ background: "#F3EBDD", color: "#3D3228" }}>
+            Отмена
+          </button>
+          <button onClick={() => { pending.resolve(true); setPending(null); }}
+            className="flex-1 py-2 rounded-xl text-sm font-medium"
+            style={{ background: "#EF4444", color: "#fff" }}>
+            Удалить
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  return { confirmDelete, dialog };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function CoursesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void }) {
+  const { confirmDelete, dialog: confirmDialog } = useConfirmDelete();
   const [courses, setCourses]     = useState<RawCourse[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState("");
@@ -528,7 +635,7 @@ function CoursesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void 
   });
 
   async function deleteCourse(id: string) {
-    if (!confirm("Удалить курс?")) return;
+    if (!await confirmDelete("Удалить курс?")) return;
     try {
       await apiFetch(`/courses/${id}`, { method: "DELETE" });
       setCourses(p => p.filter(c => c.id !== id));
@@ -544,6 +651,7 @@ function CoursesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void 
 
   return (
     <div className="px-4 lg:px-6 py-4 max-w-3xl">
+      {confirmDialog}
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <input value={search} onChange={e => setSearch(e.target.value)}
@@ -577,12 +685,12 @@ function CoursesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void 
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-sm truncate" style={{ color: "#3D3228" }}>{c.title}</div>
-                  {c.provider && <div className="text-xs mt-0.5" style={{ color: "#A8997F" }}>{c.provider}</div>}
+                  {c.provider && <div className="text-xs mt-0.5" style={{ color: "#7A6A52" }}>{c.provider}</div>}
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <StatusBadge status={c.status} />
-                    <span className="text-xs" style={{ color: "#9C8E80" }}>{CAT_LABELS[c.category] ?? c.category}</span>
+                    <span className="text-xs" style={{ color: "#7A6A52" }}>{CAT_LABELS[c.category] ?? c.category}</span>
                     {c.total_hours && (
-                      <span className="text-xs flex items-center gap-0.5" style={{ color: "#9C8E80" }}>
+                      <span className="text-xs flex items-center gap-0.5" style={{ color: "#7A6A52" }}>
                         <Clock size={11} /> {c.completed_hours ?? 0}/{c.total_hours} ч
                       </span>
                     )}
@@ -634,7 +742,7 @@ function SupervisionsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => 
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
             style={{
               background: inner === k ? "#fff" : "transparent",
-              color: inner === k ? "#3D3228" : "#9C8E80",
+              color: inner === k ? "#3D3228" : "#7A6A52",
               boxShadow: inner === k ? "0 1px 3px rgba(0,0,0,.1)" : "none",
             }}>
             {k === "supervision" ? <><Users size={13} /> Супервизии</> : <><HeartHandshake size={13} /> Личная терапия</>}
@@ -648,6 +756,7 @@ function SupervisionsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => 
 }
 
 function SessionsList({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void }) {
+  const { confirmDelete, dialog: confirmDialog } = useConfirmDelete();
   const [sessions, setSessions] = useState<RawSession[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
@@ -669,7 +778,7 @@ function SessionsList({ onToast }: { onToast: (m: string, t?: "ok"|"err") => voi
   });
 
   async function del(id: string) {
-    if (!confirm("Удалить запись?")) return;
+    if (!await confirmDelete("Удалить запись?")) return;
     try {
       await apiFetch(`/sessions/${id}`, { method: "DELETE" });
       setSessions(p => p.filter(s => s.id !== id));
@@ -682,6 +791,7 @@ function SessionsList({ onToast }: { onToast: (m: string, t?: "ok"|"err") => voi
 
   return (
     <>
+      {confirmDialog}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="text-xs px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 flex-1"
           style={{ background: "#FEF3C7", border: "1px solid #FCD34D", color: "#92400E" }}>
@@ -717,11 +827,11 @@ function SessionsList({ onToast }: { onToast: (m: string, t?: "ok"|"err") => voi
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "#E8EEF9", color: "#355E9C" }}>
                       {SESSION_TYPE_LABELS[s.session_type] ?? s.session_type}
                     </span>
-                    <span className="text-xs" style={{ color: "#9C8E80" }}>
+                    <span className="text-xs" style={{ color: "#7A6A52" }}>
                       {new Date(s.session_date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
                     </span>
                     {s.duration_minutes && (
-                      <span className="text-xs flex items-center gap-0.5" style={{ color: "#9C8E80" }}>
+                      <span className="text-xs flex items-center gap-0.5" style={{ color: "#7A6A52" }}>
                         <Clock size={11} /> {s.duration_minutes} мин
                       </span>
                     )}
@@ -751,6 +861,7 @@ function SessionsList({ onToast }: { onToast: (m: string, t?: "ok"|"err") => voi
 }
 
 function TherapyList({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void }) {
+  const { confirmDelete, dialog: confirmDialog } = useConfirmDelete();
   const [items, setItems]       = useState<RawTherapy[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
@@ -769,7 +880,7 @@ function TherapyList({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void
   );
 
   async function del(id: string) {
-    if (!confirm("Удалить запись?")) return;
+    if (!await confirmDelete("Удалить запись?")) return;
     try {
       await apiFetch(`/therapy/${id}`, { method: "DELETE" });
       setItems(p => p.filter(t => t.id !== id));
@@ -782,6 +893,7 @@ function TherapyList({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void
 
   return (
     <>
+      {confirmDialog}
       <div className="flex flex-wrap gap-2 mb-4">
         <YearSelect value={filterYear} onChange={setFilterYear} />
         <button onClick={() => { setEditing(null); setFormOpen(true); }}
@@ -805,11 +917,11 @@ function TherapyList({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "#FCE7F3", color: "#9D174D" }}>
                       Личная терапия
                     </span>
-                    <span className="text-xs" style={{ color: "#9C8E80" }}>
+                    <span className="text-xs" style={{ color: "#7A6A52" }}>
                       {new Date(t.session_date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
                     </span>
                     {t.duration_minutes && (
-                      <span className="text-xs flex items-center gap-0.5" style={{ color: "#9C8E80" }}>
+                      <span className="text-xs flex items-center gap-0.5" style={{ color: "#7A6A52" }}>
                         <Clock size={11} /> {t.duration_minutes} мин
                       </span>
                     )}
@@ -860,7 +972,7 @@ function CalendarTab() {
 
   return (
     <div className="px-4 lg:px-6 py-4 max-w-3xl">
-      <p className="text-xs mb-4" style={{ color: "#A8997F" }}>
+      <p className="text-xs mb-4" style={{ color: "#7A6A52" }}>
         Профессиональные события из раздела Календарь. Создавайте их там и выбирайте нужную категорию.
       </p>
       {events.length === 0 ? (
@@ -874,7 +986,7 @@ function CalendarTab() {
               <CalendarDays size={16} style={{ color: "#3a5ff8", flexShrink: 0 }} />
               <div>
                 <div className="text-sm font-semibold" style={{ color: "#3D3228" }}>{e.title}</div>
-                <div className="text-xs" style={{ color: "#9C8E80" }}>
+                <div className="text-xs" style={{ color: "#7A6A52" }}>
                   {new Date(e.starts_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
                 </div>
               </div>
@@ -891,6 +1003,7 @@ function CalendarTab() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function DocumentsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void }) {
+  const { confirmDelete, dialog: confirmDialog } = useConfirmDelete();
   const [docs, setDocs]         = useState<RawDoc[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
@@ -921,7 +1034,7 @@ function DocumentsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => voi
   }
 
   async function deleteDoc(id: string) {
-    if (!confirm("Удалить документ и файл?")) return;
+    if (!await confirmDelete("Удалить документ и файл?")) return;
     try {
       await apiFetch(`/documents/${id}`, { method: "DELETE" });
       setDocs(p => p.filter(d => d.id !== id));
@@ -965,6 +1078,7 @@ function DocumentsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => voi
 
   return (
     <div className="px-4 lg:px-6 py-4 max-w-3xl">
+      {confirmDialog}
       <div className="flex flex-wrap gap-2 mb-4">
         <select value={filterType} onChange={e => setFilterType(e.target.value)}
           className="rounded-xl border px-2.5 py-1.5 text-sm outline-none"
@@ -990,10 +1104,10 @@ function DocumentsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => voi
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-sm" style={{ color: "#3D3228" }}>{d.title}</div>
-                  <div className="text-xs mt-0.5" style={{ color: "#A8997F" }}>{DOC_TYPE_LABELS[d.document_type] ?? d.document_type}</div>
-                  {d.organization && <div className="text-xs mt-0.5" style={{ color: "#A8997F" }}>{d.organization}</div>}
+                  <div className="text-xs mt-0.5" style={{ color: "#7A6A52" }}>{DOC_TYPE_LABELS[d.document_type] ?? d.document_type}</div>
+                  {d.organization && <div className="text-xs mt-0.5" style={{ color: "#7A6A52" }}>{d.organization}</div>}
                   {d.issued_date && (
-                    <div className="text-xs mt-1" style={{ color: "#9C8E80" }}>
+                    <div className="text-xs mt-1" style={{ color: "#7A6A52" }}>
                       {new Date(d.issued_date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
                     </div>
                   )}
@@ -1075,7 +1189,8 @@ function DocumentsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => voi
 // TAB: GOALS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function GoalsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void }) {
+function GoalsTab({ onToast, year }: { onToast: (m: string, t?: "ok"|"err") => void; year: number }) {
+  const { confirmDelete, dialog: confirmDialog } = useConfirmDelete();
   const [goals, setGoals]       = useState<RawGoal[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
@@ -1099,7 +1214,7 @@ function GoalsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void })
   }
 
   async function deleteGoal(id: string) {
-    if (!confirm("Удалить цель?")) return;
+    if (!await confirmDelete("Удалить цель?")) return;
     try {
       await apiFetch(`/goals/${id}`, { method: "DELETE" });
       setGoals(p => p.filter(g => g.id !== id));
@@ -1123,6 +1238,7 @@ function GoalsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void })
 
   return (
     <div className="px-4 lg:px-6 py-4 max-w-3xl">
+      {confirmDialog}
       <div className="flex flex-wrap gap-2 mb-4">
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
           className="rounded-xl border px-2.5 py-1.5 text-sm outline-none"
@@ -1150,22 +1266,22 @@ function GoalsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void })
             if (items.length === 0) return null;
             return (
               <div key={g.status}>
-                <h3 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#9C8E80" }}>{g.label}</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#7A6A52" }}>{g.label}</h3>
                 <div className="space-y-3">
                   {items.map(goal => (
                     <div key={goal.id} className="rounded-2xl p-4" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="font-semibold text-sm" style={{ color: "#3D3228" }}>{goal.title}</div>
-                          {goal.motivation && <div className="text-xs mt-0.5 line-clamp-1" style={{ color: "#A8997F" }}>{goal.motivation}</div>}
+                          {goal.motivation && <div className="text-xs mt-0.5 line-clamp-1" style={{ color: "#7A6A52" }}>{goal.motivation}</div>}
                           {goal.target_date && (
-                            <div className="text-xs mt-0.5" style={{ color: "#A8997F" }}>
+                            <div className="text-xs mt-0.5" style={{ color: "#7A6A52" }}>
                               Срок: {new Date(goal.target_date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
                             </div>
                           )}
                           <div className="mt-3">
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs" style={{ color: "#9C8E80" }}>Прогресс</span>
+                              <span className="text-xs" style={{ color: "#7A6A52" }}>Прогресс</span>
                               <span className="text-xs font-semibold" style={{ color: "#3D3228" }}>{goal.progress}%</span>
                             </div>
                             <input type="range" min={0} max={100} value={goal.progress}
@@ -1193,6 +1309,24 @@ function GoalsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void })
           onSaved={() => { setFormOpen(false); setEditing(null); load(); onToast(editing ? "Цель обновлена" : "Цель добавлена"); }}
           onToast={onToast} />
       )}
+
+      {/* Annual reflection — collapsible section at the bottom */}
+      <AnnualReflectionSection year={year} onToast={onToast} />
+    </div>
+  );
+}
+
+function AnnualReflectionSection({ year, onToast }: { year: number; onToast: (m: string, t?: "ok"|"err") => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-6 rounded-2xl overflow-hidden" style={{ border: "1px solid #CFC0A9" }}>
+      <button onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left"
+        style={{ background: "#F3EBDD" }}>
+        <span className="text-sm font-semibold" style={{ color: "#3D3228" }}>Рефлексия года {year}</span>
+        <ChevronDown size={16} style={{ color: "#7A6A52", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+      </button>
+      {open && <AnnualReflection year={year} onToast={onToast} />}
     </div>
   );
 }
@@ -1534,7 +1668,7 @@ function IconBtn({ icon: Icon, onClick, title }: { icon: React.ElementType; onCl
   return (
     <button onClick={onClick} title={title}
       className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-      style={{ color: "#9C8E80" }}
+      style={{ color: "#7A6A52" }}
       onMouseEnter={e => { e.currentTarget.style.background = "#E8E0D4"; }}
       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
       <Icon size={14} />
@@ -1600,7 +1734,7 @@ function CourseRow({ course: c }: { course: RawCourse }) {
       <BookOpen size={14} style={{ color: "#3a5ff8", flexShrink: 0 }} />
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium truncate" style={{ color: "#3D3228" }}>{c.title}</div>
-        {c.provider && <div className="text-xs" style={{ color: "#A8997F" }}>{c.provider}</div>}
+        {c.provider && <div className="text-xs" style={{ color: "#7A6A52" }}>{c.provider}</div>}
       </div>
       <StatusBadge status={c.status} />
     </div>
@@ -1613,7 +1747,7 @@ function SessionRow({ session: s }: { session: RawSession }) {
       <Users size={14} style={{ color: "#7C3AED", flexShrink: 0 }} />
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium" style={{ color: "#3D3228" }}>{SESSION_TYPE_LABELS[s.session_type] ?? s.session_type}</div>
-        <div className="text-xs" style={{ color: "#A8997F" }}>
+        <div className="text-xs" style={{ color: "#7A6A52" }}>
           {new Date(s.session_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
           {s.supervisor_name && ` · ${s.supervisor_name}`}
         </div>
@@ -1643,10 +1777,10 @@ function EmptyState({ icon: Icon, title, desc, action }: {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-        <Icon size={24} style={{ color: "#9C8E80" }} />
+        <Icon size={24} style={{ color: "#7A6A52" }} />
       </div>
       <div className="text-sm font-semibold mb-1" style={{ color: "#3D3228" }}>{title}</div>
-      <div className="text-sm max-w-xs" style={{ color: "#9C8E80" }}>{desc}</div>
+      <div className="text-sm max-w-xs" style={{ color: "#7A6A52" }}>{desc}</div>
       {action && (
         <button onClick={action.onClick} className="mt-5 flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold"
           style={{ background: "#3a5ff8", color: "#fff" }}>
@@ -1677,7 +1811,7 @@ function AnnualReflection({ year, onToast }: { year: number; onToast: (m: string
     finally { setSaving(false); }
   }
 
-  if (!loaded) return <div className="px-4 py-6 text-center text-sm" style={{ color: "#9C8E80" }}>Загрузка...</div>;
+  if (!loaded) return <div className="px-4 py-6 text-center text-sm" style={{ color: "#7A6A52" }}>Загрузка...</div>;
 
   const REFL_FIELDS = [
     { key: "key_learnings",   label: "Что самое важное освоил/а в этом году?" },
@@ -1689,7 +1823,7 @@ function AnnualReflection({ year, onToast }: { year: number; onToast: (m: string
 
   return (
     <div className="px-4 py-4 space-y-3" style={{ background: "#FBF8F5" }}>
-      <p className="text-xs" style={{ color: "#9C8E80" }}>Ответы сохраняются автоматически. Вы можете вернуться к рефлексии в любое время.</p>
+      <p className="text-xs" style={{ color: "#7A6A52" }}>Ответы сохраняются автоматически. Вы можете вернуться к рефлексии в любое время.</p>
       {REFL_FIELDS.map(({ key, label }) => (
         <div key={key}>
           <label className="block text-xs font-medium mb-1" style={{ color: "#6B7280" }}>{label}</label>
