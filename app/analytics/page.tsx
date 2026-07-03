@@ -557,7 +557,7 @@ export default function AnalyticsPage() {
               <SummaryCard icon={AlertTriangle} title="Незавершённые консультации" value={data.summary.incompleteConsultations} note="Без транскрипта, анализов либо материалов" tone="red" />
             </div>
 
-            <div className="grid min-h-0 flex-[1.28] grid-cols-1 gap-3 xl:grid-cols-[1.4fr_1.4fr_1fr]">
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1.4fr_1.4fr_1fr]" style={{ height: 340 }}>
               <Panel title="Консультации по месяцам" className="h-full">
                 <StackedBars data={data.yearTimeline} />
               </Panel>
