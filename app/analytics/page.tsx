@@ -673,11 +673,11 @@ export default function AnalyticsPage() {
               </Panel>
 
               <Panel title="Доход по месяцам (получено)" className="h-full">
-                <div className="grid h-[calc(100%-44px)] min-h-[96px] auto-cols-[58px] grid-flow-col items-end gap-3 overflow-x-auto border-b border-[#ECE5DA] px-3 pb-1">
+                <div className="flex h-[calc(100%-44px)] min-h-[96px] items-end gap-1.5 overflow-hidden border-b border-[#ECE5DA] px-2 pb-1">
                   {data.incomeTimeline.map((item) => (
-                    <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                      <div className="w-full max-w-[42px] rounded-t-md bg-[#8B5CF6]" style={{ height: `${Math.max(4, (item.received / maxIncome) * 110)}px` }} title={`${item.label}: ${nf.format(item.received)} MDL`} />
-                      <span className="text-xs text-[#7B6F60]">{item.label}</span>
+                    <div key={item.label} className="flex flex-1 min-w-0 flex-col items-center gap-1">
+                      <div className="w-full rounded-t-md bg-[#8B5CF6]" style={{ height: `${Math.max(4, (item.received / maxIncome) * 110)}px` }} title={`${item.label}: ${nf.format(item.received)} MDL`} />
+                      <span className="text-[10px] text-[#7B6F60] truncate w-full text-center">{item.label}</span>
                     </div>
                   ))}
                 </div>

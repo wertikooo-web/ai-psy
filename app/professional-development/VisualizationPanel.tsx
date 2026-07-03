@@ -37,10 +37,49 @@ const EVENT_ICON: Record<string, React.ElementType> = {
   course:BookOpen, supervision:Users,
 };
 
+// ── Demo data (displayed when DB is empty) ─────────────────────────────────────
+
+const _NOW = Date.now();
+const _DAY = 86400000;
+const DEMO_DATA: VizData = {
+  actual_hours: { learning: 42, supervision: 18 },
+  monthly_activity: [
+    { month: 1, learning: 6,  supervision: 2 },
+    { month: 2, learning: 4,  supervision: 3 },
+    { month: 3, learning: 8,  supervision: 2 },
+    { month: 4, learning: 5,  supervision: 4 },
+    { month: 5, learning: 12, supervision: 3 },
+    { month: 6, learning: 7,  supervision: 4 },
+    { month: 7, learning: 0,  supervision: 0 },
+    { month: 8, learning: 0,  supervision: 0 },
+    { month: 9, learning: 0,  supervision: 0 },
+    { month: 10, learning: 0, supervision: 0 },
+    { month: 11, learning: 0, supervision: 0 },
+    { month: 12, learning: 0, supervision: 0 },
+  ],
+  topics: [
+    { category: "webinar",      hours: 18, percent: 43 },
+    { category: "long_program", hours: 12, percent: 29 },
+    { category: "seminar",      hours: 8,  percent: 19 },
+    { category: "intensive",    hours: 4,  percent: 9  },
+  ],
+  year_targets: { learning: 100, supervision: 30 },
+  upcoming_events: [
+    { type: "supervision", title: "Супервизия с И. Петровой",     date: new Date(_NOW + 3  * _DAY).toISOString() },
+    { type: "document",    title: "Дедлайн загрузки сертификата", date: new Date(_NOW + 9  * _DAY).toISOString() },
+    { type: "goal",        title: "Цель: завершить модуль 2",     date: new Date(_NOW + 24 * _DAY).toISOString() },
+    { type: "calendar",    title: "Вебинар «Травма и ПТСР»",      date: new Date(_NOW + 33 * _DAY).toISOString() },
+  ],
+};
+
+function dataIsEmpty(d: VizData): boolean {
+  return d.actual_hours.learning === 0 && d.actual_hours.supervision === 0 && d.topics.length === 0;
+}
+
 // ── Focus message ──────────────────────────────────────────────────────────────
 
-function focusMsg(data: VizData): string {
-  const { actual_hours: { learning, supervision }, year_targets, monthly_activity, upcoming_events } = data;
+function focusMsg(d: VizData): string {
+  const { actual_hours: { learning, supervision }, year_targets, monthly_activity, upcoming_events } = d;
   if (learning === 0 && supervision === 0)
     return "Добавьте обучение, супервизию или цель, чтобы получить обзор профессионального развития.";
   if (year_targets) {
@@ -80,13 +119,11 @@ function Ring({ value, max, color, label, sub }: {
         <svg viewBox="0 0 96 96" className="w-full h-full">
           <circle cx={c} cy={c} r={r} fill="none" strokeWidth="8" stroke="#F0EDE8"
             style={{ transform: "rotate(-90deg)", transformOrigin: `${c}px ${c}px` }} />
-          {(pct > 0 || max === 0) && (
-            <circle cx={c} cy={c} r={r} fill="none" strokeWidth="8" stroke={color}
-              strokeLinecap="round"
-              strokeDasharray={`${Math.max(pct * circ, max === 0 ? circ : 0)} ${circ}`}
-              style={{ transform: "rotate(-90deg)", transformOrigin: `${c}px ${c}px`,
-                transition: "stroke-dasharray 0.6s ease" }} />
-          )}
+          <circle cx={c} cy={c} r={r} fill="none" strokeWidth="8" stroke={color}
+            strokeLinecap="round"
+            strokeDasharray={`${pct * circ} ${circ}`}
+            style={{ transform: "rotate(-90deg)", transformOrigin: `${c}px ${c}px`,
+              transition: "stroke-dasharray 0.6s ease" }} />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <span style={{ fontSize: 18, fontWeight: 700, color: "#2D2A26", lineHeight: 1 }}>
@@ -141,15 +178,9 @@ function BarChart({ data }: { data: VizData["monthly_activity"] }) {
 
   return (
     <svg viewBox={`0 0 ${TW + 2} ${CH + 22}`} className="w-full">
-      {/* Y-axis label "Часы" rotated */}
-      <text
-        transform={`rotate(-90, 8, ${CH / 2})`}
-        x={8} y={CH / 2}
-        fontSize="7" fill="#B0A89C" textAnchor="middle">
-        Часы
-      </text>
+      <text transform={`rotate(-90, 8, ${CH / 2})`} x={8} y={CH / 2}
+        fontSize="7" fill="#B0A89C" textAnchor="middle">Часы</text>
 
-      {/* Y-grid + labels */}
       {yLines.map(v => {
         const y = CH - (v / yMax) * CH;
         return (
@@ -160,10 +191,8 @@ function BarChart({ data }: { data: VizData["monthly_activity"] }) {
         );
       })}
 
-      {/* X axis */}
       <line x1={LM} x2={TW} y1={CH} y2={CH} stroke="#DDD8D0" strokeWidth="0.8" />
 
-      {/* Stacked bars + X labels */}
       {data.map((d, i) => {
         const x  = LM + i * slot + (slot - barW) / 2;
         const lh = (d.learning    / yMax) * CH;
@@ -172,21 +201,17 @@ function BarChart({ data }: { data: VizData["monthly_activity"] }) {
         return (
           <g key={i}>
             <title>{`${MONTHS_SHORT[i]}: ${d.learning}ч обуч, ${d.supervision}ч супервиз`}</title>
-            {/* Blue bar (learning) — bottom */}
             {lh > 0 && (
               <rect x={x} y={CH - total} width={barW} height={lh}
-                fill="#5C9BD5" rx={total <= lh ? "2" : "0"} />
+                fill="#5C9BD5" rx={sh === 0 ? "2" : "0"} />
             )}
-            {/* Purple bar (supervision) — top */}
             {sh > 0 && (
               <rect x={x} y={CH - total} width={barW} height={sh}
                 fill="#7C6DC5" rx="2" />
             )}
-            {/* Fix bottom radius when both bars stacked */}
             {lh > 0 && sh > 0 && (
               <rect x={x} y={CH - lh} width={barW} height={Math.min(lh, 3)} fill="#5C9BD5" />
             )}
-            {/* X label every 2 months */}
             {i % 2 === 0 && (
               <text x={x + barW / 2} y={CH + 11} fontSize="7" fill="#B0A89C" textAnchor="middle">
                 {MONTHS_SHORT[i]}
@@ -296,161 +321,173 @@ export function VisualizationPanel({ year, onClose, onNavigate }: {
           </div>
         )}
 
-        {!loading && !error && data && (
-          <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-
-            {/* ── Row 1 ──────────────────────────────────────────────────── */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-
-              {/* 1. Прогресс года */}
-              <VCard title="Прогресс года"
-                info="Выполнение годовых норм по обучению и супервизии"
-                onMore={() => onNavigate("associations")}>
-                <div style={{ display: "flex", justifyContent: "space-around", paddingBottom: 4 }}>
-                  <Ring value={data.actual_hours.learning}
-                    max={data.year_targets?.learning ?? 0} color="#5C9BD5"
-                    label="Обучение"
-                    sub={data.year_targets
-                      ? `${data.actual_hours.learning} / ${data.year_targets.learning} ч`
-                      : `${data.actual_hours.learning} ч`} />
-                  <Ring value={data.actual_hours.supervision}
-                    max={data.year_targets?.supervision ?? 0} color="#7C6DC5"
-                    label="Супервизии"
-                    sub={data.year_targets
-                      ? `${data.actual_hours.supervision} / ${data.year_targets.supervision} ч`
-                      : `${data.actual_hours.supervision} ч`} />
-                </div>
-                {!data.year_targets && (
-                  <p style={{ fontSize: 10, color: "#9C8E80", textAlign: "center", lineHeight: 1.4 }}>
-                    Укажите нормы часов в разделе Ассоциации
-                  </p>
-                )}
-              </VCard>
-
-              {/* 2. Темы развития — легенда СЛЕВА, donut СПРАВА */}
-              <VCard title="Темы развития" onMore={() => onNavigate("courses")}>
-                {data.topics.length > 0 ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    {/* Legend LEFT */}
-                    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
-                      {data.topics.map((t, i) => (
-                        <div key={t.category} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: PALETTE[i % PALETTE.length] }} />
-                          <span style={{ fontSize: 10, color: "#6B7280", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {CAT_LABELS[t.category] ?? t.category}
-                          </span>
-                          <span style={{ fontSize: 10, fontWeight: 600, color: "#3D3228", flexShrink: 0 }}>
-                            {t.percent}%
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    {/* Donut RIGHT */}
-                    <Donut slices={data.topics.map((t, i) => ({
-                      pct: t.percent, color: PALETTE[i % PALETTE.length],
-                    }))} />
-                  </div>
-                ) : (
-                  <Empty text="Темы появятся после добавления обучения" />
-                )}
-              </VCard>
-            </div>
-
-            {/* ── Row 2 ──────────────────────────────────────────────────── */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-
-              {/* 3. Активность по месяцам */}
-              <VCard title="Активность по месяцам"
-                info="Количество часов обучения и супервизий по месяцам"
-                onMore={() => onNavigate("supervisions")}>
-                <BarChart data={data.monthly_activity} />
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 2 }}>
-                  {[["#5C9BD5","Обучение"],["#7C6DC5","Супервизии"]].map(([c, l]) => (
-                    <span key={l} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "#9C8E80" }}>
-                      <span style={{ width: 8, height: 8, borderRadius: 2, background: c, display: "inline-block" }} />
-                      {l}
-                    </span>
-                  ))}
-                </div>
-              </VCard>
-
-              {/* 4. Ближайшие события */}
-              <VCard title="Ближайшие события" onMore={() => onNavigate("calendar")}>
-                {data.upcoming_events.length > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {data.upcoming_events.map((ev, i) => {
-                      const Icon  = EVENT_ICON[ev.type]  ?? CalendarDays;
-                      const color = EVENT_COLOR[ev.type] ?? "#5C9BD5";
-                      const d     = new Date(ev.date);
-                      const hasTime = d.getHours() > 0 || d.getMinutes() > 0;
-                      const dateShort = d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
-                      const rawWeekday = d.toLocaleDateString("ru-RU", { weekday: "long" });
-                      const weekday = rawWeekday.charAt(0).toUpperCase() + rawWeekday.slice(1);
-                      const timeStr = hasTime
-                        ? d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : "";
-                      return (
-                        <div key={i}
-                          style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px",
-                            borderRadius: 12, background: "#F7F4F0", cursor: "pointer" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "#EDE8E2")}
-                          onMouseLeave={e => (e.currentTarget.style.background = "#F7F4F0")}>
-                          <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            background: `${color}20` }}>
-                            <Icon size={13} style={{ color }} />
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: "#3D3228",
-                              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                              lineHeight: 1.3 }}>
-                              {dateShort} — {ev.title}
-                            </div>
-                            <div style={{ fontSize: 9, color: "#9C8E80", marginTop: 1, lineHeight: 1.3 }}>
-                              {weekday}, {dateShort}{timeStr ? ` • ${timeStr}` : ""}
-                            </div>
-                          </div>
-                          <ChevronRight size={10} style={{ color: "#CFC0A9", flexShrink: 0 }} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <Empty text="Ближайших событий пока нет" />
-                )}
-              </VCard>
-            </div>
-
-            {/* ── 5. Фокус месяца — full width ─────────────────────────── */}
-            <div style={{ background: "#FFFFFF", border: "1px solid #EAE6E0", borderRadius: 16,
-              padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "#FEF3C7" }}>
-                <Sparkles size={18} style={{ color: "#D97706" }} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#3D3228", marginBottom: 3 }}>
-                  Фокус месяца
-                </div>
-                <div style={{ fontSize: 10, color: "#6B7280", lineHeight: 1.5 }}>
-                  {focusMsg(data)}
-                </div>
-              </div>
-              <button onClick={() => onNavigate("goals")}
-                style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10,
-                  fontWeight: 600, color: "#5C9BD5", background: "#EEF4FB",
-                  border: "1px solid #BEDBF4", borderRadius: 10, padding: "6px 10px",
-                  cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#DCECf8")}
-                onMouseLeave={e => (e.currentTarget.style.background = "#EEF4FB")}>
-                Посмотреть план
-                <ArrowRight size={10} />
-              </button>
-            </div>
-
-          </div>
-        )}
+        {!loading && !error && data && <VizContent data={data} onNavigate={onNavigate} />}
       </div>
     </aside>
+  );
+}
+
+// ── Content (extracted to avoid IIFE complexity) ───────────────────────────────
+
+function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: string) => void }) {
+  const isDemo = dataIsEmpty(data);
+  const d      = isDemo ? DEMO_DATA : data;
+
+  return (
+    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+
+      {isDemo && (
+        <div style={{ fontSize: 10, color: "#92400E", textAlign: "center",
+          background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8, padding: "5px 10px" }}>
+          Демо-данные — заполните реальными в разделах Обучение и Супервизии
+        </div>
+      )}
+
+      {/* ── Row 1 ────────────────────────────────────────────────────────── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+
+        {/* Прогресс года */}
+        <VCard title="Прогресс года"
+          info="Выполнение годовых норм по обучению и супервизии"
+          onMore={() => onNavigate("associations")}>
+          <div style={{ display: "flex", justifyContent: "space-around", paddingBottom: 4 }}>
+            <Ring value={d.actual_hours.learning}
+              max={d.year_targets?.learning ?? 0} color="#5C9BD5"
+              label="Обучение"
+              sub={d.year_targets
+                ? `${d.actual_hours.learning} / ${d.year_targets.learning} ч`
+                : `${d.actual_hours.learning} ч`} />
+            <Ring value={d.actual_hours.supervision}
+              max={d.year_targets?.supervision ?? 0} color="#7C6DC5"
+              label="Супервизии"
+              sub={d.year_targets
+                ? `${d.actual_hours.supervision} / ${d.year_targets.supervision} ч`
+                : `${d.actual_hours.supervision} ч`} />
+          </div>
+          {!d.year_targets && (
+            <p style={{ fontSize: 10, color: "#9C8E80", textAlign: "center", lineHeight: 1.4 }}>
+              Укажите нормы часов в разделе Ассоциации
+            </p>
+          )}
+        </VCard>
+
+        {/* Темы развития — легенда СЛЕВА, donut СПРАВА */}
+        <VCard title="Темы развития" onMore={() => onNavigate("courses")}>
+          {d.topics.length > 0 ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+                {d.topics.map((t, i) => (
+                  <div key={t.category} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: PALETTE[i % PALETTE.length] }} />
+                    <span style={{ fontSize: 10, color: "#6B7280", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {CAT_LABELS[t.category] ?? t.category}
+                    </span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: "#3D3228", flexShrink: 0 }}>
+                      {t.percent}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <Donut slices={d.topics.map((t, i) => ({
+                pct: t.percent, color: PALETTE[i % PALETTE.length],
+              }))} />
+            </div>
+          ) : (
+            <Empty text="Темы появятся после добавления обучения" />
+          )}
+        </VCard>
+      </div>
+
+      {/* ── Row 2 ────────────────────────────────────────────────────────── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+
+        {/* Активность по месяцам */}
+        <VCard title="Активность по месяцам"
+          info="Количество часов обучения и супервизий по месяцам"
+          onMore={() => onNavigate("supervisions")}>
+          <BarChart data={d.monthly_activity} />
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 2 }}>
+            {[["#5C9BD5","Обучение"],["#7C6DC5","Супервизии"]].map(([c, l]) => (
+              <span key={l} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "#9C8E80" }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: c, display: "inline-block" }} />
+                {l}
+              </span>
+            ))}
+          </div>
+        </VCard>
+
+        {/* Ближайшие события */}
+        <VCard title="Ближайшие события" onMore={() => onNavigate("calendar")}>
+          {d.upcoming_events.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {d.upcoming_events.map((ev, i) => {
+                const Icon  = EVENT_ICON[ev.type]  ?? CalendarDays;
+                const color = EVENT_COLOR[ev.type] ?? "#5C9BD5";
+                const dt    = new Date(ev.date);
+                const hasTime = dt.getHours() > 0 || dt.getMinutes() > 0;
+                const dateShort  = dt.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+                const rawWeekday = dt.toLocaleDateString("ru-RU", { weekday: "long" });
+                const weekday    = rawWeekday.charAt(0).toUpperCase() + rawWeekday.slice(1);
+                const timeStr    = hasTime ? dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : "";
+                return (
+                  <div key={i}
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px",
+                      borderRadius: 12, background: "#F7F4F0", cursor: "pointer" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#EDE8E2")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "#F7F4F0")}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: `${color}20` }}>
+                      <Icon size={13} style={{ color }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: "#3D3228",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        lineHeight: 1.3 }}>
+                        {dateShort} — {ev.title}
+                      </div>
+                      <div style={{ fontSize: 9, color: "#9C8E80", marginTop: 1, lineHeight: 1.3 }}>
+                        {weekday}, {dateShort}{timeStr ? ` • ${timeStr}` : ""}
+                      </div>
+                    </div>
+                    <ChevronRight size={10} style={{ color: "#CFC0A9", flexShrink: 0 }} />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Empty text="Ближайших событий пока нет" />
+          )}
+        </VCard>
+      </div>
+
+      {/* ── Фокус месяца — full width ─────────────────────────────────── */}
+      <div style={{ background: "#FFFFFF", border: "1px solid #EAE6E0", borderRadius: 16,
+        padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center", background: "#FEF3C7" }}>
+          <Sparkles size={18} style={{ color: "#D97706" }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "#3D3228", marginBottom: 3 }}>
+            Фокус месяца
+          </div>
+          <div style={{ fontSize: 10, color: "#6B7280", lineHeight: 1.5 }}>
+            {focusMsg(d)}
+          </div>
+        </div>
+        <button onClick={() => onNavigate("goals")}
+          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10,
+            fontWeight: 600, color: "#5C9BD5", background: "#EEF4FB",
+            border: "1px solid #BEDBF4", borderRadius: 10, padding: "6px 10px",
+            cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
+          onMouseEnter={e => (e.currentTarget.style.background = "#DCECf8")}
+          onMouseLeave={e => (e.currentTarget.style.background = "#EEF4FB")}>
+          Посмотреть план
+          <ArrowRight size={10} />
+        </button>
+      </div>
+
+    </div>
   );
 }

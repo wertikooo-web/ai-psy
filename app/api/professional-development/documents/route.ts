@@ -62,9 +62,16 @@ export async function POST(req: NextRequest) {
   const safeFile    = safeName(file.name);
   const storagePath = `${userId}/documents/${docId}/${safeFile}`;
 
+  // Ensure bucket exists (idempotent — succeeds even if bucket already exists)
+  await supabaseServer!.storage.createBucket(BUCKET, {
+    public: false,
+    fileSizeLimit: MAX_BYTES,
+    allowedMimeTypes: [...ALLOWED_MIME],
+  }).catch(() => {/* bucket already exists — ignore */});
+
   const buffer    = Buffer.from(await file.arrayBuffer());
   const uploadUrl = await uploadToStorage(BUCKET, storagePath, buffer, file.type);
-  if (!uploadUrl) return NextResponse.json({ error: "Ошибка загрузки файла" }, { status: 500 });
+  if (!uploadUrl) return NextResponse.json({ error: "Ошибка загрузки файла. Проверьте настройки хранилища Supabase." }, { status: 500 });
 
   const { data, error } = await supabaseServer!
     .from("professional_documents")
