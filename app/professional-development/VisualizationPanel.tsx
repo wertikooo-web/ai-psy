@@ -274,7 +274,7 @@ export function VisualizationPanel({ year, onClose, onNavigate }: {
 
   return (
     <aside className="flex flex-col min-h-0 w-full xl:flex-shrink-0"
-      style={{ borderLeft: "1px solid #D8E4F5", background: "#F0F4FD", width: 540, marginRight: "5cm" }}>
+      style={{ borderLeft: "1px solid #D8E4F5", background: "#F0F4FD", width: 620, marginRight: "5cm" }}>
 
       {/* Header — neutral, not blue */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5"
