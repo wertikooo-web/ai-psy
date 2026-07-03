@@ -1071,7 +1071,7 @@ function DocumentsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => voi
           {Object.entries(DOC_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <button onClick={() => setUploadOpen(true)}
-          className="ml-auto flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold"
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold"
           style={{ background: "#3a5ff8", color: "#fff" }}>
           <Plus size={14} /> Загрузить
         </button>
