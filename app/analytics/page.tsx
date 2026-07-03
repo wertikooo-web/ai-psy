@@ -566,12 +566,11 @@ export default function AnalyticsPage() {
 
               <Panel title="Оплаты по консультациям" className="h-full">
                 <div className="h-[calc(100%-34px)] min-h-0 overflow-auto pr-1">
-                  <table className="w-full min-w-[760px] text-left text-sm">
+                  <table className="w-full min-w-[560px] text-left text-sm">
                     <thead className="text-xs text-[#8A7A66]">
                       <tr className="border-b border-[#ECE5DA]">
                         <th className="py-2.5 pr-4">Дата консультации</th>
                         <th className="py-2.5 pr-4">Клиент</th>
-                        <th className="py-2.5 pr-4">Консультация</th>
                         <th className="py-2.5 pr-4">Стоимость</th>
                         <th className="py-2.5 pr-4">Оплачено</th>
                         <th className="py-2.5 pr-4">Статус</th>
@@ -583,7 +582,6 @@ export default function AnalyticsPage() {
                         <tr key={row.id} className="border-b border-[#F0E8DC]">
                           <td className="py-2.5 pr-4">{formatDate(row.consultationDate)}</td>
                           <td className="py-2.5 pr-4">{row.client}</td>
-                          <td className="py-2.5 pr-4">{row.consultation}</td>
                           <td className="py-2.5 pr-4">{money.format(row.charged)}</td>
                           <td className="py-2.5 pr-4">{money.format(row.paid)}</td>
                           <td className="py-2.5 pr-4">{row.status}</td>
@@ -591,7 +589,7 @@ export default function AnalyticsPage() {
                         </tr>
                       ))}
                       {!data.payments.length && (
-                        <tr><td colSpan={7} className="py-6 text-center text-[#7B6F60]">Оплаты за выбранный период отсутствуют</td></tr>
+                        <tr><td colSpan={6} className="py-6 text-center text-[#7B6F60]">Оплаты за выбранный период отсутствуют</td></tr>
                       )}
                     </tbody>
                   </table>
