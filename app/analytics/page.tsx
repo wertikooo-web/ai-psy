@@ -515,9 +515,7 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button onClick={load} className="inline-flex items-center gap-2 rounded-lg border border-[#E6DDD0] bg-white px-3 py-2 text-sm font-semibold hover:bg-[#FBF8F5]">
-              <RefreshCw size={15} /> Обновить
-            </button>
+
             <button onClick={copySummary} className="inline-flex items-center gap-2 rounded-lg border border-[#E6DDD0] bg-white px-3 py-2 text-sm font-semibold hover:bg-[#FBF8F5]">
               <Clipboard size={15} /> Копировать
             </button>
