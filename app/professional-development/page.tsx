@@ -372,7 +372,7 @@ function ProfDevInner() {
       )}
 
       {/* Content — 2-column on xl+ */}
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col xl:flex-row">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col xl:flex-row xl:max-w-[1120px] xl:mx-auto xl:w-full">
 
         {/* Left: main tab content */}
         <div className="flex-1 min-h-0 overflow-y-auto pb-16 lg:pb-4">
@@ -455,7 +455,7 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
     data.recent_courses.length === 0 && data.recent_sessions.length === 0 && data.active_goals.length === 0;
 
   return (
-    <div className="px-4 lg:px-6 py-4 space-y-5">
+    <div className="px-4 lg:px-6 py-4 space-y-5 max-w-2xl">
 
       {/* Reminders */}
       {reminders.length > 0 && (
