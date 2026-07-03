@@ -310,10 +310,7 @@ function ProfDevInner() {
                     borderBottom: secondaryActive ? "2px solid #3a5ff8" : "2px solid transparent",
                     marginBottom: "-1px",
                   }}>
-                  {secondaryActive
-                    ? <><secondaryActive.icon size={14} strokeWidth={2.3} /><span>{secondaryActive.label}</span></>
-                    : <span>Ещё</span>
-                  }
+                  <span>Ещё</span>
                   <ChevronDown size={12} style={{ transform: moreOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
                 </button>
                 {moreOpen && (
