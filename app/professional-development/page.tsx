@@ -451,8 +451,11 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
   const catEntries = Object.entries(data.hours_by_category).filter(([,h]) => h > 0).sort(([,a],[,b]) => b - a);
   const maxCatH = catEntries[0]?.[1] ?? 1;
 
+  const allEmpty = kpis.every(k => k.num === 0) &&
+    data.recent_courses.length === 0 && data.recent_sessions.length === 0 && data.active_goals.length === 0;
+
   return (
-    <div className="px-4 lg:px-6 py-4 space-y-5 max-w-2xl">
+    <div className="px-4 lg:px-6 py-4 space-y-5">
 
       {/* Reminders */}
       {reminders.length > 0 && (
@@ -467,28 +470,30 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
         </div>
       )}
 
-      {/* KPI */}
+      {/* KPI — always show number; colour-tinted bg when active */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
         {kpis.map(k => {
-          const isEmpty = k.num === 0;
+          const active = k.num > 0;
           return (
-            <div key={k.label} className="rounded-2xl p-3" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-1.5" style={{ background: `${k.color}18` }}>
+            <button key={k.label} onClick={() => onNavigate(k.tab)}
+              className="rounded-2xl p-3 text-left flex flex-col gap-0.5 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2"
+              style={{
+                background: active ? `${k.color}0D` : "#F3EBDD",
+                border: `1px solid ${active ? k.color + "28" : "#CFC0A9"}`,
+              }}>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-1"
+                style={{ background: `${k.color}18` }}>
                 <k.icon size={13} style={{ color: k.color }} />
               </div>
-              {isEmpty ? (
-                <button onClick={() => onNavigate(k.tab)}
-                  className="text-xs font-semibold mt-0.5 mb-0.5 leading-tight block"
-                  style={{ color: k.color, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
-                  {k.cta}
-                </button>
-              ) : (
-                <div className="text-xl font-bold leading-none" style={{ color: "#3D3228" }}>
-                  {k.num}{k.unit && <span className="text-sm font-medium ml-0.5" style={{ color: "#7B6F60" }}>{k.unit}</span>}
-                </div>
+              <div className="text-xl font-bold leading-none" style={{ color: "#3D3228" }}>
+                {k.num}
+                {k.unit && <span className="text-sm font-medium ml-0.5" style={{ color: "#7A6A52" }}>{k.unit}</span>}
+              </div>
+              <div className="text-xs leading-tight" style={{ color: "#7A6A52" }}>{k.label}</div>
+              {!active && (
+                <span className="text-xs font-semibold mt-1" style={{ color: k.color }}>{k.cta} →</span>
               )}
-              <div className="text-xs mt-0.5 leading-tight" style={{ color: "#7A6A52" }}>{k.label}</div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -496,16 +501,17 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
       {/* Hours breakdown */}
       {catEntries.length > 0 && (
         <div className="rounded-2xl p-4" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-          <div className="text-sm font-semibold mb-3" style={{ color: "#3D3228" }}>Разбивка часов по категориям</div>
-          <div className="space-y-2">
+          <div className="text-sm font-semibold mb-3" style={{ color: "#3D3228" }}>Часы по категориям</div>
+          <div className="space-y-2.5">
             {catEntries.map(([cat, h]) => (
               <div key={cat}>
-                <div className="flex justify-between mb-0.5">
-                  <span className="text-xs" style={{ color: "#6B7280" }}>{CAT_LABELS_SHORT[cat] ?? cat}</span>
+                <div className="flex justify-between mb-1">
+                  <span className="text-xs" style={{ color: "#5C5047" }}>{CAT_LABELS_SHORT[cat] ?? cat}</span>
                   <span className="text-xs font-semibold" style={{ color: "#3D3228" }}>{h} ч</span>
                 </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "#DDD4C6" }}>
-                  <div className="h-full rounded-full" style={{ width: `${(h / maxCatH) * 100}%`, background: "#3a5ff8" }} />
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: "#DDD4C6" }}>
+                  <div className="h-full rounded-full transition-all"
+                    style={{ width: `${(h / maxCatH) * 100}%`, background: "#3a5ff8" }} />
                 </div>
               </div>
             ))}
@@ -519,7 +525,7 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
           <CalendarDays size={18} style={{ color: "#3a5ff8" }} />
           <div>
             <div className="text-sm font-semibold" style={{ color: "#3D3228" }}>{data.next_event.title}</div>
-            <div className="text-xs" style={{ color: "#6B7280" }}>
+            <div className="text-xs mt-0.5" style={{ color: "#6B7280" }}>
               {new Date(data.next_event.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
             </div>
           </div>
@@ -541,9 +547,37 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
           {data.active_goals.map(g => <GoalRow key={g.id} goal={g} />)}
         </Section>
       )}
-      {data.recent_courses.length === 0 && data.recent_sessions.length === 0 && data.active_goals.length === 0 && (
-        <EmptyState icon={GraduationCap} title="Начните заполнять профессиональный профиль"
-          desc="Добавьте первый курс, супервизию или цель развития" />
+
+      {/* Getting-started panel — shown only when profile is truly empty */}
+      {allEmpty && (
+        <div className="rounded-2xl p-5" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "#E8EEF9", border: "1px solid #B8CCF0" }}>
+              <GraduationCap size={20} style={{ color: "#3a5ff8" }} />
+            </div>
+            <div>
+              <div className="text-sm font-semibold" style={{ color: "#3D3228" }}>С чего начать</div>
+              <div className="text-xs mt-0.5" style={{ color: "#7A6A52" }}>Добавьте первые записи — они появятся здесь</div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <button onClick={() => onNavigate("courses")}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: "#3a5ff8", color: "#fff" }}>
+              + Добавить обучение
+            </button>
+            <div className="grid grid-cols-3 gap-2">
+              {([["Супервизию", "supervisions"], ["Документ", "documents"], ["Цель", "goals"]] as [string, Tab][]).map(([label, tab]) => (
+                <button key={tab} onClick={() => onNavigate(tab)}
+                  className="py-2 rounded-xl text-xs font-medium"
+                  style={{ background: "#EDE4D8", color: "#3D3228", border: "1px solid #CFC0A9" }}>
+                  + {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

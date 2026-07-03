@@ -273,21 +273,21 @@ export function VisualizationPanel({ year, onClose, onNavigate }: {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <aside className="flex flex-col min-h-0 w-full xl:w-[44%] xl:max-w-[640px] xl:flex-shrink-0"
-      style={{ borderLeft: "1px solid #B8CCF0", background: "#F0F4FD" }}>
+    <aside className="flex flex-col min-h-0 w-full xl:w-[360px] xl:flex-shrink-0"
+      style={{ borderLeft: "1px solid #D8E4F5", background: "#F0F4FD" }}>
 
-      {/* Header — brand blue */}
-      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3"
-        style={{ background: "#3a5ff8", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+      {/* Header — neutral, not blue */}
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5"
+        style={{ background: "#EAF0FB", borderBottom: "1px solid #D0DEFA" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#7A6A52", letterSpacing: "0.04em", textTransform: "uppercase" }}>
           Статистика
         </span>
         <button onClick={onClose} title="Скрыть статистику" aria-label="Скрыть статистику"
-          className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors outline-none"
-          style={{ color: "rgba(255,255,255,0.75)" }}
-          onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
+          className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors outline-none"
+          style={{ color: "#7A6A52" }}
+          onMouseEnter={e => (e.currentTarget.style.background = "#D0DEFA")}
           onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-          <X size={14} />
+          <X size={13} />
         </button>
       </div>
 
