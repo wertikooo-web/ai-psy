@@ -222,8 +222,8 @@ function ProfDevInner() {
         </div>
 
         {/* Tabs */}
-        <div className="overflow-x-auto -mx-4 lg:-mx-6 px-4 lg:px-6" style={{ scrollbarWidth: "none" }}>
-          <div className="flex gap-1 min-w-max border-b" style={{ borderColor: "#E5E5E5" }}>
+        <div className="border-b" style={{ borderColor: "#E5E5E5" }}>
+          <div className="flex flex-wrap gap-1">
             {TABS.map(({ key, label, icon: Icon }) => {
               const active = key === activeTab;
               return (
@@ -278,8 +278,6 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
   const [error, setError]       = useState("");
   const [pdfYear, setPdfYear]   = useState(CURRENT_YEAR);
   const [pdfLoading, setPdfLoading] = useState(false);
-  const [reflOpen, setReflOpen] = useState(false);
-
   useEffect(() => {
     apiFetch("/overview").then(setData).catch(e => setError(e.message)).finally(() => setLoading(false));
   }, []);
@@ -300,8 +298,6 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
   if (data.last_supervision_date) {
     const days = Math.floor((Date.now() - new Date(data.last_supervision_date).getTime()) / 86400000);
     if (days >= 21) reminders.push({ text: `Последняя супервизия — ${days} дн. назад`, color: days >= 35 ? "#EF4444" : "#D97706", icon: AlertCircle });
-  } else {
-    reminders.push({ text: "Нет записей о супервизиях", color: "#D97706", icon: AlertCircle });
   }
   for (const a of data.expiring_associations) {
     const days = Math.ceil((new Date(a.membership_expires).getTime() - Date.now()) / 86400000);
@@ -439,16 +435,6 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
           desc="Добавьте первый курс, супервизию или цель развития" />
       )}
 
-      {/* Annual reflection */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #CFC0A9" }}>
-        <button onClick={() => setReflOpen(p => !p)}
-          className="w-full flex items-center justify-between px-4 py-3"
-          style={{ background: "#F3EBDD", color: "#3D3228" }}>
-          <span className="text-sm font-semibold">Рефлексия {CURRENT_YEAR}</span>
-          {reflOpen ? <ChevronUp size={16} style={{ color: "#9C8E80" }} /> : <ChevronDown size={16} style={{ color: "#9C8E80" }} />}
-        </button>
-        {reflOpen && <AnnualReflection year={CURRENT_YEAR} onToast={onToast} />}
-      </div>
     </div>
   );
 }
