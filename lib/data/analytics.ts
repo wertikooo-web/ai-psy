@@ -185,6 +185,31 @@ function eventMatchesClient(event: CalendarEvent, clientIds: Set<string>) {
   return event.clientId ? clientIds.has(event.clientId) : false;
 }
 
+function monthlyTimeline(consultations: StoredConsultation[], events: CalendarEvent[], year: number): AnalyticsTimelineItem[] {
+  const MONTH_LABELS = ["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
+  const buckets: AnalyticsTimelineItem[] = MONTH_LABELS.map(label => ({ label, completed: 0, planned: 0, cancelled: 0, noShow: 0 }));
+
+  for (const consultation of consultations) {
+    const d = new Date(consultation.createdAt);
+    if (d.getFullYear() !== year) continue;
+    const bucket = buckets[d.getMonth()];
+    if (consultation.status === "error") bucket.cancelled += 1;
+    else bucket.completed += 1;
+  }
+
+  for (const event of events) {
+    const d = new Date(event.startsAt);
+    if (d.getFullYear() !== year) continue;
+    const bucket = buckets[d.getMonth()];
+    if (event.status === "planned") bucket.planned += 1;
+    if (event.status === "cancelled") bucket.cancelled += 1;
+    if (event.status === "no_show") bucket.noShow += 1;
+    if (event.status === "completed") bucket.completed += 1;
+  }
+
+  return buckets;
+}
+
 function bucketTimeline(consultations: StoredConsultation[], events: CalendarEvent[], from: Date, to: Date): AnalyticsTimelineItem[] {
   const spanDays = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / MS_DAY));
   const bucketCount = Math.min(8, Math.max(1, Math.ceil(spanDays / 7)));
@@ -420,11 +445,10 @@ export async function getAnalytics(filters: AnalyticsFilters): Promise<Analytics
       nearestUpcoming: filteredFutureEvents[0]?.startsAt,
     },
     consultationsTimeline: bucketTimeline(filteredConsultations, filteredPeriodEvents, from, to),
-    yearTimeline: bucketTimeline(
+    yearTimeline: monthlyTimeline(
       consultations.filter(c => consultationMatchesClient(c, clientIds)),
       await safeCalendarEvents(new Date(now.getFullYear(), 0, 1), new Date(now.getFullYear(), 11, 31)),
-      new Date(now.getFullYear(), 0, 1),
-      new Date(now.getFullYear(), 11, 31),
+      now.getFullYear(),
     ),
     clients: rows,
     workloadByWeekday: workload(filteredConsultations, from, to),
