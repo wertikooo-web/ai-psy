@@ -274,7 +274,7 @@ export function VisualizationPanel({ year, onClose, onNavigate }: {
 
   return (
     <aside className="flex flex-col min-h-0 w-full xl:flex-shrink-0"
-      style={{ borderLeft: "1px solid #D8E4F5", background: "#F0F4FD", width: 460, marginRight: "3cm" }}>
+      style={{ borderLeft: "1px solid #D8E4F5", background: "#F0F4FD", width: 460, marginRight: "5cm" }}>
 
       {/* Header — neutral, not blue */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5"
@@ -292,7 +292,7 @@ export function VisualizationPanel({ year, onClose, onNavigate }: {
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto pb-16 xl:pb-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 xl:pb-4">
         {loading && <Skeleton />}
 
         {!loading && error && (
