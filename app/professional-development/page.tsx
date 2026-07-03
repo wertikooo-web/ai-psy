@@ -359,9 +359,9 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
       </div>
 
       {/* KPI */}
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {kpis.map(k => (
-          <div key={k.label} className="rounded-2xl p-3 flex-1 min-w-[110px]" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
+          <div key={k.label} className="rounded-2xl p-3" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
             <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-1.5" style={{ background: `${k.color}18` }}>
               <k.icon size={13} style={{ color: k.color }} />
             </div>
