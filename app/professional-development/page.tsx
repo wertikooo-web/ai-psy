@@ -206,7 +206,7 @@ function ProfDevInner() {
   }
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{ background: "#FBF8F5" }}>
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden lg:pl-10" style={{ background: "#FBF8F5" }}>
 
       {/* Header */}
       <header className="flex-shrink-0 px-4 lg:px-6 pt-4 pb-0" style={{ background: "#FBF8F5" }}>
