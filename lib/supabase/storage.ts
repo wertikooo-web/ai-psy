@@ -68,3 +68,30 @@ export async function deleteFromStorage(storageUrl: string): Promise<void> {
 export function isStorageUrl(url: string): boolean {
   return url.startsWith("storage://");
 }
+
+/** Create a signed URL for temporary access to a private file. */
+export async function createSignedUrl(
+  bucket: string,
+  storagePath: string,
+  expiresInSeconds = 3600,
+): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  const { data, error } = await supabaseServer!.storage
+    .from(bucket)
+    .createSignedUrl(storagePath, expiresInSeconds);
+
+  if (error || !data) {
+    console.error(`[storage] signed URL error (${bucket}/${storagePath}):`, error?.message);
+    return null;
+  }
+
+  return data.signedUrl;
+}
+
+/** Remove a file by bucket + path directly (not storage:// URL). */
+export async function deleteFromBucket(bucket: string, storagePath: string): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const { error } = await supabaseServer!.storage.from(bucket).remove([storagePath]);
+  if (error) console.error(`[storage] delete error (${bucket}/${storagePath}):`, error.message);
+}
