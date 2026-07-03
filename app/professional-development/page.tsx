@@ -6,16 +6,16 @@ import {
   GraduationCap, BookOpen, Users, CalendarDays, FileText, Target,
   Plus, ChevronRight, Clock, Award, TrendingUp, Loader2,
   AlertCircle, X, Check, Pencil, Download, BarChart2,
-  HeartHandshake, Building2, Wallet, BookMarked, ChevronDown, ChevronUp, Sparkles,
+  HeartHandshake, Building2, ChevronDown, ChevronUp, Sparkles,
 } from "lucide-react";
-import { AssociationsTab, FinancesTab, LibraryTab } from "./tabs-extended";
+import { AssociationsTab } from "./tabs-extended";
 import { VisualizationPanel } from "./VisualizationPanel";
 
 const LS_PANEL = "professionalDevelopment.visualPanelCollapsed";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "courses" | "supervisions" | "calendar" | "documents" | "goals" | "associations" | "finances" | "library" | "reflection";
+type Tab = "overview" | "courses" | "supervisions" | "documents" | "goals" | "associations" | "reflection";
 
 interface OverviewData {
   learning_hours_this_year:    number;
@@ -66,10 +66,7 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "courses",       label: "Обучение",        icon: BookOpen     },
   { key: "supervisions",  label: "Супервизии",      icon: Users        },
   { key: "documents",     label: "Документы",       icon: FileText     },
-  { key: "calendar",      label: "Календарь",       icon: CalendarDays },
   { key: "goals",         label: "План развития",   icon: Target       },
-  { key: "finances",      label: "Финансы",         icon: Wallet       },
-  { key: "library",       label: "Библиотека",      icon: BookMarked   },
   { key: "reflection",    label: "Рефлексия",       icon: Sparkles     },
   { key: "associations",  label: "Ассоциации",      icon: Building2    },
 ];
@@ -381,12 +378,10 @@ function ProfDevInner() {
           {activeTab === "overview"      && <OverviewTab      onNavigate={setTab} year={selectedYear} />}
           {activeTab === "courses"       && <CoursesTab       onToast={show} />}
           {activeTab === "supervisions"  && <SupervisionsTab  onToast={show} />}
-          {activeTab === "calendar"      && <CalendarTab />}
           {activeTab === "documents"     && <DocumentsTab     onToast={show} />}
           {activeTab === "goals"         && <GoalsTab         onToast={show} year={selectedYear} />}
           {activeTab === "associations"  && <AssociationsTab  onToast={show} />}
-          {activeTab === "finances"      && <FinancesTab      onToast={show} />}
-          {activeTab === "library"       && <LibraryTab       onToast={show} />}
+
           {activeTab === "reflection"    && <ReflectionTab    onToast={show} year={selectedYear} />}
         </div>
 
