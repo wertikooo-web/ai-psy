@@ -1210,13 +1210,6 @@ function GoalsTab({ onToast, year }: { onToast: (m: string, t?: "ok"|"err") => v
 
   const filtered = goals.filter(g => !filterStatus || g.status === filterStatus);
 
-  async function updateProgress(id: string, progress: number) {
-    try {
-      await apiFetch(`/goals/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ progress }) });
-      setGoals(p => p.map(g => g.id === id ? { ...g, progress } : g));
-    } catch (e: unknown) { onToast(e instanceof Error ? e.message : "Ошибка", "err"); }
-  }
-
   async function deleteGoal(id: string) {
     if (!await confirmDelete("Удалить цель?")) return;
     try {
@@ -1283,16 +1276,6 @@ function GoalsTab({ onToast, year }: { onToast: (m: string, t?: "ok"|"err") => v
                               Срок: {new Date(goal.target_date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
                             </div>
                           )}
-                          <div className="mt-3">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs" style={{ color: "#7A6A52" }}>Прогресс</span>
-                              <span className="text-xs font-semibold" style={{ color: "#3D3228" }}>{goal.progress}%</span>
-                            </div>
-                            <input type="range" min={0} max={100} value={goal.progress}
-                              onChange={e => updateProgress(goal.id, Number(e.target.value))}
-                              className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                              style={{ accentColor: "#3a5ff8" }} />
-                          </div>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <IconBtn icon={Pencil} onClick={() => { setEditing(goal); setFormOpen(true); }} title="Редактировать" />
@@ -1589,7 +1572,6 @@ function GoalForm({ initial, onClose, onSaved, onToast }: {
     motivation:  initial?.motivation  ?? "",
     status:      initial?.status      ?? "planned",
     target_date: initial?.target_date?.slice(0, 10) ?? "",
-    progress:    initial?.progress    ?? 0,
   });
 
   async function save() {
@@ -1631,13 +1613,6 @@ function GoalForm({ initial, onClose, onSaved, onToast }: {
             <input type="date" value={f.target_date} onChange={e => setF(p => ({ ...p, target_date: e.target.value }))} className={INPUT} />
           </Field>
         </div>
-        {initial && (
-          <Field label={`Прогресс: ${f.progress}%`}>
-            <input type="range" min={0} max={100} value={f.progress}
-              onChange={e => setF(p => ({ ...p, progress: Number(e.target.value) }))}
-              className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: "#3a5ff8" }} />
-          </Field>
-        )}
         <button onClick={save} disabled={saving} className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ background: "#3a5ff8", color: "#fff" }}>
           {saving ? "Сохраняю..." : "Сохранить"}
         </button>
@@ -1758,13 +1733,7 @@ function SessionRow({ session: s }: { session: RawSession }) {
 function GoalRow({ goal: g }: { goal: RawGoal }) {
   return (
     <div className="rounded-xl px-3 py-2.5" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <div className="text-sm font-medium truncate" style={{ color: "#3D3228" }}>{g.title}</div>
-        <span className="text-xs font-semibold flex-shrink-0" style={{ color: "#3a5ff8" }}>{g.progress}%</span>
-      </div>
-      <div className="h-1 rounded-full overflow-hidden" style={{ background: "#DDD4C6" }}>
-        <div className="h-full rounded-full" style={{ width: `${g.progress}%`, background: "#3a5ff8" }} />
-      </div>
+      <div className="text-sm font-medium truncate" style={{ color: "#3D3228" }}>{g.title}</div>
     </div>
   );
 }
