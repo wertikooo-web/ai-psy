@@ -7,6 +7,7 @@ import {
   Home, Users, FileText, Bot,
   Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, BookOpenText,
   PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays, BarChart3, WalletCards, Search,
+  GraduationCap,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
@@ -51,6 +52,10 @@ const toolsNav = [
   { href: "/psy-gpts", label: "PSY-GPTs",          icon: Bot           },
   { href: "/notebook", label: "Блокнот психолога", icon: BookOpenText  },
 ];
+const profDevNav = [
+  { href: "/professional-development", label: "Проф. развитие", icon: GraduationCap },
+];
+
 const systemNav = [
   { href: "/analytics",      label: "Аналитика",   icon: BarChart3  },
   { href: "/settings",       label: "Настройки",   icon: Settings   },
@@ -153,6 +158,15 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
           Инструменты
         </div>
         {toolsNav.map(({ href, label, icon }) => (
+          <NavItem key={href} href={href} label={label} icon={icon} onNavigate={onNavigate} />
+        ))}
+      </div>
+
+      <div className="space-y-0.5 pt-[35px] mt-[27px]" style={{ borderTop: `1px solid ${C.border}` }}>
+        <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+          Развитие
+        </div>
+        {profDevNav.map(({ href, label, icon }) => (
           <NavItem key={href} href={href} label={label} icon={icon} onNavigate={onNavigate} />
         ))}
       </div>

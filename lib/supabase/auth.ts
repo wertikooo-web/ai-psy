@@ -1,27 +1,40 @@
 /**
  * SERVER-ONLY: Auth helpers for API routes.
- * Verifies the user's JWT from the Authorization header.
- * Returns null if no valid session — callers should return 401.
+ *
+ * Priority order for user identification:
+ *  1. Bearer JWT token in Authorization header (future Supabase Auth)
+ *  2. PROF_DEV_USER_ID env var (single-tenant mode — current deployment)
+ *
+ * Set PROF_DEV_USER_ID to any stable UUID in Railway environment variables.
+ * Example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
  */
 
 import { NextRequest } from "next/server";
 import { supabaseServer } from "./server";
 
 export async function getAuthenticatedUserId(req: NextRequest): Promise<string | null> {
-  if (!supabaseServer) return null;
+  // 1. Try Bearer token (Supabase Auth)
+  if (supabaseServer) {
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const { data: { user }, error } = await supabaseServer.auth.getUser(token);
+      if (!error && user) return user.id;
+    }
+  }
 
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return null;
+  // 2. Single-tenant fallback
+  const fallback = process.env.PROF_DEV_USER_ID;
+  if (fallback) return fallback;
 
-  const token = authHeader.slice(7);
-  const { data: { user }, error } = await supabaseServer.auth.getUser(token);
-
-  if (error || !user) return null;
-  return user.id;
+  return null;
 }
 
 export function unauthorized() {
-  return Response.json({ error: "Unauthorized" }, { status: 401 });
+  return Response.json(
+    { error: "Unauthorized. Set PROF_DEV_USER_ID env var for single-tenant mode." },
+    { status: 401 },
+  );
 }
 
 export function serviceUnavailable() {
