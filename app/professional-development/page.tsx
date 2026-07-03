@@ -356,7 +356,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (t: Tab) => void; onToast?: (
   const maxCatH = catEntries[0]?.[1] ?? 1;
 
   return (
-    <div className="px-4 lg:px-6 py-4 space-y-5 max-w-4xl">
+    <div className="px-4 lg:px-6 py-4 space-y-5 max-w-lg">
 
       {/* Reminders */}
       {reminders.length > 0 && (
