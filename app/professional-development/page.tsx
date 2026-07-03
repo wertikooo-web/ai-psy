@@ -5,13 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   GraduationCap, BookOpen, Users, CalendarDays, FileText, Target,
   Plus, ChevronRight, Clock, Award, TrendingUp, Loader2,
-  AlertCircle, X, Check, Pencil, Download, Filter,
-  HeartHandshake,
+  AlertCircle, X, Check, Pencil, Download,
+  HeartHandshake, Building2, Wallet, BookMarked, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { AssociationsTab, FinancesTab, LibraryTab } from "./tabs-extended";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "courses" | "supervisions" | "calendar" | "documents" | "goals";
+type Tab = "overview" | "courses" | "supervisions" | "calendar" | "documents" | "goals" | "associations" | "finances" | "library";
 
 interface OverviewData {
   learning_hours_this_year:    number;
@@ -24,6 +25,9 @@ interface OverviewData {
   recent_sessions:             RawSession[];
   recent_documents:            RawDoc[];
   active_goals:                RawGoal[];
+  last_supervision_date:       string | null;
+  expiring_associations:       { id: string; name: string; acronym?: string; membership_expires: string }[];
+  hours_by_category:           Record<string, number>;
 }
 
 interface RawCourse {
@@ -61,6 +65,9 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "calendar",      label: "Календарь",       icon: CalendarDays },
   { key: "documents",     label: "Документы",       icon: FileText     },
   { key: "goals",         label: "План развития",   icon: Target       },
+  { key: "associations",  label: "Ассоциации",      icon: Building2    },
+  { key: "finances",      label: "Финансы",         icon: Wallet       },
+  { key: "library",       label: "Библиотека",      icon: BookMarked   },
 ];
 
 const STATUS_LABELS: Record<string, string> = {
@@ -235,12 +242,15 @@ function ProfDevInner() {
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-y-auto pb-16 lg:pb-4">
-        {activeTab === "overview"     && <OverviewTab     onNavigate={setTab} onToast={show} />}
-        {activeTab === "courses"      && <CoursesTab      onToast={show} />}
-        {activeTab === "supervisions" && <SupervisionsTab onToast={show} />}
-        {activeTab === "calendar"     && <CalendarTab />}
-        {activeTab === "documents"    && <DocumentsTab    onToast={show} />}
-        {activeTab === "goals"        && <GoalsTab        onToast={show} />}
+        {activeTab === "overview"      && <OverviewTab      onNavigate={setTab} onToast={show} />}
+        {activeTab === "courses"       && <CoursesTab       onToast={show} />}
+        {activeTab === "supervisions"  && <SupervisionsTab  onToast={show} />}
+        {activeTab === "calendar"      && <CalendarTab />}
+        {activeTab === "documents"     && <DocumentsTab     onToast={show} />}
+        {activeTab === "goals"         && <GoalsTab         onToast={show} />}
+        {activeTab === "associations"  && <AssociationsTab  onToast={show} />}
+        {activeTab === "finances"      && <FinancesTab      onToast={show} />}
+        {activeTab === "library"       && <LibraryTab       onToast={show} />}
       </div>
 
       {/* Toasts */}
@@ -263,11 +273,12 @@ function ProfDevInner() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; onToast: (m: string, t?: "ok"|"err") => void }) {
-  const [data, setData]     = useState<OverviewData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState("");
-  const [pdfYear, setPdfYear] = useState(CURRENT_YEAR);
+  const [data, setData]         = useState<OverviewData | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState("");
+  const [pdfYear, setPdfYear]   = useState(CURRENT_YEAR);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [reflOpen, setReflOpen] = useState(false);
 
   useEffect(() => {
     apiFetch("/overview").then(setData).catch(e => setError(e.message)).finally(() => setLoading(false));
@@ -284,6 +295,19 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
   if (error)   return <TabError msg={error} />;
   if (!data)   return null;
 
+  // Reminders
+  const reminders: { text: string; color: string; icon: React.ElementType }[] = [];
+  if (data.last_supervision_date) {
+    const days = Math.floor((Date.now() - new Date(data.last_supervision_date).getTime()) / 86400000);
+    if (days >= 21) reminders.push({ text: `Последняя супервизия — ${days} дн. назад`, color: days >= 35 ? "#EF4444" : "#D97706", icon: AlertCircle });
+  } else {
+    reminders.push({ text: "Нет записей о супервизиях", color: "#D97706", icon: AlertCircle });
+  }
+  for (const a of data.expiring_associations) {
+    const days = Math.ceil((new Date(a.membership_expires).getTime() - Date.now()) / 86400000);
+    reminders.push({ text: `Членство ${a.acronym ?? a.name} истекает через ${days} дн.`, color: days < 30 ? "#EF4444" : "#D97706", icon: Building2 });
+  }
+
   const kpis = [
     { label: "Часы обучения (год)",    value: `${data.learning_hours_this_year} ч`,    icon: BookOpen,   color: "#3a5ff8" },
     { label: "Часы супервизий (год)",  value: `${data.supervision_hours_this_year} ч`, icon: Users,      color: "#7C3AED" },
@@ -291,8 +315,29 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
     { label: "Сертификатов всего",     value: String(data.certificates_total),         icon: Award,      color: "#16A34A" },
   ];
 
+  const CAT_LABELS_SHORT: Record<string, string> = {
+    long_program: "Долгосрочные", qualification: "Повышение квалиф.", specialization: "Специализация",
+    intensive: "Интенсив", webinar: "Вебинар", seminar: "Семинар",
+    conference: "Конференция", masterclass: "Мастер-класс", online_course: "Онлайн-курс", other: "Другое",
+  };
+  const catEntries = Object.entries(data.hours_by_category).filter(([,h]) => h > 0).sort(([,a],[,b]) => b - a);
+  const maxCatH = catEntries[0]?.[1] ?? 1;
+
   return (
-    <div className="px-4 lg:px-6 py-4 space-y-6 max-w-4xl">
+    <div className="px-4 lg:px-6 py-4 space-y-5 max-w-4xl">
+
+      {/* Reminders */}
+      {reminders.length > 0 && (
+        <div className="space-y-2">
+          {reminders.map((r, i) => (
+            <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm"
+              style={{ background: `${r.color}12`, border: `1px solid ${r.color}40`, color: r.color }}>
+              <r.icon size={14} className="flex-shrink-0" />
+              {r.text}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -306,6 +351,26 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
           </div>
         ))}
       </div>
+
+      {/* Hours breakdown */}
+      {catEntries.length > 0 && (
+        <div className="rounded-2xl p-4" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
+          <div className="text-sm font-semibold mb-3" style={{ color: "#3D3228" }}>Разбивка часов по категориям</div>
+          <div className="space-y-2">
+            {catEntries.map(([cat, h]) => (
+              <div key={cat}>
+                <div className="flex justify-between mb-0.5">
+                  <span className="text-xs" style={{ color: "#6B7280" }}>{CAT_LABELS_SHORT[cat] ?? cat}</span>
+                  <span className="text-xs font-semibold" style={{ color: "#3D3228" }}>{h} ч</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "#DDD4C6" }}>
+                  <div className="h-full rounded-full" style={{ width: `${(h / maxCatH) * 100}%`, background: "#3a5ff8" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* PDF export */}
       <div className="rounded-2xl p-4 flex flex-wrap items-center gap-3"
@@ -342,7 +407,7 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
       <div>
         <h2 className="text-sm font-semibold mb-2" style={{ color: "#3D3228" }}>Быстрые действия</h2>
         <div className="flex flex-wrap gap-2">
-          {([["Добавить обучение", "courses"], ["Добавить супервизию", "supervisions"], ["Добавить документ", "documents"], ["Добавить цель", "goals"]] as [string, Tab][]).map(([label, tab]) => (
+          {([["Добавить обучение","courses"],["Добавить супервизию","supervisions"],["Добавить документ","documents"],["Добавить цель","goals"],["Ассоциации","associations"]] as [string,Tab][]).map(([label, tab]) => (
             <button key={tab} onClick={() => onNavigate(tab)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors"
               style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", color: "#3D3228" }}
@@ -373,6 +438,17 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
         <EmptyState icon={GraduationCap} title="Начните заполнять профессиональный профиль"
           desc="Добавьте первый курс, супервизию или цель развития" />
       )}
+
+      {/* Annual reflection */}
+      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #CFC0A9" }}>
+        <button onClick={() => setReflOpen(p => !p)}
+          className="w-full flex items-center justify-between px-4 py-3"
+          style={{ background: "#F3EBDD", color: "#3D3228" }}>
+          <span className="text-sm font-semibold">Рефлексия {CURRENT_YEAR}</span>
+          {reflOpen ? <ChevronUp size={16} style={{ color: "#9C8E80" }} /> : <ChevronDown size={16} style={{ color: "#9C8E80" }} />}
+        </button>
+        {reflOpen && <AnnualReflection year={CURRENT_YEAR} onToast={onToast} />}
+      </div>
     </div>
   );
 }
@@ -1536,6 +1612,57 @@ function EmptyState({ icon: Icon, title, desc, action }: {
           <Plus size={14} /> {action.label}
         </button>
       )}
+    </div>
+  );
+}
+
+function AnnualReflection({ year, onToast }: { year: number; onToast: (m: string, t?: "ok"|"err") => void }) {
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [f, setF] = useState({ key_learnings: "", main_direction: "", challenges: "", proud_of: "", next_year_focus: "" });
+
+  useEffect(() => {
+    apiFetch(`/reflections?year=${year}`)
+      .then(d => { if (d) setF({ key_learnings: d.key_learnings ?? "", main_direction: d.main_direction ?? "", challenges: d.challenges ?? "", proud_of: d.proud_of ?? "", next_year_focus: d.next_year_focus ?? "" }); setLoaded(true); })
+      .catch(() => setLoaded(true));
+  }, [year]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      await apiFetch("/reflections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ year, ...f }) });
+      onToast("Рефлексия сохранена");
+    } catch (e: unknown) { onToast(e instanceof Error ? e.message : "Ошибка", "err"); }
+    finally { setSaving(false); }
+  }
+
+  if (!loaded) return <div className="px-4 py-6 text-center text-sm" style={{ color: "#9C8E80" }}>Загрузка...</div>;
+
+  const REFL_FIELDS = [
+    { key: "key_learnings",   label: "Что самое важное освоил/а в этом году?" },
+    { key: "proud_of",        label: "Чем профессионально горжусь?" },
+    { key: "challenges",      label: "Какие трудности встретил/а?" },
+    { key: "main_direction",  label: "Главное профессиональное направление этого года" },
+    { key: "next_year_focus", label: "Фокус на следующий год" },
+  ] as const;
+
+  return (
+    <div className="px-4 py-4 space-y-3" style={{ background: "#FBF8F5" }}>
+      <p className="text-xs" style={{ color: "#9C8E80" }}>Ответы сохраняются автоматически. Вы можете вернуться к рефлексии в любое время.</p>
+      {REFL_FIELDS.map(({ key, label }) => (
+        <div key={key}>
+          <label className="block text-xs font-medium mb-1" style={{ color: "#6B7280" }}>{label}</label>
+          <textarea value={f[key]} onChange={e => setF(p => ({ ...p, [key]: e.target.value }))}
+            className="w-full rounded-xl border px-3 py-2 text-sm outline-none resize-none"
+            style={{ background: "#F3EBDD", borderColor: "#CFC0A9", color: "#3D3228" }}
+            rows={2} placeholder="Напишите здесь..." />
+        </div>
+      ))}
+      <button onClick={save} disabled={saving}
+        className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+        style={{ background: "#3a5ff8", color: "#fff" }}>
+        {saving ? "Сохраняю..." : "Сохранить рефлексию"}
+      </button>
     </div>
   );
 }
