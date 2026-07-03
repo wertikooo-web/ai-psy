@@ -6,7 +6,7 @@ import {
   GraduationCap, BookOpen, Users, CalendarDays, FileText, Target,
   Plus, ChevronRight, Clock, Award, TrendingUp, Loader2,
   AlertCircle, X, Check, Pencil, Download, BarChart2,
-  HeartHandshake, Building2, Wallet, BookMarked, ChevronDown, ChevronUp,
+  HeartHandshake, Building2, Wallet, BookMarked, ChevronDown, ChevronUp, Sparkles,
 } from "lucide-react";
 import { AssociationsTab, FinancesTab, LibraryTab } from "./tabs-extended";
 import { VisualizationPanel } from "./VisualizationPanel";
@@ -15,7 +15,7 @@ const LS_PANEL = "professionalDevelopment.visualPanelCollapsed";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "courses" | "supervisions" | "calendar" | "documents" | "goals" | "associations" | "finances" | "library";
+type Tab = "overview" | "courses" | "supervisions" | "calendar" | "documents" | "goals" | "associations" | "finances" | "library" | "reflection";
 
 interface OverviewData {
   learning_hours_this_year:    number;
@@ -70,6 +70,7 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "goals",         label: "План развития",   icon: Target       },
   { key: "finances",      label: "Финансы",         icon: Wallet       },
   { key: "library",       label: "Библиотека",      icon: BookMarked   },
+  { key: "reflection",    label: "Рефлексия",       icon: Sparkles     },
   { key: "associations",  label: "Ассоциации",      icon: Building2    },
 ];
 
@@ -410,6 +411,7 @@ function ProfDevInner() {
           {activeTab === "associations"  && <AssociationsTab  onToast={show} />}
           {activeTab === "finances"      && <FinancesTab      onToast={show} />}
           {activeTab === "library"       && <LibraryTab       onToast={show} />}
+          {activeTab === "reflection"    && <ReflectionTab    onToast={show} year={selectedYear} />}
         </div>
 
         {/* Resize handle + right panel */}
@@ -1392,23 +1394,18 @@ function GoalsTab({ onToast, year }: { onToast: (m: string, t?: "ok"|"err") => v
           onToast={onToast} />
       )}
 
-      {/* Annual reflection — collapsible section at the bottom */}
-      <AnnualReflectionSection year={year} onToast={onToast} />
     </div>
   );
 }
 
-function AnnualReflectionSection({ year, onToast }: { year: number; onToast: (m: string, t?: "ok"|"err") => void }) {
-  const [open, setOpen] = useState(false);
+// ═══════════════════════════════════════════════════════════════════════════════
+// TAB: REFLECTION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function ReflectionTab({ year, onToast }: { year: number; onToast: (m: string, t?: "ok"|"err") => void }) {
   return (
-    <div className="mt-6 rounded-2xl overflow-hidden" style={{ border: "1px solid #CFC0A9" }}>
-      <button onClick={() => setOpen(p => !p)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
-        style={{ background: "#F3EBDD" }}>
-        <span className="text-sm font-semibold" style={{ color: "#3D3228" }}>Рефлексия года {year}</span>
-        <ChevronDown size={16} style={{ color: "#7A6A52", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
-      </button>
-      {open && <AnnualReflection year={year} onToast={onToast} />}
+    <div className="px-4 lg:px-6 py-4 max-w-3xl">
+      <AnnualReflection year={year} onToast={onToast} />
     </div>
   );
 }
