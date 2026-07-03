@@ -5,10 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   GraduationCap, BookOpen, Users, CalendarDays, FileText, Target,
   Plus, ChevronRight, Clock, Award, TrendingUp, Loader2,
-  AlertCircle, X, Check, Pencil, Download,
+  AlertCircle, X, Check, Pencil, Download, BarChart2,
   HeartHandshake, Building2, Wallet, BookMarked, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { AssociationsTab, FinancesTab, LibraryTab } from "./tabs-extended";
+import { VisualizationPanel } from "./VisualizationPanel";
+
+const LS_PANEL = "professionalDevelopment.visualPanelCollapsed";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -201,17 +204,26 @@ function ProfDevInner() {
   const activeTab    = (searchParams.get("tab") ?? "overview") as Tab;
   const { toasts, show } = useToast();
 
-  const [pdfYear, setPdfYear]       = useState(CURRENT_YEAR);
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const [pdfOpen, setPdfOpen]       = useState(false);
+  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
+  const [pdfLoading, setPdfLoading]     = useState(false);
+  const [pdfOpen, setPdfOpen]           = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(LS_PANEL) === "true";
+  });
 
   function setTab(t: Tab) {
     router.push(`/professional-development?tab=${t}`, { scroll: false });
   }
 
+  function togglePanel(collapsed: boolean) {
+    setPanelCollapsed(collapsed);
+    localStorage.setItem(LS_PANEL, String(collapsed));
+  }
+
   async function handleExport() {
     setPdfLoading(true);
-    try { await generatePDF(pdfYear); }
+    try { await generatePDF(selectedYear); }
     catch { show("Ошибка экспорта", "err"); }
     finally { setPdfLoading(false); setPdfOpen(false); }
   }
@@ -231,33 +243,48 @@ function ProfDevInner() {
             <p className="text-xs" style={{ color: "#A8997F" }}>Обучение, супервизии, документы и цели</p>
           </div>
 
-          {/* PDF export button — top right */}
-          <div className="ml-auto relative">
-            <button
-              title="Отчёт для аккредитации"
-              onClick={() => setPdfOpen(p => !p)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors"
-              style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", color: "#3D3228" }}>
-              <Download size={13} style={{ color: "#3a5ff8" }} />
-              Отчёт
-            </button>
-            {pdfOpen && (
-              <div className="absolute right-0 top-full mt-1 z-30 rounded-xl shadow-xl p-3 flex flex-col gap-2 w-56"
-                style={{ background: "#FBF8F5", border: "1px solid #CFC0A9" }}>
-                <div className="text-xs font-semibold" style={{ color: "#3D3228" }}>Отчёт для аккредитации</div>
-                <select value={pdfYear} onChange={e => setPdfYear(Number(e.target.value))}
-                  className="rounded-xl border px-2.5 py-1.5 text-sm outline-none"
-                  style={{ background: "#F3EBDD", borderColor: "#CFC0A9", color: "#3D3228" }}>
-                  {YEAR_OPTIONS.filter(y => y > 0).map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-                <button onClick={handleExport} disabled={pdfLoading}
-                  className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold disabled:opacity-60"
-                  style={{ background: "#3a5ff8", color: "#fff" }}>
-                  {pdfLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                  Экспорт PDF
-                </button>
-              </div>
+          {/* Right header buttons */}
+          <div className="ml-auto flex items-center gap-2">
+            {/* Show panel button (when collapsed) */}
+            {panelCollapsed && (
+              <button
+                onClick={() => togglePanel(false)}
+                title="Показать статистику"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors"
+                style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", color: "#3D3228" }}>
+                <BarChart2 size={13} style={{ color: "#3a5ff8" }} />
+                Статистика
+              </button>
             )}
+
+            {/* PDF export */}
+            <div className="relative">
+              <button
+                title="Отчёт для аккредитации"
+                onClick={() => setPdfOpen(p => !p)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors"
+                style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", color: "#3D3228" }}>
+                <Download size={13} style={{ color: "#3a5ff8" }} />
+                Отчёт
+              </button>
+              {pdfOpen && (
+                <div className="absolute right-0 top-full mt-1 z-30 rounded-xl shadow-xl p-3 flex flex-col gap-2 w-56"
+                  style={{ background: "#FBF8F5", border: "1px solid #CFC0A9" }}>
+                  <div className="text-xs font-semibold" style={{ color: "#3D3228" }}>Отчёт для аккредитации</div>
+                  <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}
+                    className="rounded-xl border px-2.5 py-1.5 text-sm outline-none"
+                    style={{ background: "#F3EBDD", borderColor: "#CFC0A9", color: "#3D3228" }}>
+                    {YEAR_OPTIONS.filter(y => y > 0).map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <button onClick={handleExport} disabled={pdfLoading}
+                    className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold disabled:opacity-60"
+                    style={{ background: "#3a5ff8", color: "#fff" }}>
+                    {pdfLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                    Экспорт PDF
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -285,17 +312,26 @@ function ProfDevInner() {
         </div>
       </header>
 
-      {/* Content */}
-      <div className="flex-1 min-h-0 overflow-y-auto pb-16 lg:pb-4">
-        {activeTab === "overview"      && <OverviewTab      onNavigate={setTab} onToast={show} />}
-        {activeTab === "courses"       && <CoursesTab       onToast={show} />}
-        {activeTab === "supervisions"  && <SupervisionsTab  onToast={show} />}
-        {activeTab === "calendar"      && <CalendarTab />}
-        {activeTab === "documents"     && <DocumentsTab     onToast={show} />}
-        {activeTab === "goals"         && <GoalsTab         onToast={show} />}
-        {activeTab === "associations"  && <AssociationsTab  onToast={show} />}
-        {activeTab === "finances"      && <FinancesTab      onToast={show} />}
-        {activeTab === "library"       && <LibraryTab       onToast={show} />}
+      {/* Content — 2-column on xl+ */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col xl:flex-row">
+
+        {/* Left: main tab content */}
+        <div className="flex-1 min-h-0 overflow-y-auto pb-16 lg:pb-4">
+          {activeTab === "overview"      && <OverviewTab      onNavigate={setTab} year={selectedYear} />}
+          {activeTab === "courses"       && <CoursesTab       onToast={show} />}
+          {activeTab === "supervisions"  && <SupervisionsTab  onToast={show} />}
+          {activeTab === "calendar"      && <CalendarTab />}
+          {activeTab === "documents"     && <DocumentsTab     onToast={show} />}
+          {activeTab === "goals"         && <GoalsTab         onToast={show} />}
+          {activeTab === "associations"  && <AssociationsTab  onToast={show} />}
+          {activeTab === "finances"      && <FinancesTab      onToast={show} />}
+          {activeTab === "library"       && <LibraryTab       onToast={show} />}
+        </div>
+
+        {/* Right: visualization panel (desktop side-by-side, mobile below) */}
+        {!panelCollapsed && (
+          <VisualizationPanel year={selectedYear} onClose={() => togglePanel(true)} />
+        )}
       </div>
 
       {/* Toasts */}
@@ -317,13 +353,14 @@ function ProfDevInner() {
 // TAB: OVERVIEW
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function OverviewTab({ onNavigate }: { onNavigate: (t: Tab) => void; onToast?: (m: string, t?: "ok"|"err") => void }) {
+function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year: number; onToast?: (m: string, t?: "ok"|"err") => void }) {
   const [data, setData]       = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState("");
   useEffect(() => {
-    apiFetch("/overview").then(setData).catch(e => setError(e.message)).finally(() => setLoading(false));
-  }, []);
+    setLoading(true);
+    apiFetch(`/overview?year=${year}`).then(setData).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, [year]);
 
   if (loading) return <TabSkeleton rows={6} />;
   if (error)   return <TabError msg={error} />;

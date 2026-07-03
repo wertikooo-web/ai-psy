@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   if (!userId) return unauthorized();
   if (!isSupabaseConfigured()) return serviceUnavailable();
 
-  const year  = new Date().getFullYear().toString();
+  const year  = req.nextUrl.searchParams.get("year") ?? new Date().getFullYear().toString();
   const from  = `${year}-01-01`;
   const to    = `${year}-12-31`;
   const now   = new Date().toISOString();
