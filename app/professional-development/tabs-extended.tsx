@@ -903,20 +903,6 @@ function ReadingForm({ initial, onClose, onSaved, onToast }: {
             {Object.entries(READ_STATUS).map(([v,l])=><option key={v} value={v}>{l}</option>)}
           </select>
         </Field>
-        {(f.status === "reading" || f.status === "completed") && (
-          <Field label="Начало чтения"><input type="date" value={f.started_date} onChange={e=>setF(p=>({...p,started_date:e.target.value}))} className={INPUT} /></Field>
-        )}
-        {f.status === "completed" && (
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Дата завершения"><input type="date" value={f.completed_date} onChange={e=>setF(p=>({...p,completed_date:e.target.value}))} className={INPUT} /></Field>
-            <Field label="Оценка (1-5)">
-              <select value={f.rating} onChange={e=>setF(p=>({...p,rating:e.target.value}))} className={INPUT}>
-                <option value="">—</option>
-                {[5,4,3,2,1].map(n=><option key={n} value={n}>{"★".repeat(n)}</option>)}
-              </select>
-            </Field>
-          </div>
-        )}
         <Field label="Ссылка"><input value={f.url} onChange={e=>setF(p=>({...p,url:e.target.value}))} className={INPUT} placeholder="https://..." /></Field>
         <Field label="Заметки / Ключевые мысли"><textarea value={f.notes} onChange={e=>setF(p=>({...p,notes:e.target.value}))} className={`${INPUT} resize-none`} rows={3} placeholder="Что понравилось, что взял в практику..." /></Field>
         <button onClick={save} disabled={saving} className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50" style={{ background: "#3a5ff8", color: "#fff" }}>
