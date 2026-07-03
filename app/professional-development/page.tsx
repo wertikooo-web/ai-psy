@@ -397,7 +397,7 @@ function ProfDevInner() {
       )}
 
       {/* Content — 2-column on xl+ */}
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col xl:flex-row xl:max-w-[1120px] xl:mx-auto xl:w-full">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col xl:flex-row">
 
         {/* Left: main tab content */}
         <div className="flex-1 min-h-0 overflow-y-auto pb-16 lg:pb-4">
