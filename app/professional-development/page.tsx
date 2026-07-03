@@ -218,30 +218,6 @@ function ProfDevInner() {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
-  // Resizable panel
-  const [panelWidth, setPanelWidth] = useState(360);
-  const isResizing = useRef(false);
-  const resizeStartX = useRef(0);
-  const resizeStartW = useRef(360);
-
-  function onResizeStart(e: React.MouseEvent) {
-    isResizing.current = true;
-    resizeStartX.current = e.clientX;
-    resizeStartW.current = panelWidth;
-    e.preventDefault();
-  }
-
-  useEffect(() => {
-    function onMove(e: MouseEvent) {
-      if (!isResizing.current) return;
-      const delta = resizeStartX.current - e.clientX;
-      setPanelWidth(Math.max(260, Math.min(560, resizeStartW.current + delta)));
-    }
-    function onUp() { isResizing.current = false; }
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
-  }, []);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -414,27 +390,13 @@ function ProfDevInner() {
           {activeTab === "reflection"    && <ReflectionTab    onToast={show} year={selectedYear} />}
         </div>
 
-        {/* Resize handle + right panel */}
+        {/* Right panel */}
         {!panelCollapsed && (
-          <>
-            {/* Drag divider — desktop only */}
-            <div
-              onMouseDown={onResizeStart}
-              className="hidden xl:block flex-shrink-0 cursor-col-resize select-none relative"
-              style={{ width: 8 }}
-              title="Перетащите для изменения размера">
-              <div className="absolute inset-y-0 left-[3px] w-[2px] transition-colors duration-150"
-                style={{ background: "#D8E4F5" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#3a5ff8")}
-                onMouseLeave={e => (e.currentTarget.style.background = "#D8E4F5")} />
-            </div>
-            <VisualizationPanel
-              year={selectedYear}
-              onClose={() => togglePanel(true)}
-              onNavigate={(tab) => setTab(tab as Tab)}
-              panelWidth={panelWidth}
-            />
-          </>
+          <VisualizationPanel
+            year={selectedYear}
+            onClose={() => togglePanel(true)}
+            onNavigate={(tab) => setTab(tab as Tab)}
+          />
         )}
       </div>
 
