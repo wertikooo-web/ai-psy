@@ -522,22 +522,6 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
         </div>
       )}
 
-      {/* Quick actions */}
-      <div>
-        <h2 className="text-sm font-semibold mb-2" style={{ color: "#3D3228" }}>Быстрые действия</h2>
-        <div className="grid grid-cols-2 gap-2">
-          {([["Добавить обучение","courses"],["Добавить супервизию","supervisions"],["Добавить документ","documents"],["Добавить цель","goals"],["Ассоциации","associations"]] as [string,Tab][]).map(([label, tab]) => (
-            <button key={tab} onClick={() => onNavigate(tab)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors"
-              style={{ background: "#FFFFFF", border: "1.5px solid #C5D5F5", color: "#3a5ff8" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#EEF4FB"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#FFFFFF"; }}>
-              <Plus size={13} style={{ color: "#3a5ff8" }} /> {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {data.recent_courses.length > 0 && (
         <Section title="Курсы в процессе" onMore={() => onNavigate("courses")}>
           {data.recent_courses.map(c => <CourseRow key={c.id} course={c} />)}

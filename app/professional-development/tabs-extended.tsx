@@ -134,11 +134,50 @@ function TabError({ msg }: { msg: string }) {
   );
 }
 
+// ── Confirm delete hook ────────────────────────────────────────────────────────
+
+function useConfirmDelete() {
+  const [pending, setPending] = useState<{ msg: string; resolve: (v: boolean) => void } | null>(null);
+
+  function confirmDelete(msg: string): Promise<boolean> {
+    return new Promise(resolve => setPending({ msg, resolve }));
+  }
+
+  const dialog = pending ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.25)" }}
+      onClick={() => { pending.resolve(false); setPending(null); }}>
+      <div className="rounded-2xl p-5 shadow-xl max-w-xs w-full"
+        style={{ background: "#FBF8F5", border: "1px solid #CFC0A9" }}
+        onClick={e => e.stopPropagation()}>
+        <p className="text-sm font-medium mb-4 text-center" style={{ color: "#3D3228" }}>
+          {pending.msg}
+        </p>
+        <div className="flex gap-2">
+          <button onClick={() => { pending.resolve(false); setPending(null); }}
+            className="flex-1 py-2 rounded-xl text-sm font-medium"
+            style={{ background: "#F3EBDD", color: "#3D3228" }}>
+            Отмена
+          </button>
+          <button onClick={() => { pending.resolve(true); setPending(null); }}
+            className="flex-1 py-2 rounded-xl text-sm font-medium"
+            style={{ background: "#EF4444", color: "#fff" }}>
+            Удалить
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  return { confirmDelete, dialog };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ASSOCIATIONS TAB
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function AssociationsTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void }) {
+  const { confirmDelete, dialog: confirmDialog } = useConfirmDelete();
   const [assocs, setAssocs]       = useState<RawAssociation[]>([]);
   const [accData, setAccData]     = useState<{ associations: (RawAssociation & { requirements: AccreditationRequirement | null; actual: AccreditationActual })[] } | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -161,7 +200,7 @@ export function AssociationsTab({ onToast }: { onToast: (m: string, t?: "ok"|"er
   useEffect(() => { load(); }, [load]);
 
   async function del(id: string) {
-    if (!confirm("Удалить ассоциацию и все требования к ней?")) return;
+    if (!await confirmDelete("Удалить ассоциацию и все требования к ней?")) return;
     try {
       await apiFetch(`/associations/${id}`, { method: "DELETE" });
       setAssocs(p => p.filter(a => a.id !== id));
@@ -176,6 +215,7 @@ export function AssociationsTab({ onToast }: { onToast: (m: string, t?: "ok"|"er
 
   return (
     <div className="px-4 lg:px-6 py-4 max-w-3xl">
+      {confirmDialog}
       <div className="flex flex-wrap gap-2 mb-4">
         <select value={year} onChange={e => setYear(Number(e.target.value))}
           className="rounded-xl border px-2.5 py-1.5 text-sm outline-none"
@@ -449,6 +489,7 @@ function RequirementsForm({ association, year, existing, onClose, onSaved, onToa
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function FinancesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void }) {
+  const { confirmDelete, dialog: confirmDialog } = useConfirmDelete();
   const [expenses, setExpenses]   = useState<RawExpense[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState("");
@@ -472,7 +513,7 @@ export function FinancesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") 
   const currency       = filtered[0]?.currency ?? "EUR";
 
   async function del(id: string) {
-    if (!confirm("Удалить расход?")) return;
+    if (!await confirmDelete("Удалить расход?")) return;
     try {
       await apiFetch(`/expenses/${id}`, { method: "DELETE" });
       setExpenses(p => p.filter(e => e.id !== id));
@@ -495,6 +536,7 @@ export function FinancesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") 
 
   return (
     <div className="px-4 lg:px-6 py-4 max-w-3xl">
+      {confirmDialog}
       {/* Toolbar */}
       <div className="flex flex-wrap gap-2 mb-4">
         <select value={year} onChange={e => setYear(Number(e.target.value))}
@@ -654,6 +696,7 @@ function ExpenseForm({ initial, onClose, onSaved, onToast }: {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function LibraryTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void }) {
+  const { confirmDelete, dialog: confirmDialog } = useConfirmDelete();
   const [items, setItems]         = useState<RawReading[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState("");
@@ -670,7 +713,7 @@ export function LibraryTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") =
   const filtered = items.filter(i => !filterStatus || i.status === filterStatus);
 
   async function del(id: string) {
-    if (!confirm("Удалить?")) return;
+    if (!await confirmDelete("Удалить?")) return;
     try {
       await apiFetch(`/reading/${id}`, { method: "DELETE" });
       setItems(p => p.filter(i => i.id !== id));
@@ -703,6 +746,7 @@ export function LibraryTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") =
 
   return (
     <div className="px-4 lg:px-6 py-4 max-w-3xl">
+      {confirmDialog}
       <div className="flex flex-wrap gap-2 mb-4">
         <div className="flex gap-1">
           {["", "reading", "want_to_read", "completed"].map(s => (
