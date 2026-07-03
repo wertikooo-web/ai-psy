@@ -407,7 +407,7 @@ function OverviewTab({ onNavigate, onToast }: { onNavigate: (t: Tab) => void; on
       {/* Quick actions */}
       <div>
         <h2 className="text-sm font-semibold mb-2" style={{ color: "#3D3228" }}>Быстрые действия</h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {([["Добавить обучение","courses"],["Добавить супервизию","supervisions"],["Добавить документ","documents"],["Добавить цель","goals"],["Ассоциации","associations"]] as [string,Tab][]).map(([label, tab]) => (
             <button key={tab} onClick={() => onNavigate(tab)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors"
