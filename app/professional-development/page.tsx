@@ -1017,19 +1017,30 @@ function TherapyList({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void
 // TAB: CALENDAR
 // ═══════════════════════════════════════════════════════════════════════════════
 
+type ProfDevEvent = { id: string; title: string; starts_at: string; ends_at?: string; event_category: "course" | "supervision" | "therapy" | "goal" };
+
+const CATEGORY_META: Record<ProfDevEvent["event_category"], { label: string; color: string }> = {
+  course:      { label: "Обучение",       color: "#3a5ff8" },
+  supervision: { label: "Супервизия",     color: "#7c3aed" },
+  therapy:     { label: "Личная терапия", color: "#059669" },
+  goal:        { label: "Дедлайн цели",   color: "#d97706" },
+};
+
 function CalendarTab() {
-  const [events, setEvents] = useState<{ id: string; title: string; starts_at: string; event_category: string }[]>([]);
+  const [events, setEvents] = useState<ProfDevEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState("");
 
   useEffect(() => {
-    const now = new Date().toISOString();
-    const far = new Date(Date.now() + 90 * 86400000).toISOString();
-    fetch(`/api/calendar-events?from=${now}&to=${far}`)
+    const from = new Date().toISOString().slice(0, 10);
+    const to   = new Date(Date.now() + 180 * 86_400_000).toISOString().slice(0, 10);
+    fetch(`/api/professional-development/calendar?from=${from}&to=${to}`)
       .then(r => r.json())
-      .then((all: { id: string; title: string; starts_at: string; event_category?: string }[]) => {
-        setEvents(all.filter(e => e.event_category && e.event_category !== "client_session").map(e => ({ ...e, event_category: e.event_category! })));
+      .then((data: ProfDevEvent[] | { error: string }) => {
+        if ("error" in data) { setError(data.error); return; }
+        setEvents(data);
       })
-      .catch(() => {})
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -1037,26 +1048,32 @@ function CalendarTab() {
 
   return (
     <div className="px-4 lg:px-6 py-4 max-w-3xl">
-      <p className="text-xs mb-4" style={{ color: "#7A6A52" }}>
-        Профессиональные события из раздела Календарь. Создавайте их там и выбирайте нужную категорию.
-      </p>
+      {error && (
+        <p className="text-xs mb-4 text-red-500">{error}</p>
+      )}
       {events.length === 0 ? (
-        <EmptyState icon={CalendarDays} title="Профессиональных событий пока нет"
-          desc="Добавьте событие в разделе Календарь и выберите категорию «Обучение», «Супервизия» и т.д." />
+        <EmptyState icon={CalendarDays} title="Предстоящих событий нет"
+          desc="Запланируйте курс, супервизию или личную терапию — они появятся здесь." />
       ) : (
-        <div className="space-y-3">
-          {events.map(e => (
-            <div key={e.id} className="rounded-2xl p-4 flex items-center gap-3"
-              style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-              <CalendarDays size={16} style={{ color: "#3a5ff8", flexShrink: 0 }} />
-              <div>
-                <div className="text-sm font-semibold" style={{ color: "#3D3228" }}>{e.title}</div>
-                <div className="text-xs" style={{ color: "#7A6A52" }}>
-                  {new Date(e.starts_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+        <div className="space-y-2">
+          {events.map(e => {
+            const meta = CATEGORY_META[e.event_category];
+            const dateStr = new Date(e.starts_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+            return (
+              <div key={e.id} className="rounded-2xl px-4 py-3 flex items-center gap-3"
+                style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
+                <CalendarDays size={15} style={{ color: meta.color, flexShrink: 0 }} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold truncate" style={{ color: "#3D3228" }}>{e.title}</div>
+                  <div className="text-xs" style={{ color: "#7A6A52" }}>{dateStr}</div>
                 </div>
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+                  style={{ background: `${meta.color}14`, color: meta.color }}>
+                  {meta.label}
+                </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
