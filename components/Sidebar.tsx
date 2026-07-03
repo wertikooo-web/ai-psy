@@ -117,13 +117,13 @@ function DecoBtn({
 // ── Nav groups ────────────────────────────────────────────────────────────────
 function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void; onUpload: () => void; onSearch?: () => void }) {
   return (
-    <nav className="flex-1 min-h-0 px-3 py-2 overflow-y-hidden flex flex-col gap-3">
+    <nav className="flex-1 min-h-0 px-3 py-2 overflow-y-hidden flex flex-col gap-1">
 
       {/* ── Global search button ── */}
       {onSearch && (
         <button
           onClick={() => { onSearch(); onNavigate?.(); }}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors"
+          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-sm transition-colors mb-1"
           style={{ background: "#EEEBE5", border: "1px solid #E0D9CE", color: "#8A7A6A" }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "#E8E2D8"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "#EEEBE5"; }}
@@ -134,8 +134,8 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         </button>
       )}
 
-      <div className="space-y-0.5 mt-[15px]">
-        <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+      <div className="space-y-0.5">
+        <div className="px-3 mb-0.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Основное
         </div>
         {mainNav.map(({ href, label, icon }) => (
@@ -153,8 +153,8 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         </button>
       </div>
 
-      <div className="space-y-0.5 pt-[35px] mt-[27px]" style={{ borderTop: `1px solid ${C.border}` }}>
-        <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+      <div className="space-y-0.5 pt-[14px] mt-[10px]" style={{ borderTop: `1px solid ${C.border}` }}>
+        <div className="px-3 mb-0.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Инструменты
         </div>
         {toolsNav.map(({ href, label, icon }) => (
@@ -162,8 +162,8 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         ))}
       </div>
 
-      <div className="space-y-0.5 pt-[35px] mt-[27px]" style={{ borderTop: `1px solid ${C.border}` }}>
-        <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+      <div className="space-y-0.5 pt-[14px] mt-[10px]" style={{ borderTop: `1px solid ${C.border}` }}>
+        <div className="px-3 mb-0.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Развитие
         </div>
         {profDevNav.map(({ href, label, icon }) => (
@@ -171,8 +171,8 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         ))}
       </div>
 
-      <div className="space-y-0.5 pt-[35px] mt-[27px]" style={{ borderTop: `1px solid ${C.border}` }}>
-        <div className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
+      <div className="space-y-0.5 pt-[14px] mt-[10px]" style={{ borderTop: `1px solid ${C.border}` }}>
+        <div className="px-3 mb-0.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Система
         </div>
         {systemNav.map(({ href, label, icon }) => (
