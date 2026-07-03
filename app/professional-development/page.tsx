@@ -66,15 +66,15 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "courses",       label: "Обучение",        icon: BookOpen     },
   { key: "supervisions",  label: "Супервизии",      icon: Users        },
   { key: "documents",     label: "Документы",       icon: FileText     },
-  { key: "associations",  label: "Ассоциации",      icon: Building2    },
   { key: "calendar",      label: "Календарь",       icon: CalendarDays },
   { key: "goals",         label: "План развития",   icon: Target       },
   { key: "finances",      label: "Финансы",         icon: Wallet       },
   { key: "library",       label: "Библиотека",      icon: BookMarked   },
+  { key: "associations",  label: "Ассоциации",      icon: Building2    },
 ];
 
-const PRIMARY_TABS  = TABS.slice(0, 5);
-const SECONDARY_TABS = TABS.slice(5);
+const PRIMARY_TABS   = TABS.slice(0, 4);
+const SECONDARY_TABS = TABS.slice(4);
 
 const STATUS_LABELS: Record<string, string> = {
   planned: "Запланирован", in_progress: "В процессе", completed: "Завершён",
@@ -331,7 +331,7 @@ function ProfDevInner() {
               })}
 
               {/* "Ещё" dropdown */}
-              <div ref={moreRef} className="relative ml-auto flex-shrink-0">
+              <div ref={moreRef} className="relative flex-shrink-0">
                 <button onClick={() => setMoreOpen(p => !p)}
                   className="flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors"
                   style={{
@@ -346,7 +346,7 @@ function ProfDevInner() {
                   <ChevronDown size={12} style={{ transform: moreOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
                 </button>
                 {moreOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-30 rounded-xl shadow-xl py-1 w-48"
+                  <div className="absolute left-0 top-full mt-1 z-30 rounded-xl shadow-xl py-1 w-48"
                     style={{ background: "#FFFFFF", border: "1px solid #E5E5E5" }}>
                     {SECONDARY_TABS.map(({ key, label, icon: Icon }) => (
                       <button key={key} onClick={() => { setTab(key); setMoreOpen(false); }}
