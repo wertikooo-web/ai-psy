@@ -216,14 +216,16 @@ function ProfDevInner() {
   });
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const pdfRef  = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!moreOpen) return;
+    if (!moreOpen && !pdfOpen) return;
     function handleClick(e: MouseEvent) {
       if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+      if (pdfRef.current  && !pdfRef.current.contains(e.target as Node))  setPdfOpen(false);
     }
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setMoreOpen(false);
+      if (e.key === "Escape") { setMoreOpen(false); setPdfOpen(false); }
     }
     document.addEventListener("mousedown", handleClick);
     document.addEventListener("keydown", handleKey);
@@ -231,7 +233,7 @@ function ProfDevInner() {
       document.removeEventListener("mousedown", handleClick);
       document.removeEventListener("keydown", handleKey);
     };
-  }, [moreOpen]);
+  }, [moreOpen, pdfOpen]);
 
   function setTab(t: Tab) {
     router.push(`/professional-development?tab=${t}`, { scroll: false });
@@ -279,7 +281,7 @@ function ProfDevInner() {
             )}
 
             {/* PDF export */}
-            <div className="relative">
+            <div ref={pdfRef} className="relative">
               <button
                 title="Отчёт для аккредитации"
                 onClick={() => setPdfOpen(p => !p)}
