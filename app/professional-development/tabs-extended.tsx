@@ -200,11 +200,11 @@ export function AssociationsTab({ onToast }: { onToast: (m: string, t?: "ok"|"er
   useEffect(() => { load(); }, [load]);
 
   async function del(id: string) {
-    if (!await confirmDelete("Удалить ассоциацию и все требования к ней?")) return;
+    if (!await confirmDelete("Удалить сообщество и все требования к нему?")) return;
     try {
       await apiFetch(`/associations/${id}`, { method: "DELETE" });
       setAssocs(p => p.filter(a => a.id !== id));
-      onToast("Ассоциация удалена");
+      onToast("Сообщество удалено");
     } catch (e: unknown) { onToast(e instanceof Error ? e.message : "Ошибка", "err"); }
   }
 
@@ -225,13 +225,13 @@ export function AssociationsTab({ onToast }: { onToast: (m: string, t?: "ok"|"er
         <button onClick={() => { setEditing(null); setFormOpen(true); }}
           className="ml-auto flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold"
           style={{ background: "#3a5ff8", color: "#fff" }}>
-          <Plus size={14} /> Добавить ассоциацию
+          <Plus size={14} /> Добавить сообщество
         </button>
       </div>
 
       {assocs.length === 0 ? (
-        <EmptyState icon={Building2} title="Ассоциаций пока нет"
-          desc="Добавьте ассоциации, членом которых вы являетесь, и настройте требования для аккредитации"
+        <EmptyState icon={Building2} title="Сообществ пока нет"
+          desc="Добавьте профессиональные сообщества, членом которых вы являетесь, и настройте требования для аккредитации"
           action={{ label: "Добавить", onClick: () => { setEditing(null); setFormOpen(true); } }} />
       ) : (
         <div className="space-y-4">
@@ -330,7 +330,7 @@ export function AssociationsTab({ onToast }: { onToast: (m: string, t?: "ok"|"er
 
       {formOpen && (
         <AssociationForm initial={editing} onClose={() => { setFormOpen(false); setEditing(null); }}
-          onSaved={() => { setFormOpen(false); setEditing(null); load(); onToast(editing ? "Обновлено" : "Ассоциация добавлена"); }}
+          onSaved={() => { setFormOpen(false); setEditing(null); load(); onToast(editing ? "Обновлено" : "Сообщество добавлено"); }}
           onToast={onToast} />
       )}
       {reqTarget && (
@@ -380,7 +380,7 @@ function AssociationForm({ initial, onClose, onSaved, onToast }: {
   }
 
   return (
-    <Modal title={initial ? "Редактировать ассоциацию" : "Добавить ассоциацию"} onClose={onClose}>
+    <Modal title={initial ? "Редактировать сообщество" : "Добавить сообщество"} onClose={onClose}>
       <div className="space-y-3">
         <Field label="Название *"><input value={f.name} onChange={e => setF(p=>({...p,name:e.target.value}))} className={INPUT} placeholder="Ассоциация когнитивно-поведенческой психотерапии" /></Field>
         <div className="grid grid-cols-2 gap-3">
@@ -467,7 +467,7 @@ function RequirementsForm({ association, year, existing, onClose, onSaved, onToa
   return (
     <Modal title={`Требования ${association.acronym ?? association.name} · ${year}`} onClose={onClose}>
       <div className="space-y-3">
-        <p className="text-xs" style={{ color: "#9C8E80" }}>Укажите минимальное количество часов, требуемых ассоциацией за год. Оставьте 0, если требование отсутствует.</p>
+        <p className="text-xs" style={{ color: "#9C8E80" }}>Укажите минимальное количество часов, требуемых сообществом за год. Оставьте 0, если требование отсутствует.</p>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Супервизия (ч)"><input type="number" min={0} step="0.5" value={f.supervision_hours_required} onChange={e=>setF(p=>({...p,supervision_hours_required:e.target.value}))} className={INPUT} placeholder="0" /></Field>
           <Field label="Обучение (ч)"><input type="number" min={0} step="0.5" value={f.learning_hours_required} onChange={e=>setF(p=>({...p,learning_hours_required:e.target.value}))} className={INPUT} placeholder="0" /></Field>
@@ -575,7 +575,7 @@ export function FinancesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") 
 
       {filtered.length === 0 ? (
         <EmptyState icon={Wallet} title="Расходов нет"
-          desc="Фиксируйте расходы на курсы, супервизии, членство в ассоциациях"
+          desc="Фиксируйте расходы на курсы, супервизии, членство в сообществах"
           action={{ label: "Добавить расход", onClick: () => { setEditing(null); setFormOpen(true); } }} />
       ) : (
         <div className="space-y-2">

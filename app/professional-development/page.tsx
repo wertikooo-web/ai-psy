@@ -68,7 +68,7 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "documents",     label: "Документы",       icon: FileText     },
   { key: "goals",         label: "План развития",   icon: Target       },
   { key: "reflection",    label: "Рефлексия",       icon: Sparkles     },
-  { key: "associations",  label: "Ассоциации",      icon: Building2    },
+  { key: "associations",  label: "Сообщества",      icon: Building2    },
 ];
 
 const PRIMARY_TABS   = TABS.slice(0, 4);

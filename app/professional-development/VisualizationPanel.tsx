@@ -371,7 +371,7 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
                     border: "none", cursor: "pointer", lineHeight: 1.4, width: "100%", padding: "2px 0 0" }}
                   onMouseEnter={e => (e.currentTarget.style.color = "#3a5ff8")}
                   onMouseLeave={e => (e.currentTarget.style.color = "#7A6A52")}>
-                  Установите нормы в Ассоциациях →
+                  Установите нормы в Сообществах →
                 </button>
               )}
             </>
