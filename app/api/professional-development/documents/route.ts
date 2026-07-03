@@ -13,7 +13,8 @@ const ALLOWED_MIME    = new Set([
 ]);
 
 function safeName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9._\-Ѐ-ӿ]/g, "_").slice(0, 200);
+  // Supabase Storage keys must be ASCII-only — strip everything else
+  return name.replace(/[^a-zA-Z0-9._\-]/g, "_").slice(0, 200);
 }
 
 export async function GET(req: NextRequest) {
