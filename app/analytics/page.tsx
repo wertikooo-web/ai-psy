@@ -563,27 +563,27 @@ export default function AnalyticsPage() {
               </Panel>
 
               <Panel title="Оплаты по консультациям" className="h-full">
-                <div className="h-[calc(100%-34px)] min-h-0 overflow-auto pr-1">
-                  <table className="w-full min-w-[560px] text-left text-sm">
+                <div className="h-[calc(100%-34px)] min-h-0 overflow-y-auto">
+                  <table className="w-full text-left text-sm">
                     <thead className="text-xs text-[#8A7A66]">
                       <tr className="border-b border-[#ECE5DA]">
-                        <th className="py-2.5 pr-4">Дата консультации</th>
-                        <th className="py-2.5 pr-4">Клиент</th>
-                        <th className="py-2.5 pr-4">Стоимость</th>
-                        <th className="py-2.5 pr-4">Оплачено</th>
-                        <th className="py-2.5 pr-4">Статус</th>
-                        <th className="py-2.5">Комментарий</th>
+                        <th className="py-2.5 pr-3 whitespace-nowrap">Дата</th>
+                        <th className="py-2.5 pr-3">Клиент</th>
+                        <th className="py-2.5 pr-3 whitespace-nowrap">Стоим.</th>
+                        <th className="py-2.5 pr-3 whitespace-nowrap">Оплач.</th>
+                        <th className="py-2.5 pr-3 whitespace-nowrap">Статус</th>
+                        <th className="py-2.5">Коммент.</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.payments.map((row) => (
                         <tr key={row.id} className="border-b border-[#F0E8DC]">
-                          <td className="py-2.5 pr-4">{formatDate(row.consultationDate)}</td>
-                          <td className="py-2.5 pr-4">{row.client}</td>
-                          <td className="py-2.5 pr-4">{money.format(row.charged)}</td>
-                          <td className="py-2.5 pr-4">{money.format(row.paid)}</td>
-                          <td className="py-2.5 pr-4">{row.status}</td>
-                          <td className="py-2.5">{row.comment ?? "—"}</td>
+                          <td className="py-2.5 pr-3 whitespace-nowrap text-xs">{formatDate(row.consultationDate)}</td>
+                          <td className="py-2.5 pr-3 max-w-[120px] truncate">{row.client}</td>
+                          <td className="py-2.5 pr-3 whitespace-nowrap">{money.format(row.charged)}</td>
+                          <td className="py-2.5 pr-3 whitespace-nowrap">{money.format(row.paid)}</td>
+                          <td className="py-2.5 pr-3 whitespace-nowrap">{row.status}</td>
+                          <td className="py-2.5 truncate max-w-[100px]">{row.comment ?? "—"}</td>
                         </tr>
                       ))}
                       {!data.payments.length && (
