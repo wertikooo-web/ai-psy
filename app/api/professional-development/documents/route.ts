@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getAuthenticatedUserId, unauthorized, serviceUnavailable } from "@/lib/supabase/auth";
-import { uploadToStorage } from "@/lib/supabase/storage";
 
 const BUCKET          = "professional-development";
 const MAX_BYTES       = 20 * 1024 * 1024; // 20 MB
@@ -62,16 +61,25 @@ export async function POST(req: NextRequest) {
   const safeFile    = safeName(file.name);
   const storagePath = `${userId}/documents/${docId}/${safeFile}`;
 
-  // Ensure bucket exists (idempotent — succeeds even if bucket already exists)
-  await supabaseServer!.storage.createBucket(BUCKET, {
+  // Ensure bucket exists — ignore "already exists" errors only
+  const { error: bucketErr } = await supabaseServer!.storage.createBucket(BUCKET, {
     public: false,
     fileSizeLimit: MAX_BYTES,
     allowedMimeTypes: [...ALLOWED_MIME],
-  }).catch(() => {/* bucket already exists — ignore */});
+  });
+  if (bucketErr && !bucketErr.message.toLowerCase().includes("already exist")) {
+    console.error("[documents] createBucket error:", bucketErr.message);
+    return NextResponse.json({ error: `Ошибка создания бакета: ${bucketErr.message}` }, { status: 500 });
+  }
 
-  const buffer    = Buffer.from(await file.arrayBuffer());
-  const uploadUrl = await uploadToStorage(BUCKET, storagePath, buffer, file.type);
-  if (!uploadUrl) return NextResponse.json({ error: "Ошибка загрузки файла. Проверьте настройки хранилища Supabase." }, { status: 500 });
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { error: uploadErr } = await supabaseServer!.storage
+    .from(BUCKET)
+    .upload(storagePath, buffer, { contentType: file.type, upsert: true });
+  if (uploadErr) {
+    console.error("[documents] upload error:", uploadErr.message);
+    return NextResponse.json({ error: `Ошибка загрузки файла: ${uploadErr.message}` }, { status: 500 });
+  }
 
   const { data, error } = await supabaseServer!
     .from("professional_documents")
