@@ -216,13 +216,11 @@ function ProfDevInner() {
   });
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
-  const pdfRef  = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!moreOpen && !pdfOpen) return;
+    if (!moreOpen) return;
     function handleClick(e: MouseEvent) {
       if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
-      if (pdfRef.current  && !pdfRef.current.contains(e.target as Node))  setPdfOpen(false);
     }
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") { setMoreOpen(false); setPdfOpen(false); }
@@ -233,7 +231,7 @@ function ProfDevInner() {
       document.removeEventListener("mousedown", handleClick);
       document.removeEventListener("keydown", handleKey);
     };
-  }, [moreOpen, pdfOpen]);
+  }, [moreOpen]);
 
   function setTab(t: Tab) {
     router.push(`/professional-development?tab=${t}`, { scroll: false });
@@ -280,34 +278,6 @@ function ProfDevInner() {
               </button>
             )}
 
-            {/* PDF export */}
-            <div ref={pdfRef} className="relative">
-              <button
-                title="Отчёт для аккредитации"
-                onClick={() => setPdfOpen(p => !p)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors"
-                style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", color: "#3D3228" }}>
-                <Download size={13} style={{ color: "#3a5ff8" }} />
-                Отчёт
-              </button>
-              {pdfOpen && (
-                <div className="absolute right-0 top-full mt-1 z-30 rounded-xl shadow-xl p-3 flex flex-col gap-2 w-56"
-                  style={{ background: "#FBF8F5", border: "1px solid #CFC0A9" }}>
-                  <div className="text-xs font-semibold" style={{ color: "#3D3228" }}>Отчёт для аккредитации</div>
-                  <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}
-                    className="rounded-xl border px-2.5 py-1.5 text-sm outline-none"
-                    style={{ background: "#F3EBDD", borderColor: "#CFC0A9", color: "#3D3228" }}>
-                    {YEAR_OPTIONS.filter(y => y > 0).map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
-                  <button onClick={handleExport} disabled={pdfLoading}
-                    className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold disabled:opacity-60"
-                    style={{ background: "#3a5ff8", color: "#fff" }}>
-                    {pdfLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                    Экспорт PDF
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -361,6 +331,15 @@ function ProfDevInner() {
                         {label}
                       </button>
                     ))}
+                    <div style={{ height: 1, background: "#E5E5E5", margin: "4px 12px" }} />
+                    <button onClick={() => { setMoreOpen(false); setPdfOpen(true); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium"
+                      style={{ color: "#3D3228" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "#F7F4F0"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                      <Download size={14} />
+                      Отчёт PDF
+                    </button>
                   </div>
                 )}
               </div>
@@ -368,6 +347,29 @@ function ProfDevInner() {
           );
         })()}
       </header>
+
+      {/* PDF export modal */}
+      {pdfOpen && (
+        <Modal title="Экспорт отчёта" onClose={() => setPdfOpen(false)}>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm" style={{ color: "#7A6A52" }}>Выберите год для формирования отчёта об аккредитации.</p>
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: "#6B7280" }}>Год</label>
+              <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}
+                className="w-full rounded-xl border px-3 py-2 text-sm outline-none"
+                style={{ background: "#F3EBDD", borderColor: "#CFC0A9", color: "#3D3228" }}>
+                {YEAR_OPTIONS.filter(y => y > 0).map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <button onClick={handleExport} disabled={pdfLoading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60"
+              style={{ background: "#3a5ff8", color: "#fff" }}>
+              {pdfLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              Скачать PDF
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* Content — 2-column on xl+ */}
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col xl:flex-row">
