@@ -330,7 +330,7 @@ function ProfDevInner() {
 
         {/* Right: visualization panel (desktop side-by-side, mobile below) */}
         {!panelCollapsed && (
-          <VisualizationPanel year={selectedYear} onClose={() => togglePanel(true)} />
+          <VisualizationPanel year={selectedYear} onClose={() => togglePanel(true)} onNavigate={(tab) => setTab(tab as Tab)} />
         )}
       </div>
 
