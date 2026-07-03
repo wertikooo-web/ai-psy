@@ -419,32 +419,29 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
         </VCard>
       </div>
 
-      {/* ── Row 2 ────────────────────────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      {/* ── Row 2: Активность ───────────────────────────────────────────── */}
+      <VCard title="Активность"
+        onMore={() => onNavigate("supervisions")}
+        moreAriaLabel="Подробнее — перейти к разделу Супервизии"
+        info="Часы обучения и супервизий по месяцам">
+        <BarChart data={d.monthly_activity} />
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {([ ["#5C9BD5","Обучение"], ["#7C6DC5","Супервизии"] ] as [string,string][]).map(([c, l]) => (
+            <span key={l} style={{ display: "flex", alignItems: "center", gap: 4,
+              fontSize: 11, color: "#7A6A52" }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: c,
+                display: "inline-block" }} />
+              {l}
+            </span>
+          ))}
+        </div>
+      </VCard>
 
-        {/* Активность */}
-        <VCard title="Активность"
-          onMore={() => onNavigate("supervisions")}
-          moreAriaLabel="Подробнее — перейти к разделу Супервизии"
-          info="Часы обучения и супервизий по месяцам">
-          <BarChart data={d.monthly_activity} />
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {([ ["#5C9BD5","Обучение"], ["#7C6DC5","Супервизии"] ] as [string,string][]).map(([c, l]) => (
-              <span key={l} style={{ display: "flex", alignItems: "center", gap: 4,
-                fontSize: 11, color: "#7A6A52" }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: c,
-                  display: "inline-block" }} />
-                {l}
-              </span>
-            ))}
-          </div>
-        </VCard>
-
-        {/* Ближайшие события */}
-        <VCard title="Ближайшие события"
-          onMore={() => onNavigate("goals")}
-          moreAriaLabel="Подробнее — перейти к разделу План развития">
-          {d.upcoming_events.length > 0 ? (
+      {/* ── Row 3: Ближайшие события ────────────────────────────────────── */}
+      <VCard title="Ближайшие события"
+        onMore={() => onNavigate("goals")}
+        moreAriaLabel="Подробнее — перейти к разделу План развития">
+        {d.upcoming_events.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               {d.upcoming_events.map((ev, i) => {
                 const Icon  = EVENT_ICON[ev.type]  ?? CalendarDays;
@@ -484,8 +481,7 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
               btnLabel="Открыть календарь"
               onClick={() => onNavigate("calendar")} />
           )}
-        </VCard>
-      </div>
+      </VCard>
 
       {/* ── Фокус месяца — full width ─────────────────────────────────── */}
       <div style={{ background: "#FFFFFF", border: "1px solid #D8E4F5", borderRadius: 16,
