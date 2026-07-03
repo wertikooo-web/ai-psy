@@ -500,40 +500,6 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
         })}
       </div>
 
-      {/* Hours breakdown */}
-      {catEntries.length > 0 && (
-        <div className="rounded-2xl p-4" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-          <div className="text-sm font-semibold mb-3" style={{ color: "#3D3228" }}>Часы по категориям</div>
-          <div className="space-y-2.5">
-            {catEntries.map(([cat, h]) => (
-              <div key={cat}>
-                <div className="flex justify-between mb-1">
-                  <span className="text-xs" style={{ color: "#5C5047" }}>{CAT_LABELS_SHORT[cat] ?? cat}</span>
-                  <span className="text-xs font-semibold" style={{ color: "#3D3228" }}>{h} ч</span>
-                </div>
-                <div className="h-2 rounded-full overflow-hidden" style={{ background: "#DDD4C6" }}>
-                  <div className="h-full rounded-full transition-all"
-                    style={{ width: `${(h / maxCatH) * 100}%`, background: "#3a5ff8" }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Next event */}
-      {data.next_event && (
-        <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: "#E8EEF9", border: "1px solid #B8CCF0" }}>
-          <CalendarDays size={18} style={{ color: "#3a5ff8" }} />
-          <div>
-            <div className="text-sm font-semibold" style={{ color: "#3D3228" }}>{data.next_event.title}</div>
-            <div className="text-xs mt-0.5" style={{ color: "#6B7280" }}>
-              {new Date(data.next_event.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
-            </div>
-          </div>
-        </div>
-      )}
-
       {data.recent_courses.length > 0 && (
         <Section title="Курсы в процессе" onMore={() => onNavigate("courses")}>
           {data.recent_courses.map(c => <CourseRow key={c.id} course={c} />)}
