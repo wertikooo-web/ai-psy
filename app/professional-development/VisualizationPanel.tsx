@@ -384,9 +384,22 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
         <VCard title="Темы развития"
           onMore={() => onNavigate("courses")}
           moreAriaLabel="Подробнее — перейти к разделу Обучение">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {d.topics.length > 0 ? (
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+          {d.topics.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+              {/* Donut centered with top-topic % inside */}
+              <div style={{ position: "relative", width: 120, height: 120 }}>
+                <Donut
+                  ariaLabel={`Доля тем: ${d.topics.map(t => `${CAT_LABELS[t.category] ?? t.category} ${t.percent}%`).join(", ")}`}
+                  slices={d.topics.map((t, i) => ({ pct: t.percent, color: PALETTE[i % PALETTE.length] }))}
+                />
+                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: "#3D3228", lineHeight: 1 }}>
+                    {d.topics[0].percent}%
+                  </span>
+                </div>
+              </div>
+              {/* Legend below */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, width: "100%" }}>
                 {d.topics.map((t, i) => (
                   <div key={t.category} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                     <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
@@ -401,23 +414,17 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
                   </div>
                 ))}
               </div>
-            ) : (
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 12, color: "#7A6A52", lineHeight: 1.5, margin: 0 }}>
-                  Темы появятся после добавления обучения
-                </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+              <div style={{ position: "relative", width: 120, height: 120 }}>
+                <Donut ariaLabel="Нет данных о темах" slices={[{ pct: 100, color: "#D8E4F5" }]} />
               </div>
-            )}
-            <Donut
-              ariaLabel={d.topics.length > 0
-                ? `Доля тем: ${d.topics.map(t => `${CAT_LABELS[t.category] ?? t.category} ${t.percent}%`).join(", ")}`
-                : "Нет данных о темах"}
-              slices={d.topics.length > 0
-                ? d.topics.map((t, i) => ({ pct: t.percent, color: PALETTE[i % PALETTE.length] }))
-                : [{ pct: 100, color: "#D8E4F5" }]
-              }
-            />
-          </div>
+              <p style={{ fontSize: 12, color: "#7A6A52", lineHeight: 1.5, margin: 0, textAlign: "center" }}>
+                Темы появятся после добавления обучения
+              </p>
+            </div>
+          )}
         </VCard>
       </div>
 
