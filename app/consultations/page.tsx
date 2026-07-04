@@ -351,7 +351,18 @@ export default function ConsultationsPage() {
               <div key={i} style={{ height: 72, borderRadius: 14, background: "#F3EBDD", border: "1px solid #CFC0A9", animation: "pulse 1.5s ease-in-out infinite" }} />
             ))
           ) : mobileSorted.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 0", color: "#C9BBAA", fontSize: 13 }}>Консультаций пока нет</div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "56px 24px", gap: 12 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 18, background: "#F3EBDD", border: "1px solid #CFC0A9", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Mic size={24} style={{ color: "#C9BBAA" }} />
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#3D3228", marginBottom: 4 }}>Консультаций пока нет</div>
+                <div style={{ fontSize: 13, color: "#A8997F", lineHeight: 1.5 }}>Загрузите первую запись — и она появится здесь</div>
+              </div>
+              <button onClick={() => setUploadOpen(true)} style={{ marginTop: 4, background: "#3a5ff8", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                Загрузить запись
+              </button>
+            </div>
           ) : (
             mobileSorted.map((c) => {
               const hasAnalysis = !!((c as StoredConsultation).analyses?.length) || c.isMock;
@@ -452,8 +463,17 @@ export default function ConsultationsPage() {
             ))}
           </div>
         ) : consultations.length === 0 ? (
-          <div className="text-center py-16 text-stone-400 text-sm">
-            Консультаций пока нет. Загрузите первую запись.
+          <div className="flex flex-col items-center py-20 gap-4">
+            <div className="flex items-center justify-center rounded-2xl" style={{ width: 64, height: 64, background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
+              <Mic size={28} style={{ color: "#C9BBAA" }} />
+            </div>
+            <div className="text-center">
+              <div className="text-base font-semibold mb-1" style={{ color: "#3D3228" }}>Консультаций пока нет</div>
+              <div className="text-sm" style={{ color: "#A8997F" }}>Загрузите первую запись — она появится здесь с транскриптом и анализом</div>
+            </div>
+            <button onClick={() => setUploadOpen(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "#3a5ff8" }}>
+              <Mic size={14} /> Загрузить запись
+            </button>
           </div>
         ) : (
           <>

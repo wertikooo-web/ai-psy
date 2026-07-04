@@ -511,8 +511,23 @@ export default function ClientsPage() {
         {/* Card list */}
         <div style={{ padding: "10px 16px 80px", display: "flex", flexDirection: "column", gap: 8 }}>
           {mobileClients.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 0", color: "#C9BBAA", fontSize: 13 }}>
-              {filter === "archived" ? "Нет клиентов в архиве" : "Нет активных клиентов"}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "56px 24px", gap: 12 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 18, background: "#F3EBDD", border: "1px solid #CFC0A9", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Users size={24} style={{ color: "#C9BBAA" }} />
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#3D3228", marginBottom: 4 }}>
+                  {filter === "archived" ? "Архив пуст" : "Клиентов пока нет"}
+                </div>
+                <div style={{ fontSize: 13, color: "#A8997F", lineHeight: 1.5 }}>
+                  {filter === "archived" ? "Архивированные клиенты появятся здесь" : "Добавьте первого клиента, чтобы начать работу"}
+                </div>
+              </div>
+              {filter !== "archived" && (
+                <button onClick={() => setAddOpen(true)} style={{ marginTop: 4, background: "#3a5ff8", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                  <Plus size={14} /> Добавить клиента
+                </button>
+              )}
             </div>
           ) : (
             mobileClients.map((client) => (
@@ -677,9 +692,9 @@ export default function ClientsPage() {
               <button
                 onClick={() => setAddOpen(true)}
                 className="mt-1 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
-                style={{ background: "#6B5D4F", color: "#FFFFFF" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#4A3C2E"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#6B5D4F"; }}
+                style={{ background: "#3a5ff8", color: "#FFFFFF" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#2a4fd8"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#3a5ff8"; }}
               >
                 <Plus size={15} />
                 Добавить клиента
