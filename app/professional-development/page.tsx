@@ -607,6 +607,20 @@ function CoursesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void 
   const [filterStatus, setFilterStatus] = useState("");
   const [filterYear, setFilterYear]     = useState(0);
   const [search, setSearch]       = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [certLoading, setCertLoading] = useState<string | null>(null);
+
+  async function openCertificate(e: React.MouseEvent, courseId: string) {
+    e.stopPropagation();
+    setCertLoading(courseId);
+    try {
+      const docs = await apiFetch(`/documents?course_id=${courseId}`);
+      if (!docs.length) { onToast("Документ не прикреплён", "err"); return; }
+      const d = await apiFetch(`/documents/${docs[0].id}`);
+      if (d.signed_url) window.open(d.signed_url, "_blank");
+    } catch { onToast("Ошибка открытия", "err"); }
+    finally { setCertLoading(null); }
+  }
 
   const load = useCallback(() => {
     setLoading(true);
@@ -657,8 +671,6 @@ function CoursesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void 
           <option value="planned">Запланирован</option>
           <option value="in_progress">В процессе</option>
           <option value="completed">Завершён</option>
-          <option value="paused">Приостановлен</option>
-          <option value="not_completed">Не завершён</option>
         </select>
         <YearSelect value={filterYear} onChange={setFilterYear} />
         <button onClick={() => { setEditing(null); setFormOpen(true); }}
@@ -673,40 +685,61 @@ function CoursesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void 
           action={{ label: "Добавить курс", onClick: () => { setEditing(null); setFormOpen(true); } }} />
       ) : (
         <div className="space-y-3">
-          {filtered.map(c => (
-            <div key={c.id} className="rounded-2xl p-4" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-sm truncate" style={{ color: "#3D3228" }}>{c.title}</div>
-                  {c.provider && <div className="text-xs mt-0.5" style={{ color: "#7A6A52" }}>{c.provider}</div>}
-                  <div className="flex flex-wrap items-center gap-2 mt-2">
+          {filtered.map(c => {
+            const expanded = expandedId === c.id;
+            return (
+              <div key={c.id}
+                className="rounded-2xl px-4 py-3 cursor-pointer select-none"
+                style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}
+                onClick={() => setExpandedId(id => id === c.id ? null : c.id)}>
+
+                {/* Header — always visible */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm truncate" style={{ color: "#3D3228" }}>{c.title}</span>
                     <StatusBadge status={c.status} />
-                    <span className="text-xs" style={{ color: "#7A6A52" }}>{CAT_LABELS[c.category] ?? c.category}</span>
-                    {c.total_hours && (
-                      <span className="text-xs flex items-center gap-0.5" style={{ color: "#7A6A52" }}>
-                        <Clock size={11} /> {c.completed_hours ?? 0}/{c.total_hours} ч
-                      </span>
-                    )}
-                    {c.certificate_received && (
-                      <span className="text-xs flex items-center gap-0.5" style={{ color: "#16A34A" }}>
-                        <Award size={11} /> Сертификат
-                      </span>
-                    )}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <IconBtn icon={Pencil} onClick={e => { e.stopPropagation(); openEdit(c); }} title="Редактировать" />
+                    <IconBtn icon={X} onClick={e => { e.stopPropagation(); deleteCourse(c.id); }} title="Удалить" />
                   </div>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <IconBtn icon={Pencil} onClick={() => openEdit(c)} title="Редактировать" />
-                  <IconBtn icon={X} onClick={() => deleteCourse(c.id)} title="Удалить" />
-                </div>
+
+                {/* Expanded content */}
+                {expanded && (
+                  <div className="mt-3" onClick={e => e.stopPropagation()}>
+                    {c.provider && (
+                      <div className="text-xs mb-2" style={{ color: "#7A6A52" }}>{c.provider}</div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs" style={{ color: "#7A6A52" }}>{CAT_LABELS[c.category] ?? c.category}</span>
+                      {c.total_hours && (
+                        <span className="text-xs flex items-center gap-0.5" style={{ color: "#7A6A52" }}>
+                          <Clock size={11} /> {c.completed_hours ?? 0}/{c.total_hours} ч
+                        </span>
+                      )}
+                      {c.certificate_received && (
+                        <button
+                          className="text-xs flex items-center gap-0.5"
+                          style={{ color: "#16A34A", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}
+                          onClick={e => openCertificate(e, c.id)}
+                          disabled={certLoading === c.id}>
+                          <Award size={11} />
+                          {certLoading === c.id ? "Загрузка…" : "Сертификат ↗"}
+                        </button>
+                      )}
+                    </div>
+                    {c.total_hours && c.completed_hours !== undefined && (
+                      <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: "#DDD4C6" }}>
+                        <div className="h-full rounded-full transition-all"
+                          style={{ width: `${Math.min(100, (c.completed_hours / c.total_hours) * 100)}%`, background: "#3a5ff8" }} />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              {c.total_hours && c.completed_hours !== undefined && (
-                <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: "#DDD4C6" }}>
-                  <div className="h-full rounded-full transition-all"
-                    style={{ width: `${Math.min(100, (c.completed_hours / c.total_hours) * 100)}%`, background: "#3a5ff8" }} />
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -1386,8 +1419,6 @@ function CourseForm({ initial, onClose, onSaved, onToast }: {
               <option value="planned">Запланирован</option>
               <option value="in_progress">В процессе</option>
               <option value="completed">Завершён</option>
-              <option value="paused">Приостановлен</option>
-              <option value="not_completed">Не завершён</option>
             </select>
           </Field>
           <Field label="Всего часов">
