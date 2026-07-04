@@ -32,6 +32,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id: _id, user_id: _uid, created_at: _ca, ...patch } = body as Record<string, unknown>;
   void _id; void _uid; void _ca;
 
+  // Convert empty date strings to null (Postgres rejects "")
+  for (const f of ["start_date", "end_date", "started_at", "completed_at", "target_date"] as const)
+    if (patch[f] === "") patch[f] = null;
+
   // Auto-set completed_at when status becomes completed
   if (patch.status === "completed" && !patch.completed_at) {
     patch.completed_at = new Date().toISOString();

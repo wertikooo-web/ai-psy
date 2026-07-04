@@ -106,11 +106,11 @@ function Ring({ value, max, color, label, sub }: {
 // ── SVG Donut ──────────────────────────────────────────────────────────────────
 
 function Donut({ slices, ariaLabel }: { slices: { pct: number; color: string }[]; ariaLabel: string }) {
-  const r = 42; const cx = 52; const cy = 52; const sw = 16; const circ = 2 * Math.PI * r;
+  const r = 63; const cx = 78; const cy = 78; const sw = 24; const circ = 2 * Math.PI * r;
   let off = 0;
   const total = slices.reduce((a, s) => a + s.pct, 0);
   return (
-    <svg viewBox="0 0 104 104" style={{ width: 80, height: 80, flexShrink: 0 }}
+    <svg viewBox="0 0 156 156" style={{ width: 120, height: 120, flexShrink: 0 }}
       role="img" aria-label={ariaLabel}>
       <title>{ariaLabel}</title>
       <circle cx={cx} cy={cy} r={r} fill="none" strokeWidth={sw} stroke="#D8E4F5" />
@@ -143,7 +143,7 @@ function BarChart({ data }: { data: VizData["monthly_activity"] }) {
   const barW = slot * 0.52;
 
   return (
-    <svg viewBox={`0 0 ${TW} ${CH + 14}`} className="w-full"
+    <svg viewBox={`0 -8 ${TW} ${CH + 14 + 8}`} className="w-full"
       role="img" aria-label="График активности по месяцам: часы обучения и супервизий">
       <title>Активность по месяцам: обучение и супервизии</title>
 

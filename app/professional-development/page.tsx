@@ -289,7 +289,7 @@ function ProfDevInner() {
       )}
 
       {/* Main 2-column layout */}
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col xl:flex-row gap-4 px-3 lg:px-4 pb-4">
+      <div className="flex-1 min-h-0 flex flex-col xl:flex-row gap-4 px-3 lg:px-4 pb-4" style={{ overflow: "visible" }}>
 
         {/* Left: card — tab bar header + scrollable content */}
         <div className="flex-1 min-h-0 flex flex-col">
@@ -514,7 +514,7 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
         </Section>
       )}
       {data.active_goals.length > 0 && (
-        <Section title="Активные цели" onMore={() => onNavigate("goals")}>
+        <Section title="Ближайшие цели" onMore={() => onNavigate("goals")}>
           {data.active_goals.map(g => <GoalRow key={g.id} goal={g} />)}
         </Section>
       )}

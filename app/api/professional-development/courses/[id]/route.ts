@@ -37,6 +37,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // Strip immutable fields
   const { id: _id, user_id: _uid, created_at: _ca, ...patch } = body as Record<string, unknown>;
+
+  // Convert empty date strings to null (Postgres rejects "")
+  for (const f of ["start_date", "end_date", "started_at", "completed_at"] as const)
+    if (patch[f] === "") patch[f] = null;
   void _id; void _uid; void _ca;
 
   const { data, error } = await supabaseServer!
