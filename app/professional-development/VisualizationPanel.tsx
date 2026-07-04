@@ -72,9 +72,10 @@ function focusMsg(d: VizData): string {
 function Ring({ value, max, color, label, sub }: {
   value: number; max: number; color: string; label: string; sub: string;
 }) {
-  const pct = max > 0 ? Math.min(value / max, 1) : 0;
+  const pct      = max > 0 ? Math.min(value / max, 1) : 0;   // visual fill, capped at 1
+  const realPct  = max > 0 ? Math.round((value / max) * 100) : 0; // real label, uncapped
   const r = 38; const c = 48; const circ = 2 * Math.PI * r;
-  const pctLabel = `${max > 0 ? Math.round(pct * 100) : 0}%`;
+  const pctLabel = `${realPct}%`;
   return (
     <div className="flex flex-col items-center" style={{ gap: 8 }}>
       <div className="relative" style={{ width: 88, height: 88 }}>
