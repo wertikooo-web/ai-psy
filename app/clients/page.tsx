@@ -286,7 +286,7 @@ function ClientCard({ client, onOpen, onDelete, onPause, onArchive, onRestore }:
         }}
       >
         <span>Открыть карточку</span>
-        <ArrowRight size={14} className="text-stone-500 transition-transform duration-150"
+        <ArrowRight size={20} strokeWidth={2.5} className="text-stone-500 transition-transform duration-150"
           style={{ transform: tabHov ? "translateX(3px)" : "translateX(0)" }} />
       </button>
     </div>
