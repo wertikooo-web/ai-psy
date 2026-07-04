@@ -312,9 +312,9 @@ function ItemCard({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 const FILTERS = [
-  { value: "", label: "Новые и все" },
-  { value: "new", label: "Новые" },
-  { value: "processed", label: "Обработанные" },
+  { value: "new",       label: "Новые",        hint: "Необработанные сообщения — те, которые ещё требуют вашего внимания." },
+  { value: "",          label: "Все",           hint: "Все сообщения: новые и обработанные. Удалённые не показываются." },
+  { value: "processed", label: "Обработанные", hint: "Сообщения, которые вы пометили как обработанные." },
 ];
 
 export default function TelegramInboxPage() {
@@ -323,7 +323,7 @@ export default function TelegramInboxPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterStatus, setFilterStatus] = useState("new");
   const filterRef = useRef(filterStatus);
   filterRef.current = filterStatus;
 
@@ -464,20 +464,47 @@ export default function TelegramInboxPage() {
 
         {/* Filter tabs */}
         <div className="flex gap-2 mb-5">
-          {FILTERS.map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => setFilterStatus(value)}
-              className="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
-              style={{
-                background: filterStatus === value ? T.blue : T.card,
-                color:      filterStatus === value ? "#fff" : T.muted,
-                border:     `1px solid ${filterStatus === value ? T.blue : T.borderLt}`,
-              }}
-            >
-              {label}
-            </button>
-          ))}
+          {FILTERS.map(({ value, label, hint }) => {
+            const active = filterStatus === value;
+            return (
+              <div key={value} className="relative group">
+                <button
+                  onClick={() => setFilterStatus(value)}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+                  style={{
+                    background: active ? T.blue : T.card,
+                    color:      active ? "#fff" : T.muted,
+                    border:     `1px solid ${active ? T.blue : T.borderLt}`,
+                  }}
+                >
+                  {label}
+                  {/* Info icon */}
+                  <span
+                    className="inline-flex items-center justify-center rounded-full flex-shrink-0"
+                    style={{
+                      width: 13, height: 13,
+                      background: active ? "rgba(255,255,255,0.25)" : T.borderLt,
+                      color: active ? "#fff" : T.faint,
+                      fontSize: 8, fontWeight: 700, lineHeight: 1,
+                    }}
+                  >
+                    i
+                  </span>
+                </button>
+                {/* Tooltip */}
+                <div
+                  className="pointer-events-none absolute bottom-full left-0 mb-2 w-52 rounded-xl px-3 py-2 text-xs leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                  style={{ background: T.text, color: "#F5EFE6", boxShadow: "0 4px 16px rgba(0,0,0,0.18)" }}
+                >
+                  {hint}
+                  <div
+                    className="absolute top-full left-4"
+                    style={{ width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: `5px solid ${T.text}` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Error */}

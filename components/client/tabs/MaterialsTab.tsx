@@ -34,14 +34,15 @@ function formatObsDate(iso: string) {
 }
 
 interface Props {
-  clientId:  string;
-  materials: ClientMaterial[];
-  onAdd:     (m: ClientMaterial) => void;
-  onDelete?: (id: string) => void;
-  isMock?:   boolean;
+  clientId:    string;
+  materials:   ClientMaterial[];
+  onAdd:       (m: ClientMaterial) => void;
+  onDelete?:   (id: string) => void;
+  isMock?:     boolean;
+  highlightId?: string;
 }
 
-export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: Props) {
+export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock, highlightId }: Props) {
   const [importOpen, setImportOpen] = useState(false);
   const [expanded,   setExpanded]   = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
 
   const listRef    = useRef<HTMLDivElement>(null);
   const obsListRef = useRef<HTMLDivElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
 
   // Close material accordion on outside click
   useEffect(() => {
@@ -74,6 +76,25 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
     document.addEventListener("mousedown", onOutside);
     return () => document.removeEventListener("mousedown", onOutside);
   }, [expandedObs]);
+
+  // Auto-open and highlight the linked material on mount
+  useEffect(() => {
+    if (!highlightId || !materials.length) return;
+    const target = materials.find((m) => m.id === highlightId);
+    if (!target) return;
+    if (target.type === "observation") {
+      setObsOpen(true);
+      setExpandedObs(highlightId);
+    } else {
+      setMatsOpen(true);
+      setExpanded(highlightId);
+    }
+    // Scroll after a short delay to let the section open
+    setTimeout(() => {
+      highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId]);
 
   // Split: observations vs regular materials
   const observations = [...materials]
@@ -192,8 +213,12 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
                 return (
                   <div
                     key={obs.id}
+                    ref={obs.id === highlightId ? highlightRef : undefined}
                     className="flex cursor-pointer items-start gap-3 px-5 py-3.5 transition-colors hover:bg-white/55"
-                    style={{ borderTop: i > 0 ? `1px solid ${S.divider}` : undefined }}
+                    style={{
+                      borderTop: i > 0 ? `1px solid ${S.divider}` : undefined,
+                      background: obs.id === highlightId ? "rgba(58,95,248,0.06)" : undefined,
+                    }}
                     onClick={() => {
                       if (!isTranscribing && !isError) setExpandedObs(isOpen ? null : obs.id);
                     }}
@@ -348,8 +373,13 @@ export function MaterialsTab({ clientId, materials, onAdd, onDelete, isMock }: P
                 return (
                   <div
                     key={m.id}
+                    ref={m.id === highlightId ? highlightRef : undefined}
                     className="rounded-2xl border overflow-hidden"
-                    style={{ background: "#FFFFFF", borderColor: S.border }}
+                    style={{
+                      background: "#FFFFFF",
+                      borderColor: m.id === highlightId ? "#3a5ff8" : S.border,
+                      boxShadow: m.id === highlightId ? "0 0 0 2px rgba(58,95,248,0.18)" : undefined,
+                    }}
                   >
                     {/* Clickable header row */}
                     <button

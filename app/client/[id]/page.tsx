@@ -13,7 +13,7 @@ import { ConsultationsTab } from "@/components/client/tabs/ConsultationsTab";
 import { HistoryTab } from "@/components/client/tabs/HistoryTab";
 import { MaterialsTab } from "@/components/client/tabs/MaterialsTab";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Mic, ArrowLeft, Trash2, Pause, Archive, RotateCcw, ChevronRight } from "lucide-react";
 
 type Tab = "overview" | "consultations" | "history" | "materials";
@@ -34,9 +34,12 @@ const statusLabel: Record<string, { label: string; cls: string }> = {
 
 export default function ClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router  = useRouter();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const initTab      = (searchParams.get("tab") as Tab | null) ?? "overview";
+  const highlightMaterialId = searchParams.get("material") ?? undefined;
 
-  const [tab, setTab]                     = useState<Tab>("overview");
+  const [tab, setTab]                     = useState<Tab>(initTab);
   const [uploadOpen, setUploadOpen]       = useState(false);
   const [realClient, setRealClient]       = useState<StoredClient | null>(null);
   const [realSessions, setRealSessions]   = useState<StoredConsultation[]>([]);
@@ -468,6 +471,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
             clientId={id}
             materials={materials}
             isMock={isMock}
+            highlightId={highlightMaterialId}
             onAdd={(m) => setMaterials((prev) => [m, ...prev])}
             onDelete={(mid) => setMaterials((prev) => prev.filter((m) => m.id !== mid))}
           />

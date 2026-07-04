@@ -395,6 +395,21 @@ function isAddNoteIntent(lower: string): boolean {
     !/что\s+было|найди|покажи\s+всех|покажи\s+клиент/.test(lower);
 }
 
+function isAnalyticsOpenPhrase(lower: string): boolean {
+  return (
+    /^(статистика|аналитика|моя\s+статистика|моя\s+аналитика)$/.test(lower) ||
+    /^(открой|покажи|запусти|дай|посмотр|хочу)\s*(мою?\s*)?(статистик|аналитик)/.test(lower) ||
+    /что\s+у\s+меня\s+по\s+(статистик|аналитик)/.test(lower) ||
+    /дай\s+(мне\s+)?(статистик|аналитик)/.test(lower)
+  );
+}
+
+function isAnalyticsMetricPhrase(lower: string): boolean {
+  // "сколько" + any collective/count noun → always a metric query, never client lookup
+  return /сколько/.test(lower) &&
+    /(клиентов?|консультаций?|встреч|сессий?|оплат|задолженност|неоплаченн|активн|архивн|без\s+встреч|без\s+оплат)/.test(lower);
+}
+
 /** Extract client name from a natural-language phrase, stripping verb/preposition prefixes. */
 function extractClientNameFromPhrase(text: string): string | undefined {
   const name = text
@@ -411,7 +426,7 @@ function extractClientNameFromPhrase(text: string): string | undefined {
 /** Detect "клиент" list signals in normalized text. */
 function parseClientListRequest(lower: string): ParsedRequest | null {
   const hasClientWord = /клиент|пациент/.test(lower);
-  const hasListSignal = /все|всех|список|мои|наши|покажи|какие|кто|сколько|активн|архив/.test(lower);
+  const hasListSignal = /все|всех|список|мои|наши|покажи|какие|кто|активн|архив/.test(lower);
   const isSimpleClientQuery = /^(клиенты|мои клиенты|наши клиенты|все клиенты|список клиентов|список всех клиентов)$/.test(lower);
 
   if (!isSimpleClientQuery && !(hasClientWord && hasListSignal) && !/кто (в работе|сейчас|у нас|активен)/.test(lower)) {
@@ -445,15 +460,13 @@ function parseTextRequest(text: string): ParsedRequest {
     return { intent: "unknown" };
   }
 
-  // 1a. Analytics open — "открой статистику", "покажи аналитику", "моя аналитика"
-  if (/^(открой|покажи|запусти|моя|мою?)\s+(статистик|аналитик)/.test(lower) ||
-      /^(статистика|аналитика)$/.test(lower) ||
-      /^(открой|покажи)\s+мою?\s+(статистик|аналитик)/.test(lower)) {
+  // 1a. Analytics open
+  if (isAnalyticsOpenPhrase(lower)) {
     return { intent: "analytics_open" };
   }
 
   // 1b. Analytics metric — "сколько [активных] клиентов/консультаций/оплат..."
-  if (/сколько/.test(lower) && /клиентов?|консультаций?|встреч|сессий?|оплат|записей?/.test(lower)) {
+  if (isAnalyticsMetricPhrase(lower)) {
     return { intent: "analytics_metric_query", query: raw };
   }
 
@@ -926,7 +939,10 @@ async function searchSupabaseTextTables(query: string, consultationIdsAlreadyFou
     rows.push({ type: "client_history", title: `История: ${row.section}`, clientName: clientName(row.client_id as string), date: row.created_at as string, snippet: snippetForSearch(row.text, query), url: row.client_id ? getClientUrl(row.client_id as string) : undefined });
   }
   for (const row of materials.data ?? []) {
-    rows.push({ type: "client_material", title: (row.title as string) || "Материал клиента", clientName: clientName(row.client_id as string), date: row.created_at as string, snippet: snippetForSearch([row.title, row.content].filter(Boolean).join(" "), query), url: row.client_id ? getClientUrl(row.client_id as string) : undefined });
+    const matUrl = row.client_id
+      ? appUrl(`/client/${row.client_id as string}?tab=materials&material=${row.id as string}`)
+      : undefined;
+    rows.push({ type: "client_material", title: (row.title as string) || "Материал клиента", clientName: clientName(row.client_id as string), date: row.created_at as string, snippet: snippetForSearch([row.title, row.content].filter(Boolean).join(" "), query), url: matUrl });
   }
   for (const row of calendar.data ?? []) {
     rows.push({ type: "calendar", title: (row.title as string) || "Событие календаря", clientName: row.client_name as string, date: row.starts_at as string, snippet: snippetForSearch([row.title, row.notes, row.client_name].filter(Boolean).join(" "), query), url: appUrl("/calendar") });
@@ -1278,33 +1294,33 @@ export async function handleTelegramNoteCallback(query: import("@/lib/telegram/b
   }
 
   if (action === "confirm") {
-    // Save as notebook entry linked to client
+    // Save as observation (client_materials type="observation"), not notebook
     try {
-      const { addEntry } = await import("@/lib/data/notebook");
+      const { addMaterial } = await import("@/lib/data/clientMaterials");
       const { randomUUID } = await import("crypto");
-      const noteText = [
-        note.topicHint ? `[${note.topicHint}] ` : "",
-        note.content,
-      ].join("");
+      const title = note.topicHint
+        ? `[${note.topicHint}] ${note.content.slice(0, 60)}`
+        : note.content.slice(0, 80);
 
-      await addEntry({
-        id:       randomUUID(),
-        text:     noteText,
-        clientId: note.clientId,
-        topic:    note.topicHint,
-        tags:     ["telegram", ...(note.topicHint ? [note.topicHint] : [])],
+      await addMaterial({
+        id:        randomUUID(),
+        clientId:  note.clientId,
+        type:      "observation",
+        title,
+        content:   note.content,
+        createdAt: new Date().toISOString(),
       });
 
       if (chatId) {
         await sendTelegramMessage(
           chatId,
-          `Готово. Заметка добавлена к клиенту ${note.clientName}.`,
+          `Готово. Наблюдение добавлено к клиенту ${note.clientName}.`,
           keyboardFromButtons([urlButton("👤 Открыть клиента", appUrl(`/client/${note.clientId}`))]),
         );
       }
     } catch (err) {
       console.error("[telegram/note confirm]", err);
-      if (chatId) await sendTelegramMessage(chatId, "Не удалось сохранить заметку. Попробуйте ещё раз.");
+      if (chatId) await sendTelegramMessage(chatId, "Не удалось сохранить наблюдение. Попробуйте ещё раз.");
     }
     return true;
   }
@@ -1610,6 +1626,12 @@ export async function handleTelegramReadOnlySearch(message: TelegramMessage, tex
     // "найди..." is always a search — skip LLM to avoid misclassification as conversation
     const q = cleanupSearchQuery(text);
     parsed = { intent: "search_consultations", query: q || text };
+  } else if (isAnalyticsOpenPhrase(lower)) {
+    // "открой статистику", "покажи аналитику", "дай статистику" — bypass LLM
+    parsed = { intent: "analytics_open" };
+  } else if (isAnalyticsMetricPhrase(lower)) {
+    // "сколько клиентов/консультаций/оплат..." — bypass LLM to avoid list_clients mis-route
+    parsed = { intent: "analytics_metric_query", query: text };
   } else {
     const llmResult = await parseTelegramIntentWithLlm(text, prior.length ? prior : undefined);
     if (llmResult) {
