@@ -15,6 +15,7 @@ import {
 } from "@/lib/telegram/bot";
 import { handleTelegramAudioMessage } from "@/lib/telegram/audioFlow";
 import { handleTelegramReadOnlySearch, isTelegramNaturalLanguageEnabled, sendCapabilitiesOverview, sendCapabilityHelp } from "@/lib/telegram/search";
+import { saveTelegramMessage } from "@/lib/data/telegramMessages";
 
 const INTRO_TEXT = [
   "Здравствуйте! Это Telegram-помощник TRANSCRIPT AI · PSY.",
@@ -224,6 +225,14 @@ async function handleVoiceSearch(message: TelegramMessage): Promise<void> {
       await sendTelegramMessage(chatId, "Не удалось распознать голосовой вопрос. Попробуйте сказать короче или написать текстом.");
       return;
     }
+    saveTelegramMessage({
+      profileId:          account.profileId,
+      telegramId:         message.from!.id,
+      telegramChatId:     message.chat.id,
+      telegramMessageId:  message.message_id,
+      messageType:        "voice",
+      text,
+    }).catch((e) => console.error("[telegram/save voice]", e));
     await sendTelegramMessage(chatId, `Распознал: «${text}»`);
     await handleTelegramReadOnlySearch(message, text);
   } catch (error) {
@@ -309,6 +318,17 @@ export async function handleTelegramMessage(message: TelegramMessage): Promise<v
 
   if (message.text) {
     try {
+      const account = await getLinkedTelegramAccount(identity.id);
+      if (account) {
+        saveTelegramMessage({
+          profileId:         account.profileId,
+          telegramId:        identity.id,
+          telegramChatId:    message.chat.id,
+          telegramMessageId: message.message_id,
+          messageType:       "text",
+          text:              message.text,
+        }).catch((e) => console.error("[telegram/save text]", e));
+      }
       await handleTelegramReadOnlySearch(message, message.text);
     } catch (error) {
       console.error("[telegram/read-only search]", error);

@@ -1,67 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getAuthenticatedUserId } from "@/lib/supabase/auth";
-
-const EXCLUDED_STATUSES = ["completed", "cancelled"];
+import {
+  getTelegramMessages,
+  updateTelegramMessage,
+  type TelegramMessageStatus,
+} from "@/lib/data/telegramMessages";
+import { supabaseServer, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function GET(req: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json({ items: [], total: 0 });
-    }
-
     const userId = await getAuthenticatedUserId(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { searchParams } = new URL(req.url);
-    const filterStatus = searchParams.get("status"); // optional filter
+    const filterStatus = searchParams.get("status") as TelegramMessageStatus | null;
 
-    let query = supabaseServer!
-      .from("telegram_audio_uploads")
-      .select("*", { count: "exact" })
-      .eq("profile_id", userId)
-      .not("status", "in", `(${EXCLUDED_STATUSES.join(",")})`)
-      .order("created_at", { ascending: false })
-      .limit(100);
+    const { items, total } = await getTelegramMessages(userId, {
+      status: filterStatus ?? undefined,
+      limit:  100,
+    });
 
-    if (filterStatus && !EXCLUDED_STATUSES.includes(filterStatus)) {
-      query = query.eq("status", filterStatus);
-    }
-
-    const { data, error, count } = await query;
-    if (error) throw new Error(error.message);
-
-    const items = data ?? [];
-
-    // Fetch client names for items that have client_id
-    const clientIds = [...new Set(items.map((r) => r.client_id).filter(Boolean))] as string[];
+    // Enrich with client names
+    const clientIds = [...new Set(items.map((m) => m.clientId).filter(Boolean))] as string[];
     let clientMap: Record<string, string> = {};
 
-    if (clientIds.length > 0) {
+    if (clientIds.length > 0 && isSupabaseConfigured()) {
       const { data: clients } = await supabaseServer!
         .from("clients")
         .select("id, full_name")
         .in("id", clientIds)
         .is("deleted_at", null);
-
       if (clients) {
         clientMap = Object.fromEntries(clients.map((c) => [c.id, c.full_name]));
       }
     }
 
-    const result = items.map((row) => ({
-      id: row.id as string,
-      status: row.status as string,
-      mimeType: (row.mime_type as string | null) ?? null,
-      durationSeconds: row.duration_seconds == null ? null : Number(row.duration_seconds),
-      fileSize: row.file_size == null ? null : Number(row.file_size),
-      originalFilename: (row.original_filename as string | null) ?? null,
-      clientId: (row.client_id as string | null) ?? null,
-      clientName: row.client_id ? (clientMap[row.client_id as string] ?? null) : null,
-      consultationId: (row.consultation_id as string | null) ?? null,
-      errorMessage: (row.error_message as string | null) ?? null,
-      createdAt: row.created_at as string,
+    const result = items.map((m) => ({
+      ...m,
+      clientName: m.clientId ? (clientMap[m.clientId] ?? null) : null,
     }));
 
-    return NextResponse.json({ items: result, total: count ?? result.length });
+    return NextResponse.json({ items: result, total });
   } catch (err) {
     console.error("[telegram-inbox GET]", err);
     return NextResponse.json({ error: "Ошибка загрузки входящих" }, { status: 500 });
@@ -70,31 +48,18 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
-    }
-
-    const userId = await getAuthenticatedUserId(req);
-    const body = await req.json();
-    const { id, clientId, status } = body as { id: string; clientId?: string | null; status?: string };
+    await getAuthenticatedUserId(req);
+    const body = await req.json() as { id: string; status?: TelegramMessageStatus; clientId?: string | null };
+    const { id, status, clientId } = body;
 
     if (!id) return NextResponse.json({ error: "id обязателен" }, { status: 400 });
 
-    const patch: Record<string, unknown> = {};
-    if ("clientId" in body) patch.client_id = clientId ?? null;
-    if (status) patch.status = status;
-    if (status === "completed") patch.completed_at = new Date().toISOString();
+    const patch: Parameters<typeof updateTelegramMessage>[1] = {};
+    if (status)          patch.status   = status;
+    if ("clientId" in body) patch.clientId = clientId ?? null;
 
-    const { data, error } = await supabaseServer!
-      .from("telegram_audio_uploads")
-      .update(patch)
-      .eq("id", id)
-      .eq("profile_id", userId)
-      .select("id, status, client_id")
-      .single();
-
-    if (error) throw new Error(error.message);
-    return NextResponse.json(data);
+    await updateTelegramMessage(id, patch);
+    return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[telegram-inbox PATCH]", err);
     return NextResponse.json({ error: "Ошибка обновления" }, { status: 500 });
@@ -103,22 +68,12 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
-    }
-
-    const userId = await getAuthenticatedUserId(req);
+    await getAuthenticatedUserId(req);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "id обязателен" }, { status: 400 });
 
-    const { error } = await supabaseServer!
-      .from("telegram_audio_uploads")
-      .update({ status: "cancelled" })
-      .eq("id", id)
-      .eq("profile_id", userId);
-
-    if (error) throw new Error(error.message);
+    await updateTelegramMessage(id, { status: "archived" });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[telegram-inbox DELETE]", err);

@@ -2,23 +2,20 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
-  Inbox, Mic, RefreshCw, Check, Trash2, User, ChevronDown,
-  Clock, AlertCircle, Loader2, X,
+  Inbox, MessageSquare, Mic, RefreshCw, Check, Trash2,
+  User, ChevronDown, Clock, AlertCircle, Loader2, X,
+  BookOpen,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface InboxItem {
   id: string;
-  status: string;
-  mimeType: string | null;
-  durationSeconds: number | null;
-  fileSize: number | null;
-  originalFilename: string | null;
+  status: "new" | "processed" | "archived";
+  messageType: "text" | "voice";
+  text: string | null;
   clientId: string | null;
   clientName: string | null;
-  consultationId: string | null;
-  errorMessage: string | null;
   createdAt: string;
 }
 
@@ -43,71 +40,25 @@ const T = {
   blue:     "#3a5ff8",
   green:    "#16a34a",
   orange:   "#D97706",
-  red:      "#DC2626",
+  purple:   "#7C3AED",
 };
-
-// ── Status helpers ─────────────────────────────────────────────────────────────
-
-const STATUS_LABEL: Record<string, string> = {
-  received:              "Получено",
-  awaiting_client:       "Ожидает клиента",
-  awaiting_consultation: "Ожидает консультации",
-  awaiting_confirmation: "Ожидает подтверждения",
-  downloading:           "Загружается",
-  uploading:             "Выгружается",
-  queued:                "В очереди",
-  processing:            "Обрабатывается",
-  failed:                "Ошибка",
-  expired:               "Истёк",
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  received:              "#6B7280",
-  awaiting_client:       T.orange,
-  awaiting_consultation: T.orange,
-  awaiting_confirmation: T.blue,
-  downloading:           T.blue,
-  uploading:             T.blue,
-  queued:                T.blue,
-  processing:            T.blue,
-  failed:                T.red,
-  expired:               "#9CA3AF",
-};
-
-function statusLabel(s: string) { return STATUS_LABEL[s] ?? s; }
-function statusColor(s: string) { return STATUS_COLOR[s] ?? T.muted; }
-
-const ACTIVE_STATUSES = Object.keys(STATUS_LABEL);
 
 // ── Formatters ─────────────────────────────────────────────────────────────────
-
-function fmtDuration(sec: number | null) {
-  if (!sec) return null;
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return m > 0 ? `${m} мин ${s} с` : `${s} с`;
-}
 
 function fmtDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-function fmtSize(bytes: number | null) {
-  if (!bytes) return null;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
+function itemsWord(n: number) {
+  if (n % 100 >= 11 && n % 100 <= 14) return "сообщений";
+  const r = n % 10;
+  if (r === 1) return "сообщение";
+  if (r >= 2 && r <= 4) return "сообщения";
+  return "сообщений";
 }
 
-function typeLabel(mimeType: string | null) {
-  if (!mimeType) return "Аудио";
-  if (mimeType.startsWith("audio/ogg")) return "Голосовое";
-  if (mimeType.startsWith("audio/")) return "Аудио";
-  if (mimeType.startsWith("video/")) return "Видео";
-  return "Файл";
-}
-
-// ── Client picker modal ───────────────────────────────────────────────────────
+// ── Client picker ─────────────────────────────────────────────────────────────
 
 function ClientPicker({
   clients,
@@ -141,7 +92,6 @@ function ClientPicker({
             <X size={16} />
           </button>
         </div>
-
         <div className="px-3 py-2" style={{ borderBottom: `1px solid ${T.borderLt}` }}>
           <input
             autoFocus
@@ -152,15 +102,14 @@ function ClientPicker({
             style={{ background: T.header, border: `1px solid ${T.borderLt}`, color: T.text }}
           />
         </div>
-
         <div className="overflow-y-auto flex-1 p-2">
           {currentClientId && (
             <button
               onClick={() => onSelect(null)}
-              className="w-full text-left px-3 py-2 rounded-xl text-sm mb-1 hover:bg-gray-50"
-              style={{ color: T.red }}
+              className="w-full text-left px-3 py-2 rounded-xl text-sm mb-1"
+              style={{ color: T.orange }}
             >
-              Убрать привязку
+              Убрать привязку к клиенту
             </button>
           )}
           {filtered.length === 0 && (
@@ -198,22 +147,24 @@ function ItemCard({
 }: {
   item: InboxItem;
   clients: Client[];
-  onAction: (id: string, action: "link" | "done" | "delete", payload?: unknown) => Promise<void>;
+  onAction: (id: string, action: "link" | "done" | "delete" | "note", payload?: unknown) => Promise<void>;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
+  const [noteSaved, setNoteSaved] = useState(false);
 
-  async function handle(action: "link" | "done" | "delete", payload?: unknown) {
+  async function handle(action: "link" | "done" | "delete" | "note", payload?: unknown) {
     setLoading(action);
     try {
       await onAction(item.id, action, payload);
+      if (action === "note") setNoteSaved(true);
     } finally {
       setLoading(null);
       if (action === "link") setPickerOpen(false);
     }
   }
 
-  const isProcessing = ["downloading", "uploading", "queued", "processing"].includes(item.status);
+  const isVoice = item.messageType === "voice";
 
   return (
     <>
@@ -221,107 +172,128 @@ function ItemCard({
         className="rounded-2xl p-4 flex flex-col gap-3"
         style={{ background: T.card, border: `1px solid ${T.border}` }}
       >
-        {/* Header row */}
+        {/* Header */}
         <div className="flex items-start gap-3">
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
             style={{ background: T.header, border: `1px solid ${T.borderLt}` }}
           >
-            {isProcessing
-              ? <Loader2 size={18} style={{ color: T.blue }} className="animate-spin" />
-              : item.status === "failed"
-              ? <AlertCircle size={18} style={{ color: T.red }} />
-              : <Mic size={18} style={{ color: T.muted }} />
+            {isVoice
+              ? <Mic size={15} style={{ color: T.purple }} />
+              : <MessageSquare size={15} style={{ color: T.blue }} />
             }
           </div>
-
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold" style={{ color: T.text }}>
-                {typeLabel(item.mimeType)}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold" style={{ color: isVoice ? T.purple : T.blue }}>
+                {isVoice ? "Голосовое" : "Текст"}
               </span>
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ background: `${statusColor(item.status)}18`, color: statusColor(item.status) }}
-              >
-                {statusLabel(item.status)}
-              </span>
+              {item.clientName && (
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full"
+                  style={{ background: T.header, color: T.muted, border: `1px solid ${T.borderLt}` }}
+                >
+                  {item.clientName}
+                </span>
+              )}
             </div>
-            <div className="text-xs mt-0.5 flex items-center gap-2 flex-wrap" style={{ color: T.faint }}>
-              <span className="flex items-center gap-1"><Clock size={11} />{fmtDate(item.createdAt)}</span>
-              {item.durationSeconds && <span>{fmtDuration(item.durationSeconds)}</span>}
-              {item.fileSize && <span>{fmtSize(item.fileSize)}</span>}
+            <div className="text-xs mt-0.5 flex items-center gap-1" style={{ color: T.faint }}>
+              <Clock size={10} />
+              {fmtDate(item.createdAt)}
             </div>
           </div>
         </div>
 
-        {/* Error message */}
-        {item.status === "failed" && item.errorMessage && (
-          <div
-            className="text-xs rounded-xl px-3 py-2"
-            style={{ background: "#FEF2F2", color: T.red, border: "1px solid #FECACA" }}
+        {/* Message text */}
+        {item.text ? (
+          <p
+            className="text-sm leading-relaxed rounded-xl px-3 py-2.5"
+            style={{ color: T.text, background: "#FAF6F1", border: `1px solid ${T.borderLt}` }}
           >
-            {item.errorMessage}
-          </div>
+            {item.text}
+          </p>
+        ) : (
+          <p className="text-sm italic" style={{ color: T.faint }}>Текст не записан</p>
         )}
 
-        {/* Client row */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPickerOpen(true)}
-            disabled={loading === "link"}
-            className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-xl transition-colors flex-1 min-w-0"
-            style={{
-              background: item.clientId ? T.header : "transparent",
-              border: `1px solid ${T.borderLt}`,
-              color: item.clientId ? T.text : T.faint,
-            }}
-          >
-            <User size={13} style={{ flexShrink: 0 }} />
-            <span className="truncate">
-              {loading === "link"
-                ? "Сохраняю…"
-                : item.clientName ?? "Привязать клиента"}
-            </span>
-            <ChevronDown size={13} style={{ flexShrink: 0, marginLeft: "auto" }} />
-          </button>
-        </div>
+        {/* Client bind */}
+        <button
+          onClick={() => setPickerOpen(true)}
+          disabled={loading === "link"}
+          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-xl transition-colors w-full"
+          style={{
+            background: item.clientId ? T.header : "transparent",
+            border: `1px solid ${T.borderLt}`,
+            color: item.clientId ? T.text : T.faint,
+          }}
+        >
+          <User size={13} style={{ flexShrink: 0 }} />
+          <span className="flex-1 text-left truncate">
+            {loading === "link" ? "Сохраняю…" : item.clientName ?? "Привязать к клиенту"}
+          </span>
+          <ChevronDown size={13} style={{ flexShrink: 0 }} />
+        </button>
 
-        {/* Action buttons */}
+        {/* Actions */}
         <div className="flex gap-2">
-          <button
-            onClick={() => handle("done")}
-            disabled={!!loading || isProcessing}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl font-medium transition-colors flex-1 justify-center"
-            style={{
-              background: T.green,
-              color: "#fff",
-              opacity: loading || isProcessing ? 0.5 : 1,
-            }}
-          >
-            {loading === "done"
-              ? <Loader2 size={14} className="animate-spin" />
-              : <Check size={14} />
-            }
-            Обработано
-          </button>
+          {/* Save to notebook */}
+          {item.text && (
+            <button
+              onClick={() => handle("note")}
+              disabled={!!loading || noteSaved}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl font-medium transition-colors"
+              style={{
+                background: noteSaved ? "#F0FDF4" : T.header,
+                border: `1px solid ${noteSaved ? "#86EFAC" : T.borderLt}`,
+                color: noteSaved ? T.green : T.muted,
+                opacity: loading && loading !== "note" ? 0.5 : 1,
+              }}
+            >
+              {loading === "note"
+                ? <Loader2 size={13} className="animate-spin" />
+                : <BookOpen size={13} />
+              }
+              {noteSaved ? "В блокноте" : "В блокнот"}
+            </button>
+          )}
 
-          <button
-            onClick={() => handle("delete")}
-            disabled={!!loading}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl font-medium transition-colors"
-            style={{
-              background: T.header,
-              border: `1px solid ${T.borderLt}`,
-              color: loading === "delete" ? T.faint : T.red,
-              opacity: loading ? 0.5 : 1,
-            }}
-          >
-            {loading === "delete"
-              ? <Loader2 size={14} className="animate-spin" />
-              : <Trash2 size={14} />
-            }
-          </button>
+          <div className="flex gap-2 ml-auto">
+            {/* Mark processed */}
+            <button
+              onClick={() => handle("done")}
+              disabled={!!loading}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl font-medium transition-colors"
+              style={{
+                background: T.green,
+                color: "#fff",
+                opacity: loading ? 0.5 : 1,
+              }}
+            >
+              {loading === "done"
+                ? <Loader2 size={13} className="animate-spin" />
+                : <Check size={13} />
+              }
+              Обработано
+            </button>
+
+            {/* Delete */}
+            <button
+              onClick={() => handle("delete")}
+              disabled={!!loading}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-xl transition-colors"
+              style={{
+                background: T.header,
+                border: `1px solid ${T.borderLt}`,
+                color: loading === "delete" ? T.faint : "#DC2626",
+                opacity: loading ? 0.5 : 1,
+              }}
+            >
+              {loading === "delete"
+                ? <Loader2 size={13} className="animate-spin" />
+                : <Trash2 size={13} />
+              }
+            </button>
+          </div>
         </div>
       </div>
 
@@ -339,13 +311,19 @@ function ItemCard({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+const FILTERS = [
+  { value: "", label: "Новые и все" },
+  { value: "new", label: "Новые" },
+  { value: "processed", label: "Обработанные" },
+];
+
 export default function TelegramInboxPage() {
   const [items, setItems] = useState<InboxItem[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState("");
   const filterRef = useRef(filterStatus);
   filterRef.current = filterStatus;
 
@@ -382,36 +360,54 @@ export default function TelegramInboxPage() {
 
   useEffect(() => { load(); }, [load, filterStatus]);
 
-  async function handleAction(id: string, action: "link" | "done" | "delete", payload?: unknown) {
+  async function handleAction(id: string, action: "link" | "done" | "delete" | "note", payload?: unknown) {
     if (action === "delete") {
       await fetch(`/api/telegram-inbox?id=${id}`, { method: "DELETE" });
       setItems((prev) => prev.filter((i) => i.id !== id));
-      setTotal((t) => t - 1);
+      setTotal((t) => Math.max(0, t - 1));
+
     } else if (action === "done") {
-      const res = await fetch("/api/telegram-inbox", {
+      await fetch("/api/telegram-inbox", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status: "completed" }),
+        body: JSON.stringify({ id, status: "processed" }),
       });
-      if (res.ok) {
+      if (!filterRef.current || filterRef.current === "new") {
         setItems((prev) => prev.filter((i) => i.id !== id));
-        setTotal((t) => t - 1);
+        setTotal((t) => Math.max(0, t - 1));
+      } else {
+        setItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "processed" as const } : i));
       }
+
     } else if (action === "link") {
       const { clientId } = payload as { clientId: string | null };
-      const res = await fetch("/api/telegram-inbox", {
+      await fetch("/api/telegram-inbox", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, clientId }),
       });
-      if (res.ok) {
-        const clientName = clientId ? (clients.find((c) => c.id === clientId)?.name ?? null) : null;
-        setItems((prev) =>
-          prev.map((i) => (i.id === id ? { ...i, clientId: clientId ?? null, clientName } : i))
-        );
-      }
+      const clientName = clientId ? (clients.find((c) => c.id === clientId)?.name ?? null) : null;
+      setItems((prev) =>
+        prev.map((i) => i.id === id ? { ...i, clientId: clientId ?? null, clientName } : i)
+      );
+
+    } else if (action === "note") {
+      const item = items.find((i) => i.id === id);
+      if (!item?.text) return;
+      await fetch("/api/notebook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text:     item.text,
+          clientId: item.clientId ?? undefined,
+          topic:    item.messageType === "voice" ? "Голосовое (Telegram)" : "Telegram",
+          tags:     ["telegram"],
+        }),
+      });
     }
   }
+
+  const newCount = items.filter((i) => i.status === "new").length;
 
   return (
     <div className="min-h-screen" style={{ background: T.pageBg }}>
@@ -420,36 +416,63 @@ export default function TelegramInboxPage() {
         className="sticky top-0 z-10 px-6 py-4 flex items-center gap-3"
         style={{ background: T.header, borderBottom: `1px solid ${T.border}` }}
       >
-        <Inbox size={20} style={{ color: T.muted }} />
+        <div className="relative">
+          <Inbox size={20} style={{ color: T.muted }} />
+          {newCount > 0 && (
+            <span
+              className="absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center rounded-full text-white font-bold"
+              style={{ background: T.blue, fontSize: 9 }}
+            >
+              {newCount > 9 ? "9+" : newCount}
+            </span>
+          )}
+        </div>
         <div className="flex-1">
           <h1 className="text-base font-bold" style={{ color: T.text }}>Входящие из Telegram</h1>
           <p className="text-xs" style={{ color: T.faint }}>
-            {loading ? "Загрузка…" : `${total} ${itemsWord(total)} ожидают обработки`}
+            {loading
+              ? "Загрузка…"
+              : total === 0
+              ? "Пусто — новые сообщения появятся здесь"
+              : `${newCount > 0 ? `${newCount} новых · ` : ""}${total} ${itemsWord(total)}`
+            }
           </p>
         </div>
         <button
           onClick={load}
           disabled={loading}
-          className="w-8 h-8 flex items-center justify-center rounded-xl transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-xl"
           style={{ background: T.card, border: `1px solid ${T.border}` }}
           title="Обновить"
         >
-          <RefreshCw size={15} style={{ color: T.muted, opacity: loading ? 0.4 : 1 }} className={loading ? "animate-spin" : ""} />
+          <RefreshCw
+            size={15}
+            style={{ color: T.muted, opacity: loading ? 0.4 : 1 }}
+            className={loading ? "animate-spin" : ""}
+          />
         </button>
       </div>
 
       <div className="p-6 max-w-2xl mx-auto">
+        {/* Explanation */}
+        <div
+          className="rounded-2xl px-4 py-3 mb-5 text-xs leading-relaxed"
+          style={{ background: T.card, border: `1px solid ${T.borderLt}`, color: T.muted }}
+        >
+          Сюда попадают все <strong style={{ color: T.text }}>текстовые сообщения и голосовые вопросы</strong>, отправленные в Telegram-бот. Аудиофайлы консультаций обрабатываются прямо в Telegram.
+        </div>
+
         {/* Filter tabs */}
-        <div className="flex gap-2 mb-5 flex-wrap">
-          {[{ value: "", label: "Все" }, ...ACTIVE_STATUSES.map((s) => ({ value: s, label: statusLabel(s) }))].map(({ value, label }) => (
+        <div className="flex gap-2 mb-5">
+          {FILTERS.map(({ value, label }) => (
             <button
               key={value}
               onClick={() => setFilterStatus(value)}
               className="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
               style={{
                 background: filterStatus === value ? T.blue : T.card,
-                color: filterStatus === value ? "#fff" : T.muted,
-                border: `1px solid ${filterStatus === value ? T.blue : T.borderLt}`,
+                color:      filterStatus === value ? "#fff" : T.muted,
+                border:     `1px solid ${filterStatus === value ? T.blue : T.borderLt}`,
               }}
             >
               {label}
@@ -457,20 +480,24 @@ export default function TelegramInboxPage() {
           ))}
         </div>
 
-        {/* States */}
+        {/* Error */}
         {error && (
-          <div className="rounded-2xl p-4 text-sm flex items-center gap-2" style={{ background: "#FEF2F2", color: T.red, border: "1px solid #FECACA" }}>
-            <AlertCircle size={16} />
-            {error}
+          <div
+            className="rounded-2xl p-4 text-sm flex items-center gap-2 mb-4"
+            style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA" }}
+          >
+            <AlertCircle size={16} /> {error}
           </div>
         )}
 
+        {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 size={24} style={{ color: T.blue }} className="animate-spin" />
           </div>
         )}
 
+        {/* Empty */}
         {!loading && !error && items.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <div
@@ -481,11 +508,12 @@ export default function TelegramInboxPage() {
             </div>
             <p className="text-sm font-medium" style={{ color: T.text }}>Входящих нет</p>
             <p className="text-xs text-center max-w-xs" style={{ color: T.faint }}>
-              Все голосовые сообщения из Telegram будут появляться здесь для обработки
+              Отправьте текст или голосовое сообщение в Telegram-бот — оно появится здесь
             </p>
           </div>
         )}
 
+        {/* List */}
         {!loading && !error && items.length > 0 && (
           <div className="flex flex-col gap-3">
             {items.map((item) => (
@@ -501,12 +529,4 @@ export default function TelegramInboxPage() {
       </div>
     </div>
   );
-}
-
-function itemsWord(n: number) {
-  if (n % 100 >= 11 && n % 100 <= 14) return "записей";
-  const r = n % 10;
-  if (r === 1) return "запись";
-  if (r >= 2 && r <= 4) return "записи";
-  return "записей";
 }
