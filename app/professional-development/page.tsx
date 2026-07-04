@@ -527,7 +527,7 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
         </Section>
       )}
       {data.active_goals.length > 0 && (
-        <Section title="Ближайшие события" onMore={() => onNavigate("goals")}>
+        <Section title="Активные цели" onMore={() => onNavigate("goals")}>
           {data.active_goals.map(g => <GoalRow key={g.id} goal={g} />)}
         </Section>
       )}

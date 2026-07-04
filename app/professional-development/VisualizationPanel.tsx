@@ -466,8 +466,8 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
         </div>
       </VCard>
 
-      {/* ── Row 3: Ближайшие цели ────────────────────────────────────── */}
-      <VCard title="Ближайшие цели"
+      {/* ── Row 3: Ближайшие события ─────────────────────────────────── */}
+      <VCard title="Ближайшие события"
         onMore={() => onNavigate("goals")}
         moreAriaLabel="Подробнее — перейти к разделу План развития">
         {d.upcoming_events.length > 0 ? (
