@@ -188,7 +188,7 @@ function VCard({ title, onMore, moreAriaLabel, info, children }: {
 }) {
   return (
     <div className="rounded-2xl flex flex-col gap-2"
-      style={{ background: "#FFFFFF", border: "1px solid #D8E4F5", padding: "10px 12px" }}>
+      style={{ background: "#FFFFFF", border: "1px solid #CFC0A9", padding: "10px 12px" }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <span style={{ fontSize: 12, fontWeight: 600, color: "#3D3228" }}>{title}</span>
@@ -242,7 +242,7 @@ function Skeleton() {
     <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         {[168, 168, 150, 150].map((h, i) => (
-          <div key={i} className="rounded-2xl animate-pulse" style={{ height: h, background: "#D8E4F5" }} />
+          <div key={i} className="rounded-2xl animate-pulse" style={{ height: h, background: "#DDD4C6" }} />
         ))}
       </div>
       <div className="rounded-2xl animate-pulse" style={{ height: 60, background: "#D8E4F5" }} />
@@ -274,18 +274,18 @@ export function VisualizationPanel({ year, onClose, onNavigate }: {
 
   return (
     <aside className="flex flex-col min-h-0 w-full xl:flex-shrink-0"
-      style={{ borderLeft: "1px solid #D8E4F5", background: "#F0F4FD", width: 620, marginRight: "5cm" }}>
+      style={{ borderLeft: "1px solid #CFC0A9", background: "#F5F0E8", width: 620, marginRight: "5cm" }}>
 
-      {/* Header — neutral, not blue */}
+      {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5"
-        style={{ background: "#EAF0FB", borderBottom: "1px solid #D0DEFA" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#7A6A52", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        style={{ background: "#EDE5D8", borderBottom: "1px solid #CFC0A9" }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "#3D3228" }}>
           Статистика
         </span>
         <button onClick={onClose} title="Скрыть статистику" aria-label="Скрыть статистику"
           className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors outline-none"
           style={{ color: "#7A6A52" }}
-          onMouseEnter={e => (e.currentTarget.style.background = "#D0DEFA")}
+          onMouseEnter={e => (e.currentTarget.style.background = "#CFC0A9")}
           onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
           <X size={13} />
         </button>
@@ -453,9 +453,9 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
                 return (
                   <div key={i}
                     style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 7px",
-                      borderRadius: 10, background: "#EEF4FB", cursor: "pointer" }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "#DDE8F8")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "#EEF4FB")}>
+                      borderRadius: 10, background: "#F3EBDD", cursor: "pointer" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#EAE0D0")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "#F3EBDD")}>
                     <div style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0,
                       display: "flex", alignItems: "center", justifyContent: "center",
                       background: `${color}22` }}>
