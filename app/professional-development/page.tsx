@@ -699,9 +699,10 @@ function CoursesTab({ onToast }: { onToast: (m: string, t?: "ok"|"err") => void 
                     <span className="font-semibold text-sm truncate" style={{ color: "#3D3228" }}>{c.title}</span>
                     <StatusBadge status={c.status} />
                   </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <IconBtn icon={Pencil} onClick={e => { e.stopPropagation(); openEdit(c); }} title="Редактировать" />
-                    <IconBtn icon={X} onClick={e => { e.stopPropagation(); deleteCourse(c.id); }} title="Удалить" />
+                  <div className="flex items-center gap-1 flex-shrink-0"
+                    onClick={e => e.stopPropagation()}>
+                    <IconBtn icon={Pencil} onClick={() => openEdit(c)} title="Редактировать" />
+                    <IconBtn icon={X} onClick={() => deleteCourse(c.id)} title="Удалить" />
                   </div>
                 </div>
 
