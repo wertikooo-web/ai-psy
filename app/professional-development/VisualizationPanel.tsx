@@ -138,7 +138,7 @@ function BarChart({ data }: { data: VizData["monthly_activity"] }) {
   const yMax   = Math.ceil(maxVal / step) * step;
   const yLines = Array.from({ length: Math.floor(yMax / step) + 1 }, (_, i) => i * step);
 
-  const CH = 86; const LM = 6; const TW = 242;
+  const CH = 52; const LM = 6; const TW = 242;
   const slot = (TW - LM) / 12;
   const barW = slot * 0.55;
 
@@ -187,8 +187,8 @@ function VCard({ title, onMore, moreAriaLabel, info, children }: {
   info?: string; children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl flex flex-col gap-3"
-      style={{ background: "#FFFFFF", border: "1px solid #D8E4F5", padding: "14px 16px" }}>
+    <div className="rounded-2xl flex flex-col gap-2"
+      style={{ background: "#FFFFFF", border: "1px solid #D8E4F5", padding: "10px 12px" }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <span style={{ fontSize: 12, fontWeight: 600, color: "#3D3228" }}>{title}</span>
@@ -292,7 +292,7 @@ export function VisualizationPanel({ year, onClose, onNavigate }: {
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 xl:pb-4">
+      <div className="flex-1 overflow-y-hidden overflow-x-hidden pb-2">
         {loading && <Skeleton />}
 
         {!loading && error && (
@@ -320,7 +320,7 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
   const hasData = d.actual_hours.learning > 0 || d.actual_hours.supervision > 0;
 
   return (
-    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
 
       {/* ── Row 1 ────────────────────────────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
