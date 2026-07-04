@@ -198,7 +198,7 @@ function GptCard({ item, onRemove }: { item: GptItem; onRemove: () => void }) {
         </button>
       </div>
 
-      <div className="px-5 py-3 flex-1">
+      <div className="px-5 py-3 flex-1" style={{ background: "#FBF8F5" }}>
         <p className="text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
           {item.description || <span className="italic" style={{ color: "#C9BBAA" }}>Без описания</span>}
         </p>
