@@ -193,7 +193,7 @@ function VCard({ title, onMore, moreAriaLabel, info, children }: {
       style={{ background: "#FFFFFF", border: "1px solid #CFC0A9", padding: "10px 12px" }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span style={{ fontSize: 12, fontWeight: 600, color: "#3D3228" }}>{title}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "#3D3228" }}>{title}</span>
           {info && (
             <span title={info} aria-label={info}>
               <Info size={11} style={{ color: "#9BAECF", flexShrink: 0 }} />
@@ -281,7 +281,7 @@ export function VisualizationPanel({ year, onClose, onNavigate }: {
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5"
         style={{ background: "#EDE5D8", borderBottom: "1px solid #CFC0A9" }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "#3D3228" }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: "#3D3228" }}>
           Статистика
         </span>
         <button onClick={onClose} title="Скрыть статистику" aria-label="Скрыть статистику"
