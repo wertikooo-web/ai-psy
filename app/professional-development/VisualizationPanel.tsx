@@ -134,25 +134,41 @@ function Donut({ slices, ariaLabel }: { slices: { pct: number; color: string }[]
 
 function BarChart({ data }: { data: VizData["monthly_activity"] }) {
   const maxVal = Math.max(...data.map(d => d.learning + d.supervision), 1);
-  const step   = maxVal <= 10 ? 5 : maxVal <= 20 ? 10 : maxVal <= 30 ? 10 : 20;
+  const step   = maxVal <= 5 ? 2 : maxVal <= 10 ? 5 : maxVal <= 20 ? 10 : maxVal <= 30 ? 10 : 20;
   const yMax   = Math.ceil(maxVal / step) * step;
   const yLines = Array.from({ length: Math.floor(yMax / step) + 1 }, (_, i) => i * step);
 
-  const CH = 52; const LM = 6; const TW = 242;
+  const CH = 52; const LM = 26; const TW = 242;
   const slot = (TW - LM) / 12;
-  const barW = slot * 0.55;
+  const barW = slot * 0.52;
 
   return (
-    <svg viewBox={`0 0 ${TW} ${CH + 16}`} className="w-full"
+    <svg viewBox={`0 0 ${TW} ${CH + 14}`} className="w-full"
       role="img" aria-label="График активности по месяцам: часы обучения и супервизий">
       <title>Активность по месяцам: обучение и супервизии</title>
 
-      {/* Gridlines only — no number labels */}
-      {yLines.map(v => (
-        <line key={v} x1={LM} x2={TW} y1={CH - (v / yMax) * CH} y2={CH - (v / yMax) * CH}
-          stroke={v === 0 ? "#BDD0F0" : "#D8E4F5"}
-          strokeWidth={v === 0 ? "0.8" : "0.5"} />
-      ))}
+      {/* Y-axis gridlines + labels */}
+      {yLines.map(v => {
+        const y = CH - (v / yMax) * CH;
+        return (
+          <g key={v}>
+            <line x1={LM} x2={TW} y1={y} y2={y}
+              stroke={v === 0 ? "#BDD0F0" : "#D8E4F5"}
+              strokeWidth={v === 0 ? "0.8" : "0.5"} />
+            {v > 0 && (
+              <text x={LM - 3} y={y + 3.5} fontSize="7" fill="#9BAECF" textAnchor="end">
+                {v}
+              </text>
+            )}
+          </g>
+        );
+      })}
+
+      {/* Y-axis unit label "ч" at top-left */}
+      <text x={LM - 3} y={7} fontSize="6.5" fill="#BBCCE8" textAnchor="end">ч</text>
+
+      {/* Vertical axis line */}
+      <line x1={LM} x2={LM} y1={0} y2={CH} stroke="#D8E4F5" strokeWidth="0.6" />
 
       {data.map((d, i) => {
         const x     = LM + i * slot + (slot - barW) / 2;
@@ -162,15 +178,13 @@ function BarChart({ data }: { data: VizData["monthly_activity"] }) {
         return (
           <g key={i}>
             <title>{`${MONTHS_SHORT[i]}: ${d.learning}ч обуч, ${d.supervision}ч супервиз`}</title>
-            {/* Supervision on top */}
             {sh > 0 && (
               <rect x={x} y={CH - total} width={barW} height={sh} fill="#7C6DC5" rx="2" />
             )}
-            {/* Learning on bottom */}
             {lh > 0 && (
               <rect x={x} y={CH - lh} width={barW} height={lh} fill="#5C9BD5" rx="2" />
             )}
-            <text x={x + barW / 2} y={CH + 12} fontSize="8" fill="#7A6A52" textAnchor="middle">
+            <text x={x + barW / 2} y={CH + 11} fontSize="6.5" fill="#7A6A52" textAnchor="middle">
               {MONTHS_SHORT[i]}
             </text>
           </g>
