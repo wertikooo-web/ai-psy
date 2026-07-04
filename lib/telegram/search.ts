@@ -941,17 +941,10 @@ async function sendSearch(chatId: number, query: string | undefined, onlyNoteboo
     .map((item) => urlButton(resultButtonLabel(item.type), item.url))
     .filter((b): b is TelegramInlineKeyboardButton => !!b);
 
-  // "All results on site" button — notebook-only search → notebook, general → analytics
-  const siteUrl = onlyNotebook ? getNotebookUrl(cleaned) : appUrl("/analytics");
-  const siteBtn = urlButton(
-    totalFound > 0 ? "🔎 Все результаты на сайте" : "🔎 Открыть поиск на сайте",
-    siteUrl,
-  );
-
   await sendTelegramMessage(
     chatId,
     renderSearchResults(cleaned, results, totalFound),
-    keyboardFromButtons([...resultButtons, siteBtn]),
+    keyboardFromButtons(resultButtons),
   );
 }
 
