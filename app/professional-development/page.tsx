@@ -251,9 +251,9 @@ function ProfDevInner() {
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden lg:pl-10" style={{ background: "#FBF8F5" }}>
 
-      {/* Header */}
-      <header className="flex-shrink-0 px-4 lg:px-6 pt-4 pb-0" style={{ background: "#FBF8F5" }}>
-        <div className="flex items-center gap-3 mb-4">
+      {/* Page title */}
+      <header className="flex-shrink-0 px-4 lg:px-6 pt-4 pb-3" style={{ background: "#FBF8F5" }}>
+        <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: "#E8EEF9", border: "1px solid #B8CCF0" }}>
             <GraduationCap size={18} style={{ color: "#3a5ff8" }} />
@@ -262,84 +262,7 @@ function ProfDevInner() {
             <h1 className="text-lg font-bold leading-tight" style={{ color: "#3D3228" }}>Профессиональное развитие</h1>
             <p className="text-xs" style={{ color: "#7A6A52" }}>Обучение, супервизии, документы и цели</p>
           </div>
-
-          {/* Right header buttons — desktop only */}
-          <div className="ml-auto hidden xl:flex items-center gap-2">
-            {panelCollapsed && (
-              <button
-                onClick={() => togglePanel(false)}
-                title="Показать статистику"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors"
-                style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", color: "#3D3228" }}>
-                <BarChart2 size={13} style={{ color: "#3a5ff8" }} />
-                Статистика
-              </button>
-            )}
-          </div>
         </div>
-
-        {/* Tabs — primary row + "Ещё" dropdown for secondary */}
-        {(() => {
-          const secondaryActive = SECONDARY_TABS.find(t => t.key === activeTab);
-          return (
-            <div className="flex border-b overflow-x-auto scrollbar-none" style={{ borderColor: "#E5E5E5" }}>
-              {PRIMARY_TABS.map(({ key, label, icon: Icon }) => {
-                const active = key === activeTab;
-                return (
-                  <button key={key} onClick={() => setTab(key)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors flex-shrink-0"
-                    style={{
-                      color: active ? "#3a5ff8" : "#6B7280",
-                      borderBottom: active ? "2px solid #3a5ff8" : "2px solid transparent",
-                      marginBottom: "-1px",
-                    }}>
-                    <Icon size={14} strokeWidth={active ? 2.3 : 1.8} />
-                    <span>{label}</span>
-                  </button>
-                );
-              })}
-
-              {/* "Ещё" dropdown */}
-              <div ref={moreRef} className="relative flex-shrink-0">
-                <button onClick={() => setMoreOpen(p => !p)}
-                  className="flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors"
-                  style={{
-                    color: secondaryActive ? "#3a5ff8" : "#6B7280",
-                    borderBottom: secondaryActive ? "2px solid #3a5ff8" : "2px solid transparent",
-                    marginBottom: "-1px",
-                  }}>
-                  <span>Ещё</span>
-                  <ChevronDown size={12} style={{ transform: moreOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
-                </button>
-                {moreOpen && (
-                  <div className="absolute left-0 top-full mt-1 z-30 rounded-xl shadow-xl py-1 w-48"
-                    style={{ background: "#FFFFFF", border: "1px solid #E5E5E5" }}>
-                    {SECONDARY_TABS.map(({ key, label, icon: Icon }) => (
-                      <button key={key} onClick={() => { setTab(key); setMoreOpen(false); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium"
-                        style={{ color: key === activeTab ? "#3a5ff8" : "#3D3228",
-                          background: key === activeTab ? "#EEF4FB" : "transparent" }}
-                        onMouseEnter={e => { if (key !== activeTab) e.currentTarget.style.background = "#F7F4F0"; }}
-                        onMouseLeave={e => { if (key !== activeTab) e.currentTarget.style.background = "transparent"; }}>
-                        <Icon size={14} />
-                        {label}
-                      </button>
-                    ))}
-                    <div style={{ height: 1, background: "#E5E5E5", margin: "4px 12px" }} />
-                    <button onClick={() => { setMoreOpen(false); setPdfOpen(true); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium"
-                      style={{ color: "#3D3228" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "#F7F4F0"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                      <Download size={14} />
-                      Отчёт PDF
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
       </header>
 
       {/* PDF export modal */}
@@ -365,19 +288,104 @@ function ProfDevInner() {
         </Modal>
       )}
 
-      {/* Content — 2-column on xl+ */}
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col xl:flex-row">
+      {/* Main 2-column layout */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col xl:flex-row gap-4 px-3 lg:px-4 pb-4">
 
-        {/* Left: main tab content */}
-        <div className="flex-1 min-h-0 overflow-y-auto pb-16 lg:pb-4">
-          {activeTab === "overview"      && <OverviewTab      onNavigate={setTab} year={selectedYear} />}
-          {activeTab === "courses"       && <CoursesTab       onToast={show} />}
-          {activeTab === "supervisions"  && <SupervisionsTab  onToast={show} />}
-          {activeTab === "documents"     && <DocumentsTab     onToast={show} />}
-          {activeTab === "goals"         && <GoalsTab         onToast={show} year={selectedYear} />}
-          {activeTab === "associations"  && <AssociationsTab  onToast={show} />}
+        {/* Left: card — tab bar header + scrollable content */}
+        <div className="flex-1 min-h-0 flex flex-col">
 
-          {activeTab === "reflection"    && <ReflectionTab    onToast={show} year={selectedYear} />}
+          {/* Tab bar — warm beige, same palette as right "Статистика" header */}
+          {(() => {
+            const secondaryActive = SECONDARY_TABS.find(t => t.key === activeTab);
+            return (
+              <div className="flex-shrink-0 flex items-stretch"
+                style={{ background: "#EDE5D8", border: "1px solid #CFC0A9", borderRadius: "1rem 1rem 0 0" }}>
+                <div className="flex overflow-x-auto scrollbar-none flex-1">
+                  {PRIMARY_TABS.map(({ key, label, icon: Icon }) => {
+                    const active = key === activeTab;
+                    return (
+                      <button key={key} onClick={() => setTab(key)}
+                        className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors flex-shrink-0"
+                        style={{
+                          color: active ? "#3a5ff8" : "#3D3228",
+                          borderBottom: active ? "2px solid #3a5ff8" : "2px solid transparent",
+                        }}>
+                        <Icon size={14} strokeWidth={active ? 2.3 : 1.8} />
+                        <span>{label}</span>
+                      </button>
+                    );
+                  })}
+
+                  {/* "Ещё" dropdown */}
+                  <div ref={moreRef} className="relative flex-shrink-0">
+                    <button onClick={() => setMoreOpen(p => !p)}
+                      className="flex items-center gap-1 px-3 py-2.5 text-sm font-medium transition-colors"
+                      style={{
+                        color: secondaryActive ? "#3a5ff8" : "#3D3228",
+                        borderBottom: secondaryActive ? "2px solid #3a5ff8" : "2px solid transparent",
+                      }}>
+                      <span>Ещё</span>
+                      <ChevronDown size={12} style={{ transform: moreOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                    </button>
+                    {moreOpen && (
+                      <div className="absolute left-0 top-full mt-1 z-30 rounded-xl shadow-xl py-1 w-48"
+                        style={{ background: "#FFFFFF", border: "1px solid #E5E5E5" }}>
+                        {SECONDARY_TABS.map(({ key, label, icon: Icon }) => (
+                          <button key={key} onClick={() => { setTab(key); setMoreOpen(false); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium"
+                            style={{ color: key === activeTab ? "#3a5ff8" : "#3D3228",
+                              background: key === activeTab ? "#EEF4FB" : "transparent" }}
+                            onMouseEnter={e => { if (key !== activeTab) e.currentTarget.style.background = "#F7F4F0"; }}
+                            onMouseLeave={e => { if (key !== activeTab) e.currentTarget.style.background = "transparent"; }}>
+                            <Icon size={14} />
+                            {label}
+                          </button>
+                        ))}
+                        <div style={{ height: 1, background: "#E5E5E5", margin: "4px 12px" }} />
+                        <button onClick={() => { setMoreOpen(false); setPdfOpen(true); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium"
+                          style={{ color: "#3D3228" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "#F7F4F0"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                          <Download size={14} />
+                          Отчёт PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Статистика button — pinned right inside tab bar (desktop only) */}
+                {panelCollapsed && (
+                  <div className="hidden xl:flex flex-shrink-0 items-center px-3"
+                    style={{ borderLeft: "1px solid #CFC0A9" }}>
+                    <button
+                      onClick={() => togglePanel(false)}
+                      title="Показать статистику"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors"
+                      style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", color: "#3D3228" }}>
+                      <BarChart2 size={13} style={{ color: "#3a5ff8" }} />
+                      Статистика
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Scrollable content area */}
+          <div className="flex-1 min-h-0 overflow-y-auto"
+            style={{ background: "#FBF8F5", border: "1px solid #CFC0A9", borderTop: "none", borderRadius: "0 0 1rem 1rem" }}>
+            <div className="pb-16 lg:pb-4">
+              {activeTab === "overview"      && <OverviewTab      onNavigate={setTab} year={selectedYear} />}
+              {activeTab === "courses"       && <CoursesTab       onToast={show} />}
+              {activeTab === "supervisions"  && <SupervisionsTab  onToast={show} />}
+              {activeTab === "documents"     && <DocumentsTab     onToast={show} />}
+              {activeTab === "goals"         && <GoalsTab         onToast={show} year={selectedYear} />}
+              {activeTab === "associations"  && <AssociationsTab  onToast={show} />}
+              {activeTab === "reflection"    && <ReflectionTab    onToast={show} year={selectedYear} />}
+            </div>
+          </div>
         </div>
 
         {/* Right panel */}

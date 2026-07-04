@@ -288,7 +288,7 @@ export function VisualizationPanel({ year, onClose, onNavigate }: {
 
   return (
     <aside className="hidden xl:flex flex-col min-h-0 xl:flex-shrink-0"
-      style={{ borderLeft: "1px solid #CFC0A9", background: "#F5F0E8", width: 620, marginRight: "5cm" }}>
+      style={{ border: "1px solid #CFC0A9", borderRadius: "1rem", background: "#F5F0E8", width: 620, overflow: "hidden" }}>
 
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-2.5"
