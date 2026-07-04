@@ -863,46 +863,41 @@ function isContainedIn(snippet: string, highlight: string): boolean {
 
 function renderSearchResults(query: string, results: SearchResult[], totalFound: number): string {
   if (!results.length) {
-    return `🔎 По запросу «${escapeHtml(query)}» ничего не найдено.\n\nПопробуйте другое слово, имя клиента или тему.`;
+    return `По запросу «${escapeHtml(query)}» ничего не найдено.\n\nПопробуйте другое слово, имя клиента или тему.`;
   }
 
   const shown     = results.length;
   const countWord = pluralRu(totalFound, "совпадение", "совпадения", "совпадений");
-  const header    = `🔎 <b>Нашёл ${totalFound} ${countWord}</b> по запросу: «${escapeHtml(query)}»`;
+  const header    = `<b>Нашёл ${totalFound} ${countWord}</b> по запросу «${escapeHtml(query)}»`;
 
-  const cards = results.map((item, i) => {
+  const cards = results.map((item) => {
     const lines: string[] = [];
 
-    // Title line
-    lines.push(`<b>${i + 1}. ${resultTypeIcon(item.type)} ${escapeHtml(resultTypeLabel(item.type))}</b>`);
+    // Тип + иконка
+    lines.push(`<b>${resultTypeIcon(item.type)} ${escapeHtml(resultTypeLabel(item.type))}</b>`);
 
-    // Compact meta: "Клиент · Дата"
+    // Клиент · Дата в одну строку
     const meta = [item.clientName, item.date ? formatDate(item.date) : ""].filter(Boolean);
     if (meta.length) lines.push(escapeHtml(meta.join(" · ")));
 
-    // Main body — cleaned, short
-    const body = formatTelegramSnippet(item.snippet, 200);
-    if (body && body !== "Текст не заполнен.") {
-      lines.push("");
-      lines.push(escapeHtml(body));
-    }
+    // Короткий смысл
+    const body = formatTelegramSnippet(item.snippet, 180);
+    if (body && body !== "Текст не заполнен.") lines.push(escapeHtml(body));
 
-    // Fragment — only if it adds something new
-    const highlight = extractHighlight(item.snippet, query, 130);
+    // Фрагмент — только если отличается от body
+    const highlight = extractHighlight(item.snippet, query, 120);
     if (highlight && !isContainedIn(body, highlight)) {
-      lines.push(`<i>Фрагмент:</i> «${escapeHtml(highlight)}»`);
+      lines.push(`«${escapeHtml(highlight)}»`);
     }
 
     return lines.join("\n");
   });
 
-  const parts = [header, ...cards];
+  const footer = totalFound > shown
+    ? `<i>Показал ${shown} из ${totalFound}</i>`
+    : "";
 
-  if (totalFound > shown) {
-    parts.push(`<i>Показал первые ${shown} из ${totalFound}.</i>`);
-  }
-
-  return parts.join("\n\n");
+  return [header, ...cards, footer].filter(Boolean).join("\n\n");
 }
 
 async function sendSearch(chatId: number, query: string | undefined, onlyNotebook = false, clientName?: string): Promise<void> {
