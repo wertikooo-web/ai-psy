@@ -420,7 +420,7 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
       </div>
 
       {/* ── Row 2: Активность ───────────────────────────────────────────── */}
-      <VCard title="Активность"
+      <VCard title="Активность обучения"
         onMore={() => onNavigate("supervisions")}
         moreAriaLabel="Подробнее — перейти к разделу Супервизии"
         info="Часы обучения и супервизий по месяцам">
