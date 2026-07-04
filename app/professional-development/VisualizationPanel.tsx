@@ -138,37 +138,24 @@ function BarChart({ data }: { data: VizData["monthly_activity"] }) {
   const yMax   = Math.ceil(maxVal / step) * step;
   const yLines = Array.from({ length: Math.floor(yMax / step) + 1 }, (_, i) => i * step);
 
-  const CH = 52; const LM = 26; const TW = 242;
+  const CH = 52; const LM = 6; const TW = 242;
   const slot = (TW - LM) / 12;
   const barW = slot * 0.52;
 
   return (
-    <svg viewBox={`0 -8 ${TW} ${CH + 14 + 8}`} className="w-full"
+    <svg viewBox={`0 -4 ${TW} ${CH + 14 + 4}`} className="w-full"
       role="img" aria-label="График активности по месяцам: часы обучения и супервизий">
       <title>Активность по месяцам: обучение и супервизии</title>
 
-      {/* Y-axis gridlines + labels */}
+      {/* Y-axis gridlines only — no labels */}
       {yLines.map(v => {
         const y = CH - (v / yMax) * CH;
         return (
-          <g key={v}>
-            <line x1={LM} x2={TW} y1={y} y2={y}
-              stroke={v === 0 ? "#BDD0F0" : "#D8E4F5"}
-              strokeWidth={v === 0 ? "0.8" : "0.5"} />
-            {v > 0 && (
-              <text x={LM - 3} y={y + 3.5} fontSize="7" fill="#9BAECF" textAnchor="end">
-                {v}
-              </text>
-            )}
-          </g>
+          <line key={v} x1={LM} x2={TW} y1={y} y2={y}
+            stroke={v === 0 ? "#BDD0F0" : "#D8E4F5"}
+            strokeWidth={v === 0 ? "0.8" : "0.5"} />
         );
       })}
-
-      {/* Y-axis unit label "ч" at top-left */}
-      <text x={LM - 3} y={7} fontSize="6.5" fill="#BBCCE8" textAnchor="end">ч</text>
-
-      {/* Vertical axis line */}
-      <line x1={LM} x2={LM} y1={0} y2={CH} stroke="#D8E4F5" strokeWidth="0.6" />
 
       {data.map((d, i) => {
         const x     = LM + i * slot + (slot - barW) / 2;
