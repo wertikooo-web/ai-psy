@@ -1373,6 +1373,8 @@ function CourseForm({ initial, onClose, onSaved, onToast }: {
 
   async function save() {
     if (!f.title.trim()) { onToast("Укажите название", "err"); return; }
+    if (!f.start_date)   { onToast("Укажите дату начала", "err"); return; }
+    if (!f.end_date)     { onToast("Укажите дату окончания", "err"); return; }
     setSaving(true);
     try {
       const body = {
@@ -1429,11 +1431,11 @@ function CourseForm({ initial, onClose, onSaved, onToast }: {
           <input type="number" min={0} value={f.completed_hours} onChange={e => setF(p => ({ ...p, completed_hours: e.target.value }))} className={INPUT} placeholder="0" />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Начало">
-            <input type="date" value={f.start_date} onChange={e => setF(p => ({ ...p, start_date: e.target.value }))} className={INPUT} />
+          <Field label="Начало *">
+            <input type="date" required value={f.start_date} onChange={e => setF(p => ({ ...p, start_date: e.target.value }))} className={INPUT} />
           </Field>
-          <Field label="Окончание">
-            <input type="date" value={f.end_date} onChange={e => setF(p => ({ ...p, end_date: e.target.value }))} className={INPUT} />
+          <Field label="Окончание *">
+            <input type="date" required value={f.end_date} onChange={e => setF(p => ({ ...p, end_date: e.target.value }))} className={INPUT} />
           </Field>
         </div>
         <label className="flex items-center gap-2 cursor-pointer">

@@ -31,9 +31,9 @@ export async function GET(req: NextRequest) {
     supabaseServer!.from("professional_courses").select("id", { count: "exact", head: true })
       .eq("user_id", userId).eq("status", "in_progress"),
 
-    supabaseServer!.from("professional_courses").select("total_hours, completed_hours")
-      .eq("user_id", userId).eq("status", "completed")
-      .or(`start_date.gte.${from},end_date.lte.${to}`),
+    supabaseServer!.from("professional_courses").select("total_hours, completed_hours, status")
+      .eq("user_id", userId).in("status", ["completed", "in_progress"])
+      .or(`start_date.lte.${to},end_date.gte.${from},and(start_date.is.null,end_date.is.null)`),
 
     supabaseServer!.from("professional_courses").select("id", { count: "exact", head: true })
       .eq("user_id", userId).eq("certificate_received", true),
@@ -85,11 +85,14 @@ export async function GET(req: NextRequest) {
     supabaseServer!.from("professional_courses")
       .select("category,total_hours,completed_hours,status")
       .eq("user_id", userId)
-      .or(`start_date.gte.${from},end_date.lte.${to}`),
+      .or(`start_date.lte.${to},end_date.gte.${from},and(start_date.is.null,end_date.is.null)`),
   ]);
 
-  const learningHours = (coursesCompleted.data ?? [])
-    .reduce((sum, c) => sum + (c.total_hours ?? c.completed_hours ?? 0), 0);
+  const learningHours = (coursesCompleted.data ?? []).reduce((sum, c) => {
+    if (c.status === "completed")   return sum + (c.total_hours ?? c.completed_hours ?? 0);
+    if (c.status === "in_progress") return sum + (c.completed_hours ?? 0);
+    return sum;
+  }, 0);
 
   const supervisionHours = (sessionsThisYear.data ?? [])
     .filter(s => ["supervision","balint_group"].includes(s.session_type))

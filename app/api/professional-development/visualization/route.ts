@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     supabaseServer!.from("professional_courses")
       .select("category, total_hours, completed_hours, status, start_date, end_date")
       .eq("user_id", userId)
-      .or(`start_date.lte.${to},end_date.gte.${from}`),
+      .or(`start_date.lte.${to},end_date.gte.${from},and(start_date.is.null,end_date.is.null)`),
 
     supabaseServer!.from("professional_sessions")
       .select("session_type, session_date, duration_minutes")
@@ -68,10 +68,12 @@ export async function GET(req: NextRequest) {
   const sessions = sessionsRes.data ?? [];
   const reqs     = reqsRes.data     ?? [];
 
-  // Actual hours for the year
-  const learning_hours = courses
-    .filter(c => c.status === "completed")
-    .reduce((s, c) => s + (c.total_hours ?? c.completed_hours ?? 0), 0);
+  // Actual hours for the year (completed = total_hours; in_progress = completed_hours)
+  const learning_hours = courses.reduce((s, c) => {
+    if (c.status === "completed")   return s + (c.total_hours ?? c.completed_hours ?? 0);
+    if (c.status === "in_progress") return s + (c.completed_hours ?? 0);
+    return s;
+  }, 0);
 
   const supervision_hours = sessions
     .filter(s => SUP_TYPES.has(s.session_type))
@@ -83,8 +85,7 @@ export async function GET(req: NextRequest) {
     const h = c.status === "completed" ? (c.total_hours ?? 0) : (c.completed_hours ?? 0);
     if (h <= 0) continue;
     const ds = c.end_date ?? c.start_date;
-    if (!ds) continue;
-    const m = new Date(ds).getMonth();
+    const m = ds ? new Date(ds).getMonth() : new Date().getMonth();
     if (m >= 0 && m < 12) monthly[m].learning = Math.round((monthly[m].learning + h) * 10) / 10;
   }
   for (const s of sessions) {
