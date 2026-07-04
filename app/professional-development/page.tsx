@@ -1779,9 +1779,27 @@ function SessionRow({ session: s }: { session: RawSession }) {
 }
 
 function GoalRow({ goal: g }: { goal: RawGoal }) {
+  const daysLeft = g.target_date
+    ? Math.ceil((new Date(g.target_date).getTime() - Date.now()) / 86400000)
+    : null;
+  const daysLabel = daysLeft === null ? null
+    : daysLeft <= 0 ? "сегодня"
+    : daysLeft === 1 ? "завтра"
+    : `через ${daysLeft} дн.`;
   return (
-    <div className="rounded-xl px-3 py-2.5" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
-      <div className="text-sm font-medium truncate" style={{ color: "#3D3228" }}>{g.title}</div>
+    <div className="rounded-xl px-3 py-2.5 flex items-center gap-3" style={{ background: "#F3EBDD", border: "1px solid #CFC0A9" }}>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium truncate" style={{ color: "#3D3228" }}>{g.title}</div>
+        {g.target_date && (
+          <div className="text-xs mt-0.5" style={{ color: "#7A6A52" }}>
+            до {new Date(g.target_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+            {daysLabel && <span style={{ color: daysLeft !== null && daysLeft <= 7 ? "#D97706" : "#9CA3AF", marginLeft: 6 }}>{daysLabel}</span>}
+          </div>
+        )}
+      </div>
+      {g.progress > 0 && (
+        <span className="text-xs font-semibold flex-shrink-0" style={{ color: "#3a5ff8" }}>{g.progress}%</span>
+      )}
     </div>
   );
 }

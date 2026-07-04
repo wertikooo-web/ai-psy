@@ -754,19 +754,142 @@ async function searchSupabaseTextTables(query: string, consultationIdsAlreadyFou
     .slice(0, 6);
 }
 
-function renderSearchResults(query: string, results: SearchResult[]): string {
-  if (!results.length) return `По запросу «${query}» ничего не найдено.`;
-  return [
-    `Нашёл ${results.length} совпадений по запросу «${query}».`,
-    "",
-    ...results.map((item, index) => [
-      `${index + 1}. ${item.title}`,
-      item.clientName ? `Клиент: ${item.clientName}` : "",
-      item.date ? `Дата: ${formatDate(item.date)}` : "",
-      `«${item.snippet}»`,
-    ].filter(Boolean).join("\n")),
-  ].join("\n\n");
+// ── Type display mappers ───────────────────────────────────────────────────────
+
+const TYPE_LABEL: Record<string, string> = {
+  analysis:         "AI-анализ",
+  ai_analysis:      "AI-анализ",
+  consultation:     "Консультация",
+  notebook:         "Заметка",
+  client_request:   "Запрос клиента",
+  client_history:   "История клиента",
+  history:          "История клиента",
+  significant_events: "Важное событие",
+  client_material:  "Материал",
+  material:         "Материал",
+  document:         "Документ",
+  observation:      "Наблюдение",
+  calendar:         "Событие",
+  task:             "Задача",
+};
+
+const TYPE_ICON: Record<string, string> = {
+  analysis:         "🧠",
+  ai_analysis:      "🧠",
+  consultation:     "🎙",
+  notebook:         "📝",
+  client_request:   "💬",
+  client_history:   "📌",
+  history:          "📌",
+  significant_events: "📌",
+  client_material:  "📎",
+  material:         "📎",
+  document:         "📄",
+  observation:      "👁",
+  calendar:         "📅",
+  task:             "✅",
+};
+
+const TYPE_BUTTON: Record<string, string> = {
+  analysis:         "🧠 Открыть анализ",
+  ai_analysis:      "🧠 Открыть анализ",
+  consultation:     "🎙 Открыть консультацию",
+  notebook:         "📝 Открыть заметку",
+  client_request:   "💬 Открыть клиента",
+  client_history:   "📌 Открыть клиента",
+  history:          "📌 Открыть клиента",
+  significant_events: "📌 Открыть клиента",
+  client_material:  "📎 Открыть материал",
+  material:         "📎 Открыть материал",
+  document:         "📄 Открыть документ",
+  calendar:         "📅 Открыть событие",
+};
+
+function resultTypeLabel(type: string): string {
+  return TYPE_LABEL[type] ?? "Запись";
 }
+function resultTypeIcon(type: string): string {
+  return TYPE_ICON[type] ?? "📍";
+}
+function resultButtonLabel(type: string): string {
+  return TYPE_BUTTON[type] ?? "📍 Открыть запись";
+}
+
+/** Strip markdown headings/bold, collapse whitespace, trim, cut at word boundary. */
+function formatTelegramSnippet(text: string, maxLength = 250): string {
+  const clean = text
+    .replace(/^#{1,6}\s+/gm, "")          // strip ### headings
+    .replace(/\*\*(.+?)\*\*/g, "$1")       // strip **bold**
+    .replace(/\*(.+?)\*/g, "$1")           // strip *italic*
+    .replace(/_{1,2}(.+?)_{1,2}/g, "$1")   // strip _underline_
+    .replace(/`{1,3}[^`]*`{1,3}/g, "")    // strip code
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1") // strip links
+    .replace(/\n{2,}/g, " ")              // collapse newlines
+    .replace(/\s+/g, " ")
+    .trim();
+  if (clean.length <= maxLength) return clean;
+  const cut = clean.lastIndexOf(" ", maxLength - 1);
+  return (cut > maxLength * 0.6 ? clean.slice(0, cut) : clean.slice(0, maxLength)).trimEnd() + "…";
+}
+
+/** Find the query in text and return a short surrounding fragment. */
+function extractHighlight(text: string, query: string, maxLen = 150): string | null {
+  const cleanText = text.replace(/\*\*|#{1,6}\s/g, "").replace(/\s+/g, " ").trim();
+  const needles   = searchNeedles(query).sort((a, b) => b.length - a.length);
+  const lower     = cleanText.toLowerCase().replace(/ё/g, "е");
+  const hit       = needles.map(n => lower.indexOf(n)).filter(i => i >= 0).sort((a, b) => a - b)[0];
+  if (hit === undefined) return null;
+  const before = 50;
+  const start  = Math.max(0, hit - before);
+  const end    = Math.min(cleanText.length, start + maxLen);
+  const frag   = cleanText.slice(start, end).trim();
+  return `${start > 0 ? "…" : ""}${frag}${end < cleanText.length ? "…" : ""}`;
+}
+
+const DIVIDER = "━━━━━━━━━━━━━";
+
+function renderSearchResults(query: string, results: SearchResult[], totalFound: number): string {
+  const shown = results.length;
+  if (!shown) {
+    return [
+      `🔎 По запросу «${query}» ничего не найдено.`,
+      "",
+      "Можно попробовать:",
+      "— другое слово или корень слова;",
+      "— имя клиента;",
+      "— тему или дату.",
+    ].join("\n");
+  }
+
+  const header = totalFound > shown
+    ? `🔎 Нашёл ${totalFound} совпадения по запросу: «${query}»\nПоказал первые ${shown}. Остальные удобнее смотреть на сайте.`
+    : shown === 1
+      ? `🔎 Нашёл 1 совпадение по запросу: «${query}»`
+      : `🔎 Нашёл ${shown} совпадения по запросу: «${query}»`;
+
+  const cards = results.map((item, i) => {
+    const icon     = resultTypeIcon(item.type);
+    const typeLabel = resultTypeLabel(item.type);
+    const lines: string[] = [
+      DIVIDER,
+      `${i + 1}. ${icon} ${typeLabel}`,
+    ];
+    if (item.clientName) lines.push(`👤 ${item.clientName}`);
+    if (item.date)       lines.push(`📅 ${formatDate(item.date)}`);
+
+    const body = formatTelegramSnippet(item.snippet, 260);
+    if (body && body !== "Текст не заполнен.") lines.push("", body);
+
+    const highlight = extractHighlight(item.snippet, query, 140);
+    if (highlight) lines.push("", `Совпадение: «${highlight}»`);
+
+    return lines.join("\n");
+  });
+
+  return [header, ...cards, DIVIDER].join("\n");
+}
+
+const MAX_TG_RESULTS = 3;
 
 async function sendSearch(chatId: number, query: string | undefined, onlyNotebook = false, clientName?: string): Promise<void> {
   const cleaned = cleanupSearchQuery(query ?? "");
@@ -776,23 +899,31 @@ async function sendSearch(chatId: number, query: string | undefined, onlyNoteboo
   }
   const client = clientName?.trim() ? await resolveSingleClient(chatId, clientName) : null;
   if (clientName?.trim() && !client) return;
+
   let rawResults: SearchResult[];
-  if (onlyNotebook) {
-    rawResults = await searchNotebook(cleaned);
-  } else {
-    const consultationResults = await searchConsultations(cleaned, client?.id);
-    const foundConsultationIds = new Set(
-      consultationResults.map((r) => r.url?.split("/consultation/")[1]).filter((id): id is string => Boolean(id)),
-    );
-    const [notebookResults, supabaseResults] = await Promise.all([
-      searchNotebook(cleaned),
-      searchSupabaseTextTables(cleaned, foundConsultationIds),
-    ]);
-    rawResults = [...consultationResults, ...notebookResults, ...supabaseResults];
+  try {
+    if (onlyNotebook) {
+      rawResults = await searchNotebook(cleaned);
+    } else {
+      const consultationResults = await searchConsultations(cleaned, client?.id);
+      const foundConsultationIds = new Set(
+        consultationResults.map((r) => r.url?.split("/consultation/")[1]).filter((id): id is string => Boolean(id)),
+      );
+      const [notebookResults, supabaseResults] = await Promise.all([
+        searchNotebook(cleaned),
+        searchSupabaseTextTables(cleaned, foundConsultationIds),
+      ]);
+      rawResults = [...consultationResults, ...notebookResults, ...supabaseResults];
+    }
+  } catch (err) {
+    console.error("[telegram/search] error:", typeof err === "object" && err !== null && "message" in err ? (err as Error).message : "unknown");
+    await sendTelegramMessage(chatId, "Не смог выполнить поиск. Попробуйте ещё раз или откройте поиск на сайте.", keyboardFromButtons([urlButton("🔎 Открыть поиск на сайте", getNotebookUrl(cleaned))]));
+    return;
   }
+
   // Dedup by URL (same consultation from different sources)
   const seen = new Set<string>();
-  const results = rawResults
+  const allResults = rawResults
     .filter((item) => {
       const key = item.url ?? `${item.type}:${item.title}`;
       if (seen.has(key)) return false;
@@ -800,15 +931,25 @@ async function sendSearch(chatId: number, query: string | undefined, onlyNoteboo
       return true;
     })
     .sort((a, b) => searchScore([b.title, b.clientName, b.snippet].filter(Boolean).join(" "), cleaned)
-      - searchScore([a.title, a.clientName, a.snippet].filter(Boolean).join(" "), cleaned))
-    .slice(0, 5);
+      - searchScore([a.title, a.clientName, a.snippet].filter(Boolean).join(" "), cleaned));
+
+  const totalFound = allResults.length;
+  const results = allResults.slice(0, MAX_TG_RESULTS);
+
+  // Build human-readable buttons for each shown result
+  const resultButtons = results
+    .map((item) => urlButton(resultButtonLabel(item.type), item.url))
+    .filter((b): b is TelegramInlineKeyboardButton => !!b);
+
+  // "All results on site" button — only when there are results
+  const siteBtn = totalFound > 0
+    ? urlButton("🔎 Все результаты на сайте", getNotebookUrl(cleaned))
+    : urlButton("🔎 Открыть поиск на сайте", getNotebookUrl(cleaned));
+
   await sendTelegramMessage(
     chatId,
-    renderSearchResults(cleaned, results),
-    keyboardFromButtons([
-      ...results.slice(0, 5).map((item, index) => urlButton(`Открыть ${index + 1}`, item.url)),
-      urlButton("Открыть поиск в блокноте", getNotebookUrl(cleaned)),
-    ]),
+    renderSearchResults(cleaned, results, totalFound),
+    keyboardFromButtons([...resultButtons, siteBtn]),
   );
 }
 

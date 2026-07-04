@@ -130,6 +130,12 @@ export async function GET(req: NextRequest) {
 
   events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+  const courses_breakdown = {
+    completed:   courses.filter(c => c.status === "completed").length,
+    in_progress: courses.filter(c => c.status === "in_progress").length,
+    total:       courses.length,
+  };
+
   return NextResponse.json({
     actual_hours: {
       learning:    Math.round(learning_hours    * 10) / 10,
@@ -139,5 +145,6 @@ export async function GET(req: NextRequest) {
     topics,
     year_targets,
     upcoming_events: events.slice(0, 4),
+    courses_breakdown,
   });
 }

@@ -9,11 +9,12 @@ import {
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface VizData {
-  actual_hours:     { learning: number; supervision: number };
-  monthly_activity: { month: number; learning: number; supervision: number }[];
-  topics:           { category: string; hours: number; percent: number }[];
-  year_targets:     { learning: number; supervision: number } | null;
-  upcoming_events:  { type: string; title: string; date: string; subtitle?: string }[];
+  actual_hours:      { learning: number; supervision: number };
+  monthly_activity:  { month: number; learning: number; supervision: number }[];
+  topics:            { category: string; hours: number; percent: number }[];
+  year_targets:      { learning: number; supervision: number } | null;
+  upcoming_events:   { type: string; title: string; date: string; subtitle?: string }[];
+  courses_breakdown: { completed: number; in_progress: number; total: number };
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -72,10 +73,12 @@ function focusMsg(d: VizData): string {
 function Ring({ value, max, color, label, sub }: {
   value: number; max: number; color: string; label: string; sub: string;
 }) {
-  const pct      = max > 0 ? Math.min(value / max, 1) : 0;   // visual fill, capped at 1
-  const realPct  = max > 0 ? Math.round((value / max) * 100) : 0; // real label, uncapped
+  const hasTarget = max > 0;
+  const pct      = hasTarget ? Math.min(value / max, 1) : (value > 0 ? 1 : 0);
+  const realPct  = hasTarget ? Math.round((value / max) * 100) : 0;
   const r = 38; const c = 48; const circ = 2 * Math.PI * r;
-  const pctLabel = `${realPct}%`;
+  const pctLabel = hasTarget ? `${realPct}%` : value > 0 ? `${value} ч` : "—";
+  const ringColor = hasTarget ? color : value > 0 ? color : "#D8E4F5";
   return (
     <div className="flex flex-col items-center" style={{ gap: 8 }}>
       <div className="relative" style={{ width: 88, height: 88 }}>
@@ -84,14 +87,14 @@ function Ring({ value, max, color, label, sub }: {
           <title>{`${label}: ${pctLabel} — ${sub}`}</title>
           <circle cx={c} cy={c} r={r} fill="none" strokeWidth="8" stroke="#D8E4F5"
             style={{ transform: "rotate(-90deg)", transformOrigin: `${c}px ${c}px` }} />
-          <circle cx={c} cy={c} r={r} fill="none" strokeWidth="8" stroke={color}
+          <circle cx={c} cy={c} r={r} fill="none" strokeWidth="8" stroke={ringColor}
             strokeLinecap="round"
             strokeDasharray={`${pct * circ} ${circ}`}
             style={{ transform: "rotate(-90deg)", transformOrigin: `${c}px ${c}px`,
               transition: "stroke-dasharray 0.6s ease" }} />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span style={{ fontSize: 16, fontWeight: 700, color: "#2D2A26", lineHeight: 1 }}>
+          <span style={{ fontSize: hasTarget ? 16 : 14, fontWeight: 700, color: "#2D2A26", lineHeight: 1 }}>
             {pctLabel}
           </span>
         </div>
@@ -329,7 +332,7 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
 
         {/* Прогресс года */}
         <VCard title="Прогресс года"
-          info="Прогресс выполнения годовых норм по часам">
+          info="Часы обучения и супервизий за год">
           {!hasData ? (
             <CardCTA icon={BookOpen}
               text="Добавьте курс или супервизию, чтобы начать отслеживать прогресс"
@@ -343,14 +346,31 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
                   label="Обучение"
                   sub={d.year_targets
                     ? `${d.actual_hours.learning} / ${d.year_targets.learning} ч`
-                    : `${d.actual_hours.learning} ч`} />
+                    : d.actual_hours.learning > 0 ? "нет нормы" : "0 ч"} />
                 <Ring value={d.actual_hours.supervision}
                   max={d.year_targets?.supervision ?? 0} color="#7C6DC5"
                   label="Супервизии"
                   sub={d.year_targets
                     ? `${d.actual_hours.supervision} / ${d.year_targets.supervision} ч`
-                    : `${d.actual_hours.supervision} ч`} />
+                    : d.actual_hours.supervision > 0 ? "нет нормы" : "0 ч"} />
               </div>
+              {/* Course count summary */}
+              {d.courses_breakdown.total > 0 && (
+                <div style={{ display: "flex", justifyContent: "center", gap: 10, paddingTop: 2 }}>
+                  {d.courses_breakdown.completed > 0 && (
+                    <span style={{ fontSize: 10, color: "#16A34A", background: "#F0FDF4",
+                      border: "1px solid #BBF7D0", borderRadius: 6, padding: "2px 6px" }}>
+                      ✓ {d.courses_breakdown.completed} завершено
+                    </span>
+                  )}
+                  {d.courses_breakdown.in_progress > 0 && (
+                    <span style={{ fontSize: 10, color: "#3a5ff8", background: "#EEF4FB",
+                      border: "1px solid #B8CCF0", borderRadius: 6, padding: "2px 6px" }}>
+                      ◎ {d.courses_breakdown.in_progress} в процессе
+                    </span>
+                  )}
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "center", gap: 16, paddingTop: 2 }}>
                 <button onClick={() => onNavigate("courses")}
                   style={{ fontSize: 11, color: "#5C9BD5", background: "none", border: "none",
@@ -373,7 +393,7 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
                     border: "none", cursor: "pointer", lineHeight: 1.4, width: "100%", padding: "2px 0 0" }}
                   onMouseEnter={e => (e.currentTarget.style.color = "#3a5ff8")}
                   onMouseLeave={e => (e.currentTarget.style.color = "#7A6A52")}>
-                  Установите нормы в Сообществах →
+                  Установить норму →
                 </button>
               )}
             </>
@@ -446,8 +466,8 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
         </div>
       </VCard>
 
-      {/* ── Row 3: Ближайшие цели ────────────────────────────────────── */}
-      <VCard title="Ближайшие цели"
+      {/* ── Row 3: Ближайшие события ─────────────────────────────────── */}
+      <VCard title="Ближайшие события"
         onMore={() => onNavigate("goals")}
         moreAriaLabel="Подробнее — перейти к разделу План развития">
         {d.upcoming_events.length > 0 ? (
