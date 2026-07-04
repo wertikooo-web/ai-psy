@@ -1590,11 +1590,9 @@ export function AnimatedCityScene() {
           above the city image (z=0) but below the sidebar wrapper (z=10). */}
       {mounted && animEnabled && createPortal(
         <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:1 }}>
-          {actors
-            .filter(a => typeof window === "undefined" || window.innerWidth >= 1024 || a.type !== "bird")
-            .map(a => (
-              <ActorEl key={a.id} actor={a} onFinish={removeActor}/>
-            ))}
+          {actors.map(a => (
+            <ActorEl key={a.id} actor={a} onFinish={removeActor}/>
+          ))}
           {crowInfo && typeof window !== "undefined" && window.innerWidth >= 1024 && (
             <CrowScene crow={crowInfo} onDone={handleCrowDone}/>
           )}
