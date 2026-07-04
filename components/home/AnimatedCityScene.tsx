@@ -670,10 +670,12 @@ const ActorEl = memo(function ActorEl({ actor, onFinish }: ActorElProps) {
   }, [actor, isBird]);
 
   // Level config
+  const isMobileView = typeof window !== "undefined" && window.innerWidth < 1024;
   const levelCfg  = !isBird ? LEVEL_CFG[actor.level as GroundLevel] : null;
+  const mobileOffset = isMobileView && !isBird ? 19 : 0; // ≈5mm up on mobile
   const bottomVal = isBird
     ? actor.skyBottom!
-    : `${BOTTOM_BASE[actor.type] + (levelCfg?.extraBottom ?? 0)}px`;
+    : `${BOTTOM_BASE[actor.type] + (levelCfg?.extraBottom ?? 0) + mobileOffset}px`;
 
   // Child humans are visually smaller
   const childScale = actor.type === "human" && actor.humanVariant === "child" ? 0.72 : 1.0;
@@ -1588,10 +1590,12 @@ export function AnimatedCityScene() {
           above the city image (z=0) but below the sidebar wrapper (z=10). */}
       {mounted && animEnabled && createPortal(
         <div style={{ position:"fixed", inset:0, pointerEvents:"none", zIndex:1 }}>
-          {actors.map(a => (
-            <ActorEl key={a.id} actor={a} onFinish={removeActor}/>
-          ))}
-          {crowInfo && (
+          {actors
+            .filter(a => typeof window === "undefined" || window.innerWidth >= 1024 || a.type !== "bird")
+            .map(a => (
+              <ActorEl key={a.id} actor={a} onFinish={removeActor}/>
+            ))}
+          {crowInfo && typeof window !== "undefined" && window.innerWidth >= 1024 && (
             <CrowScene crow={crowInfo} onDone={handleCrowDone}/>
           )}
           <WindowEscaper active={escaperActive} onDone={handleEscaperDone}/>
