@@ -213,7 +213,9 @@ function ProfDevInner() {
     return localStorage.getItem(LS_PANEL) === "true";
   });
   const [moreOpen, setMoreOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
+  const moreRef       = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const [morePos, setMorePos] = useState({ top: 0, left: 0 });
 
 
   useEffect(() => {
@@ -318,7 +320,14 @@ function ProfDevInner() {
 
                   {/* "Ещё" dropdown */}
                   <div ref={moreRef} className="relative flex-shrink-0">
-                    <button onClick={() => setMoreOpen(p => !p)}
+                    <button ref={moreButtonRef}
+                      onClick={() => {
+                        if (!moreOpen && moreButtonRef.current) {
+                          const r = moreButtonRef.current.getBoundingClientRect();
+                          setMorePos({ top: r.bottom + 4, left: r.left });
+                        }
+                        setMoreOpen(p => !p);
+                      }}
                       className="flex items-center gap-1 px-3 py-2.5 text-sm font-medium transition-colors"
                       style={{
                         color: secondaryActive ? "#3a5ff8" : "#3D3228",
@@ -328,8 +337,12 @@ function ProfDevInner() {
                       <ChevronDown size={12} style={{ transform: moreOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
                     </button>
                     {moreOpen && (
-                      <div className="absolute left-0 top-full mt-1 z-30 rounded-xl shadow-xl py-1 w-48"
-                        style={{ background: "#FFFFFF", border: "1px solid #E5E5E5" }}>
+                      <div style={{
+                        position: "fixed", top: morePos.top, left: morePos.left,
+                        zIndex: 50, background: "#FFFFFF", border: "1px solid #E5E5E5",
+                        borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                        padding: "4px 0", width: 192,
+                      }}>
                         {SECONDARY_TABS.map(({ key, label, icon: Icon }) => (
                           <button key={key} onClick={() => { setTab(key); setMoreOpen(false); }}
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium"
