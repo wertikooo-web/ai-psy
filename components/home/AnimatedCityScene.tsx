@@ -1597,7 +1597,9 @@ export function AnimatedCityScene() {
             <CrowScene crow={crowInfo} onDone={handleCrowDone}/>
           )}
           <WindowEscaper active={escaperActive} onDone={handleEscaperDone}/>
-          <PaperPlane active={planeActive} onDone={handlePlaneDone}/>
+          {(typeof window === "undefined" || window.innerWidth >= 1024) && (
+            <PaperPlane active={planeActive} onDone={handlePlaneDone}/>
+          )}
           {icatSpot && (
             <InteractiveCat key={icatSpot.id + Date.now()} spot={icatSpot} onDone={handleIcatDone}/>
           )}
