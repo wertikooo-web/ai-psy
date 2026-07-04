@@ -263,9 +263,8 @@ function ProfDevInner() {
             <p className="text-xs" style={{ color: "#7A6A52" }}>Обучение, супервизии, документы и цели</p>
           </div>
 
-          {/* Right header buttons */}
-          <div className="ml-auto flex items-center gap-2">
-            {/* Show panel button (when collapsed) */}
+          {/* Right header buttons — desktop only */}
+          <div className="ml-auto hidden xl:flex items-center gap-2">
             {panelCollapsed && (
               <button
                 onClick={() => togglePanel(false)}
@@ -276,7 +275,6 @@ function ProfDevInner() {
                 Статистика
               </button>
             )}
-
           </div>
         </div>
 
@@ -284,7 +282,7 @@ function ProfDevInner() {
         {(() => {
           const secondaryActive = SECONDARY_TABS.find(t => t.key === activeTab);
           return (
-            <div className="flex border-b" style={{ borderColor: "#E5E5E5" }}>
+            <div className="flex border-b overflow-x-auto scrollbar-none" style={{ borderColor: "#E5E5E5" }}>
               {PRIMARY_TABS.map(({ key, label, icon: Icon }) => {
                 const active = key === activeTab;
                 return (

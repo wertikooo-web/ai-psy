@@ -273,7 +273,7 @@ export function VisualizationPanel({ year, onClose, onNavigate }: {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <aside className="flex flex-col min-h-0 w-full xl:flex-shrink-0"
+    <aside className="hidden xl:flex flex-col min-h-0 xl:flex-shrink-0"
       style={{ borderLeft: "1px solid #CFC0A9", background: "#F5F0E8", width: 620, marginRight: "5cm" }}>
 
       {/* Header */}
