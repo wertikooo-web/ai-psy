@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleTelegramMessage, handleTelegramSettingsCallback, handleHelpCallback } from "@/lib/telegram/commands";
 import { handleTelegramAudioCallback } from "@/lib/telegram/audioFlow";
+import { handleTelegramNoteCallback } from "@/lib/telegram/search";
 import { markTelegramUpdateProcessed } from "@/lib/data/telegramUpdates";
 import type { TelegramUpdate } from "@/lib/telegram/bot";
 
@@ -44,7 +45,8 @@ export async function POST(req: NextRequest) {
     if (update.callback_query) {
       const handled =
         (await handleHelpCallback(update.callback_query)) ||
-        (await handleTelegramSettingsCallback(update.callback_query));
+        (await handleTelegramSettingsCallback(update.callback_query)) ||
+        (await handleTelegramNoteCallback(update.callback_query));
       if (!handled) await handleTelegramAudioCallback(update.callback_query);
     }
     if (update.message) {

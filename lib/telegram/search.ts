@@ -31,6 +31,9 @@ export type TelegramIntent =
   | "get_notebook_count"
   | "get_session_brief"
   | "add_notebook_entry"
+  | "add_client_note"
+  | "analytics_open"
+  | "analytics_metric_query"
   | "unknown";
 
 type ParsedRequest = {
@@ -58,6 +61,18 @@ const MAX_HISTORY = 3;
 const HISTORY_TTL_MS = 10 * 60 * 1000;
 type HistoryEntry = { text: string; ts: number };
 const chatHistory = new Map<number, HistoryEntry[]>();
+
+// Pending note confirmations (TTL 15 min)
+const NOTE_TTL_MS = 15 * 60 * 1000;
+type PendingNote = { chatId: number; clientId: string; clientName: string; topicHint?: string; content: string; ts: number };
+const pendingNotes = new Map<string, PendingNote>();
+
+function cleanPendingNotes() {
+  const now = Date.now();
+  for (const [key, val] of pendingNotes) {
+    if (now - val.ts > NOTE_TTL_MS) pendingNotes.delete(key);
+  }
+}
 
 function getChatHistory(chatId: number): string[] {
   const now = Date.now();
@@ -170,11 +185,28 @@ function normalize(value: string): string {
     .trim();
 }
 
+/** Strip all markdown from text before showing in Telegram. Must run BEFORE truncating. */
+function cleanTelegramText(text: string): string {
+  return text
+    .replace(/^#{1,6}\s*/gm, "")           // ## headings → bare text
+    .replace(/\*\*(.+?)\*\*/g, "$1")       // **bold**
+    .replace(/\*(.+?)\*/g, "$1")           // *italic*
+    .replace(/_{1,2}(.+?)_{1,2}/g, "$1")  // __underline__
+    .replace(/`{1,3}[^`]*`{1,3}/g, "")    // `code`
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1") // [link](url)
+    .replace(/^[-*+]\s+/gm, "")            // bullet list markers
+    .replace(/^-{3,}$/gm, "")              // horizontal rules
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\n/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function snippet(value: unknown, max = 180): string {
   const text = typeof value === "string" ? value : JSON.stringify(value ?? "");
-  const clean = text.replace(/\s+/g, " ").trim();
+  const clean = cleanTelegramText(text);
   if (!clean) return "Текст не заполнен.";
-  return clean.length > max ? `${clean.slice(0, max - 1).trim()}...` : clean;
+  return clean.length > max ? `${clean.slice(0, max - 1).trim()}…` : clean;
 }
 
 function formatDate(value?: string): string {
@@ -249,6 +281,120 @@ function extractClientName(text: string): string {
     .trim();
 }
 
+// ── Russian case suffix stripping for client name matching ────────────────────
+
+function caseVariants(word: string): string[] {
+  const w = word.toLowerCase().replace(/ё/g, "е");
+  const variants = new Set<string>([w]);
+  // Common Russian dative/genitive/accusative suffixes
+  for (const suf of ["е", "у", "а", "ю", "ом", "ем", "ой", "ей", "ях", "ам", "ями"]) {
+    if (w.endsWith(suf) && w.length - suf.length >= 3) {
+      variants.add(w.slice(0, w.length - suf.length));
+    }
+  }
+  return Array.from(variants);
+}
+
+async function findClientByHint(hint: string): Promise<StoredClient[]> {
+  const clients = await getClients();
+  const variants = caseVariants(hint);
+
+  function matchesVariant(clientFullName: string): boolean {
+    const parts = normalize(clientFullName).split(" ");
+    return variants.some((v) =>
+      parts.some((p) => p === v || p.startsWith(v)) ||
+      normalize(clientFullName) === v
+    );
+  }
+
+  // 1. Exact first-name or full-name match
+  const exact = clients.filter((c) => matchesVariant(c.name));
+  if (exact.length) return exact;
+
+  // 2. Contains / prefix
+  const partial = clients.filter((c) => {
+    const norm = normalize(c.name);
+    return variants.some((v) => v.length >= 3 && norm.includes(v));
+  });
+  if (partial.length) return partial;
+
+  // 3. Fuzzy (same as existing levenshtein logic)
+  const bestVariant = variants[0];
+  const fuzzy = clients
+    .map((c) => ({ c, d: levenshtein(normalize(c.name).split(" ")[0], bestVariant) }))
+    .filter(({ d }) => d <= 2)
+    .sort((a, b) => a.d - b.d)
+    .map(({ c }) => c);
+  return fuzzy.slice(0, 3);
+}
+
+// ── add_client_note parser ────────────────────────────────────────────────────
+
+type ParsedNote = {
+  clientHint?: string;
+  topicHint?: string;
+  content: string;
+};
+
+function parseAddClientNote(raw: string): ParsedNote | null {
+  const text = raw.trim();
+
+  // "про [topic] добавь [client][delim][content]"
+  const proMatch = text.match(/^про\s+(\S+)\s+(?:добавь|запиши)\s+(\S+?)[\s\-—:;]+(.+)/i);
+  if (proMatch) {
+    return { topicHint: proMatch[1], clientHint: proMatch[2], content: proMatch[3].trim() };
+  }
+
+  // "про [topic] добавь [client] [content]" (no delimiter)
+  const proNoDelim = text.match(/^про\s+(\S+)\s+(?:добавь|запиши)\s+(\S+)\s+(.+)/i);
+  if (proNoDelim) {
+    return { topicHint: proNoDelim[1], clientHint: proNoDelim[2], content: proNoDelim[3].trim() };
+  }
+
+  // "добавь/запиши [client][delim][content]" e.g. "добавь жоре: продал кошку"
+  const addWithDelim = text.match(/^(?:добавь|запиши|зафиксируй|сохрани)\s+(\S+?)[\s]*[:\-—;]+\s*(.+)/i);
+  if (addWithDelim) {
+    return { clientHint: addWithDelim[1], content: addWithDelim[2].trim() };
+  }
+
+  // "[client][delim][content]" e.g. "жоре: продал кошку" or "жоре — продал кошку"
+  const clientColon = text.match(/^(\S+)[:\-—;]\s+(.+)/i);
+  if (clientColon && clientColon[2].length >= 5) {
+    return { clientHint: clientColon[1], content: clientColon[2].trim() };
+  }
+
+  // "к [client] заметка/наблюдение/история [content]"
+  const toClient = text.match(/^к\s+(\S+)\s+(?:заметка|наблюдение|история|запись)[:\s]+(.+)/i);
+  if (toClient) {
+    return { clientHint: toClient[1], content: toClient[2].trim() };
+  }
+
+  // "[client] добавь/запиши [content]" e.g. "жоре добавь продал кошку"
+  const clientFirst = text.match(/^(\S+)\s+(?:добавь|запиши|зафиксируй)\s+(.+)/i);
+  if (clientFirst) {
+    return { clientHint: clientFirst[1], content: clientFirst[2].trim() };
+  }
+
+  // "запомни/зафиксируй по [client]: [content]"
+  const zapomni = text.match(/^(?:запомни|зафиксируй)\s+(?:по|для|про)?\s*(\S+)[:\s]+(.+)/i);
+  if (zapomni) {
+    return { clientHint: zapomni[1], content: zapomni[2].trim() };
+  }
+
+  // "добавь/запиши [content]" — no client
+  const noClient = text.match(/^(?:добавь|запиши|зафиксируй|сохрани)\s+(.+)/i);
+  if (noClient && noClient[1].length >= 5) {
+    return { content: noClient[1].trim() };
+  }
+
+  return null;
+}
+
+function isAddNoteIntent(lower: string): boolean {
+  return /(?:добавь|запиши|зафиксируй|сохрани|наблюдение|к\s+\w+[:\s])/.test(lower) &&
+    !/что\s+было|найди|покажи\s+всех|покажи\s+клиент/.test(lower);
+}
+
 /** Extract client name from a natural-language phrase, stripping verb/preposition prefixes. */
 function extractClientNameFromPhrase(text: string): string | undefined {
   const name = text
@@ -299,9 +445,29 @@ function parseTextRequest(text: string): ParsedRequest {
     return { intent: "unknown" };
   }
 
-  // 2a. Quick note to notebook — "запиши:", "добавь в блокнот:", "заметка:"
-  if (/^(запиши|сохрани заметку|добавь в блокнот|заметка)[:\s]/i.test(raw)) {
-    const noteText = raw.replace(/^(запиши:?|сохрани заметку:?|добавь в блокнот:?|заметка:?)\s*/i, "").trim();
+  // 1a. Analytics open — "открой статистику", "покажи аналитику", "моя аналитика"
+  if (/^(открой|покажи|запусти|моя|мою?)\s+(статистик|аналитик)/.test(lower) ||
+      /^(статистика|аналитика)$/.test(lower) ||
+      /^(открой|покажи)\s+мою?\s+(статистик|аналитик)/.test(lower)) {
+    return { intent: "analytics_open" };
+  }
+
+  // 1b. Analytics metric — "сколько [активных] клиентов/консультаций/оплат..."
+  if (/сколько/.test(lower) && /клиентов?|консультаций?|встреч|сессий?|оплат|записей?/.test(lower)) {
+    return { intent: "analytics_metric_query", query: raw };
+  }
+
+  // 1c. add_client_note — "добавь/запиши/зафиксируй [to client]", "про X добавь Y"
+  if (isAddNoteIntent(lower)) {
+    const parsed = parseAddClientNote(raw);
+    if (parsed || /добавь|запиши|зафиксируй|сохрани/.test(lower)) {
+      return { intent: "add_client_note", query: raw };
+    }
+  }
+
+  // 2a. Quick note to notebook — "добавь в блокнот:", "заметка:" (no client context)
+  if (/^(сохрани заметку|добавь в блокнот|добавь заметку)[:\s]/i.test(raw)) {
+    const noteText = raw.replace(/^(сохрани заметку:?|добавь в блокнот:?|добавь заметку:?)\s*/i, "").trim();
     return { intent: "add_notebook_entry", query: noteText };
   }
 
@@ -462,20 +628,36 @@ function searchScore(text: string, query: string): number {
   return score;
 }
 
-function snippetForSearch(value: unknown, query: string, max = 220): string {
-  const text = typeof value === "string" ? value : JSON.stringify(value ?? "");
-  const clean = text.replace(/\s+/g, " ").trim();
-  if (!clean) return "Текст не заполнен.";
-  const lower = clean.toLowerCase().replace(/ё/g, "е");
+/** Find query in cleaned text and return a surrounding fragment.
+ *  Must be called with already-cleaned text (no markdown). */
+function extractSearchFragment(cleanedText: string, query: string, maxLen = 220): string {
+  if (!cleanedText) return "Текст не заполнен.";
+  const lower = cleanedText.toLowerCase().replace(/ё/g, "е");
   const needles = searchNeedles(query).sort((a, b) => b.length - a.length);
   const hit = needles
-    .map((needle) => lower.indexOf(needle))
-    .filter((index) => index >= 0)
+    .map((n) => lower.indexOf(n))
+    .filter((i) => i >= 0)
     .sort((a, b) => a - b)[0];
-  if (hit === undefined) return snippet(clean, max);
-  const start = Math.max(0, hit - Math.floor(max / 3));
-  const end = Math.min(clean.length, start + max);
-  return `${start > 0 ? "..." : ""}${clean.slice(start, end).trim()}${end < clean.length ? "..." : ""}`;
+  if (hit === undefined) {
+    return cleanedText.length <= maxLen ? cleanedText : cleanedText.slice(0, maxLen).trimEnd() + "…";
+  }
+  const before = 50;
+  const rawStart = Math.max(0, hit - before);
+  // Try to begin at a word boundary
+  const spaceIdx = rawStart === 0 ? -1 : cleanedText.lastIndexOf(" ", rawStart);
+  const start = spaceIdx > 0 ? spaceIdx + 1 : rawStart;
+  const end = Math.min(cleanedText.length, start + maxLen);
+  const frag = cleanedText.slice(start, end).trim();
+  return `${start > 0 ? "…" : ""}${frag}${end < cleanedText.length ? "…" : ""}`;
+}
+
+function snippetForSearch(value: unknown, query: string, max = 220): string {
+  const raw = typeof value === "string" ? value : JSON.stringify(value ?? "");
+  if (!raw) return "Текст не заполнен.";
+  // Clean markdown FIRST, then extract fragment around the query hit
+  const clean = cleanTelegramText(raw);
+  if (!clean) return "Текст не заполнен.";
+  return extractSearchFragment(clean, query, max);
 }
 
 function analysisText(analysis: NonNullable<StoredConsultation["analyses"]>[number]): string {
@@ -832,18 +1014,18 @@ function formatTelegramSnippet(text: string, maxLength = 250): string {
   return (cut > maxLength * 0.6 ? clean.slice(0, cut) : clean.slice(0, maxLength)).trimEnd() + "…";
 }
 
-/** Find the query in text and return a short surrounding fragment. */
+/** Find query in snippet (already clean) and return a short surrounding fragment. */
 function extractHighlight(text: string, query: string, maxLen = 150): string | null {
-  const cleanText = text.replace(/\*\*|#{1,6}\s/g, "").replace(/\s+/g, " ").trim();
-  const needles   = searchNeedles(query).sort((a, b) => b.length - a.length);
-  const lower     = cleanText.toLowerCase().replace(/ё/g, "е");
-  const hit       = needles.map(n => lower.indexOf(n)).filter(i => i >= 0).sort((a, b) => a - b)[0];
+  // text is already cleaned by snippetForSearch → no need to re-clean
+  const needles = searchNeedles(query).sort((a, b) => b.length - a.length);
+  const lower   = text.toLowerCase().replace(/ё/g, "е");
+  const hit     = needles.map((n) => lower.indexOf(n)).filter((i) => i >= 0).sort((a, b) => a - b)[0];
   if (hit === undefined) return null;
   const before = 50;
   const start  = Math.max(0, hit - before);
-  const end    = Math.min(cleanText.length, start + maxLen);
-  const frag   = cleanText.slice(start, end).trim();
-  return `${start > 0 ? "…" : ""}${frag}${end < cleanText.length ? "…" : ""}`;
+  const end    = Math.min(text.length, start + maxLen);
+  const frag   = text.slice(start, end).trim();
+  return `${start > 0 ? "…" : ""}${frag}${end < text.length ? "…" : ""}`;
 }
 
 const MAX_TG_RESULTS = 3;
@@ -898,6 +1080,236 @@ function renderSearchResults(query: string, results: SearchResult[], totalFound:
     : "";
 
   return [header, ...cards, footer].filter(Boolean).join("\n\n");
+}
+
+// ── Analytics handlers ────────────────────────────────────────────────────────
+
+async function sendAnalyticsOpen(chatId: number): Promise<void> {
+  await sendTelegramMessage(
+    chatId,
+    "📊 Открываю аналитику вашей практики.",
+    keyboardFromButtons([urlButton("📊 Открыть аналитику", appUrl("/analytics"))]),
+  );
+}
+
+async function sendAnalyticsMetric(chatId: number, originalText: string): Promise<void> {
+  const lower = normalize(originalText);
+
+  // Active clients
+  if (/активн/.test(lower) && /клиент/.test(lower)) {
+    const clients = await getClients();
+    const active = clients.filter((c) => c.status === "active").length;
+    await sendTelegramMessage(
+      chatId,
+      `📊 Активных клиентов: ${active}`,
+      keyboardFromButtons([
+        urlButton("📊 Открыть аналитику", appUrl("/analytics")),
+        urlButton("👥 Открыть клиентов", appUrl("/clients")),
+      ]),
+    );
+    return;
+  }
+
+  // Total clients
+  if (/клиент/.test(lower) && !/консультац|встреч|сессий/.test(lower)) {
+    const clients = await getClients();
+    const active = clients.filter((c) => c.status === "active").length;
+    const total  = clients.length;
+    await sendTelegramMessage(
+      chatId,
+      `📊 Клиентов всего: ${total}\nАктивных: ${active}`,
+      keyboardFromButtons([urlButton("📊 Открыть аналитику", appUrl("/analytics"))]),
+    );
+    return;
+  }
+
+  // Consultations / sessions
+  if (/консультац|встреч|сессий/.test(lower)) {
+    const period = periodFromText(lower);
+    await sendConsultationCount(chatId, period);
+    return;
+  }
+
+  // Payments / income
+  if (/оплат|доход|получен|деньг/.test(lower)) {
+    const period = periodFromText(lower);
+    await sendPaymentTotal(chatId, period);
+    return;
+  }
+
+  // Notebook / notes count
+  if (/запис|заметк|блокнот/.test(lower)) {
+    await sendNotebookCount(chatId);
+    return;
+  }
+
+  // Fallback
+  await sendTelegramMessage(
+    chatId,
+    "📊 Похоже, вы спрашиваете про статистику.\n\nМожно спросить:\n— Сколько активных клиентов?\n— Сколько консультаций за месяц?\n— Сколько оплат получено?",
+    keyboardFromButtons([urlButton("📊 Открыть аналитику", appUrl("/analytics"))]),
+  );
+}
+
+// ── add_client_note handler ───────────────────────────────────────────────────
+
+async function sendAddClientNote(chatId: number, originalText: string): Promise<void> {
+  const parsed = parseAddClientNote(originalText);
+
+  if (!parsed) {
+    await sendTelegramMessage(
+      chatId,
+      "Понял, что нужно сохранить запись.\n\nНапишите, что записать. Например:\n«Запиши жоре: продал кошку»",
+    );
+    return;
+  }
+
+  const { clientHint, topicHint, content } = parsed;
+
+  if (!content || content.length < 3) {
+    await sendTelegramMessage(
+      chatId,
+      "Понял команду. Что именно записать?\n\nНапишите текст записи.",
+    );
+    return;
+  }
+
+  // Look up client
+  let matchedClients: StoredClient[] = [];
+  if (clientHint) {
+    matchedClients = await findClientByHint(clientHint);
+  }
+
+  if (!clientHint || matchedClients.length === 0) {
+    // No client identified — ask
+    const activeClients = (await getClients()).filter((c) => c.status === "active").slice(0, 5);
+    const buttons = activeClients.map((c) => urlButton(c.name, getClientUrl(c.id)));
+    await sendTelegramMessage(
+      chatId,
+      `Понял, что нужно записать: «${content.slice(0, 100)}»\n\nК какому клиенту добавить?`,
+      keyboardFromButtons([...buttons, urlButton("👥 Все клиенты", appUrl("/clients"))]),
+    );
+    return;
+  }
+
+  if (matchedClients.length > 1) {
+    // Multiple matches — pick
+    const buttons = matchedClients.slice(0, 5).map((c) => urlButton(c.name, getClientUrl(c.id)));
+    await sendTelegramMessage(
+      chatId,
+      `Нашёл несколько клиентов по «${clientHint}». Выберите нужного:`,
+      keyboardFromButtons(buttons),
+    );
+    return;
+  }
+
+  // Exactly one client — ask confirmation
+  const client = matchedClients[0];
+  cleanPendingNotes();
+  const confirmId = Math.random().toString(36).slice(2, 10);
+  pendingNotes.set(confirmId, {
+    chatId,
+    clientId:   client.id,
+    clientName: client.name,
+    topicHint,
+    content,
+    ts: Date.now(),
+  });
+
+  const preview = [
+    "Понял.\n",
+    `👤 Клиент: ${client.name}`,
+    `📝 Тип: заметка`,
+    topicHint ? `🏷 Тема: ${topicHint}` : "",
+    `Текст: «${content.slice(0, 200)}»`,
+    "\nДобавить?",
+  ].filter(Boolean).join("\n");
+
+  await sendTelegramMessage(
+    chatId,
+    preview,
+    {
+      inline_keyboard: [
+        [{ text: "✅ Да, добавить", callback_data: `note:confirm:${confirmId}` }],
+        [{ text: "📤 Во входящие", callback_data: `note:inbox:${confirmId}` }],
+        [{ text: "❌ Отмена",      callback_data: `note:cancel:${confirmId}` }],
+      ],
+    },
+  );
+}
+
+export async function handleTelegramNoteCallback(query: import("@/lib/telegram/bot").TelegramCallbackQuery): Promise<boolean> {
+  const data = query.data ?? "";
+  if (!data.startsWith("note:")) return false;
+
+  const { answerTelegramCallback } = await import("@/lib/telegram/bot");
+  const chatId = query.message?.chat.id;
+
+  const parts = data.split(":");
+  const action = parts[1];
+  const confirmId = parts[2];
+
+  await answerTelegramCallback(query.id);
+
+  if (action === "cancel") {
+    if (confirmId) pendingNotes.delete(confirmId);
+    if (chatId) await sendTelegramMessage(chatId, "Отменено.");
+    return true;
+  }
+
+  const note = confirmId ? pendingNotes.get(confirmId) : undefined;
+  if (!note) {
+    if (chatId) await sendTelegramMessage(chatId, "Запрос устарел. Повторите команду.");
+    return true;
+  }
+
+  pendingNotes.delete(confirmId);
+
+  if (action === "inbox") {
+    // Save to telegram_messages inbox (text type)
+    if (chatId) {
+      await sendTelegramMessage(
+        chatId,
+        "Сохранено во Входящие Telegram. Откройте приложение, чтобы разобрать.",
+        keyboardFromButtons([urlButton("📥 Входящие", appUrl("/telegram-inbox"))]),
+      );
+    }
+    return true;
+  }
+
+  if (action === "confirm") {
+    // Save as notebook entry linked to client
+    try {
+      const { addEntry } = await import("@/lib/data/notebook");
+      const { randomUUID } = await import("crypto");
+      const noteText = [
+        note.topicHint ? `[${note.topicHint}] ` : "",
+        note.content,
+      ].join("");
+
+      await addEntry({
+        id:       randomUUID(),
+        text:     noteText,
+        clientId: note.clientId,
+        topic:    note.topicHint,
+        tags:     ["telegram", ...(note.topicHint ? [note.topicHint] : [])],
+      });
+
+      if (chatId) {
+        await sendTelegramMessage(
+          chatId,
+          `Готово. Заметка добавлена к клиенту ${note.clientName}.`,
+          keyboardFromButtons([urlButton("👤 Открыть клиента", appUrl(`/client/${note.clientId}`))]),
+        );
+      }
+    } catch (err) {
+      console.error("[telegram/note confirm]", err);
+      if (chatId) await sendTelegramMessage(chatId, "Не удалось сохранить заметку. Попробуйте ещё раз.");
+    }
+    return true;
+  }
+
+  return true;
 }
 
 async function sendSearch(chatId: number, query: string | undefined, onlyNotebook = false, clientName?: string): Promise<void> {
@@ -1133,6 +1545,9 @@ async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedReq
   if (parsed.mode === "general_conversation") return sendConversationalResponse(chatId, lower);
   if (parsed.mode === "product_help") return sendCapabilitiesOverview(chatId);
   if (parsed.mode === "clarification" || parsed.intent === "unknown") return sendUnknownResponse(chatId);
+  if (parsed.intent === "analytics_open") return sendAnalyticsOpen(chatId);
+  if (parsed.intent === "analytics_metric_query") return sendAnalyticsMetric(chatId, message.text ?? "");
+  if (parsed.intent === "add_client_note") return sendAddClientNote(chatId, message.text ?? "");
   if (parsed.intent === "list_clients") return sendClientList(chatId, parsed.clientStatus);
   if (parsed.intent === "find_client" || parsed.intent === "get_client_summary") return sendClientSummary(chatId, parsed.clientName || parsed.query);
   if (parsed.intent === "get_consultations") return sendClientConsultations(chatId, parsed.clientName);

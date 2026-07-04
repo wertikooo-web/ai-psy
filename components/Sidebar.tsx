@@ -172,7 +172,7 @@ function NavGroups({ onNavigate, onUpload, onSearch }: { onNavigate?: () => void
         ))}
       </div>
 
-      <div className="space-y-0.5 pt-[14px] mt-[48px]" style={{ borderTop: `1px solid ${C.border}` }}>
+      <div className="space-y-0.5 pt-[14px] mt-[10px]" style={{ borderTop: `1px solid ${C.border}` }}>
         <div className="px-3 mb-0.5 text-xs font-semibold uppercase tracking-wider" style={{ color: C.groupLabel }}>
           Система
         </div>
