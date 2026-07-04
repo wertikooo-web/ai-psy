@@ -508,9 +508,6 @@ function OverviewTab({ onNavigate, year }: { onNavigate: (t: Tab) => void; year:
                 {k.unit && <span className="text-sm font-medium ml-0.5" style={{ color: "#7A6A52" }}>{k.unit}</span>}
               </div>
               <div className="text-xs leading-tight" style={{ color: "#7A6A52" }}>{k.label}</div>
-              {!active && (
-                <span className="text-xs font-semibold mt-1" style={{ color: k.color }}>{k.cta} →</span>
-              )}
             </button>
           );
         })}
