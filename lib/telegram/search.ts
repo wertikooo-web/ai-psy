@@ -846,50 +846,64 @@ function extractHighlight(text: string, query: string, maxLen = 150): string | n
   return `${start > 0 ? "…" : ""}${frag}${end < cleanText.length ? "…" : ""}`;
 }
 
-const DIVIDER = "━━━━━━━━━━━━━";
+const MAX_TG_RESULTS = 3;
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** True if highlight is already visible inside the snippet — skip showing it twice. */
+function isContainedIn(snippet: string, highlight: string): boolean {
+  if (!snippet || !highlight) return true;
+  const ns = normalize(snippet).replace(/\s+/g, "");
+  const nh = normalize(highlight).replace(/\s+/g, "");
+  if (nh.length < 15) return true;
+  return ns.includes(nh.slice(0, Math.min(nh.length, 60)));
+}
 
 function renderSearchResults(query: string, results: SearchResult[], totalFound: number): string {
-  const shown = results.length;
-  if (!shown) {
-    return [
-      `🔎 По запросу «${query}» ничего не найдено.`,
-      "",
-      "Можно попробовать:",
-      "— другое слово или корень слова;",
-      "— имя клиента;",
-      "— тему или дату.",
-    ].join("\n");
+  if (!results.length) {
+    return `🔎 По запросу «${escapeHtml(query)}» ничего не найдено.\n\nПопробуйте другое слово, имя клиента или тему.`;
   }
 
-  const header = totalFound > shown
-    ? `🔎 Нашёл ${totalFound} совпадения по запросу: «${query}»\nПоказал первые ${shown}. Остальные удобнее смотреть на сайте.`
-    : shown === 1
-      ? `🔎 Нашёл 1 совпадение по запросу: «${query}»`
-      : `🔎 Нашёл ${shown} совпадения по запросу: «${query}»`;
+  const shown     = results.length;
+  const countWord = pluralRu(totalFound, "совпадение", "совпадения", "совпадений");
+  const header    = `🔎 <b>Нашёл ${totalFound} ${countWord}</b> по запросу: «${escapeHtml(query)}»`;
 
   const cards = results.map((item, i) => {
-    const icon     = resultTypeIcon(item.type);
-    const typeLabel = resultTypeLabel(item.type);
-    const lines: string[] = [
-      DIVIDER,
-      `${i + 1}. ${icon} ${typeLabel}`,
-    ];
-    if (item.clientName) lines.push(`👤 ${item.clientName}`);
-    if (item.date)       lines.push(`📅 ${formatDate(item.date)}`);
+    const lines: string[] = [];
 
-    const body = formatTelegramSnippet(item.snippet, 260);
-    if (body && body !== "Текст не заполнен.") lines.push("", body);
+    // Title line
+    lines.push(`<b>${i + 1}. ${resultTypeIcon(item.type)} ${escapeHtml(resultTypeLabel(item.type))}</b>`);
 
-    const highlight = extractHighlight(item.snippet, query, 140);
-    if (highlight) lines.push("", `Совпадение: «${highlight}»`);
+    // Compact meta: "Клиент · Дата"
+    const meta = [item.clientName, item.date ? formatDate(item.date) : ""].filter(Boolean);
+    if (meta.length) lines.push(escapeHtml(meta.join(" · ")));
+
+    // Main body — cleaned, short
+    const body = formatTelegramSnippet(item.snippet, 200);
+    if (body && body !== "Текст не заполнен.") {
+      lines.push("");
+      lines.push(escapeHtml(body));
+    }
+
+    // Fragment — only if it adds something new
+    const highlight = extractHighlight(item.snippet, query, 130);
+    if (highlight && !isContainedIn(body, highlight)) {
+      lines.push(`<i>Фрагмент:</i> «${escapeHtml(highlight)}»`);
+    }
 
     return lines.join("\n");
   });
 
-  return [header, ...cards, DIVIDER].join("\n");
-}
+  const parts = [header, ...cards];
 
-const MAX_TG_RESULTS = 3;
+  if (totalFound > shown) {
+    parts.push(`<i>Показал первые ${shown} из ${totalFound}.</i>`);
+  }
+
+  return parts.join("\n\n");
+}
 
 async function sendSearch(chatId: number, query: string | undefined, onlyNotebook = false, clientName?: string): Promise<void> {
   const cleaned = cleanupSearchQuery(query ?? "");
@@ -945,6 +959,7 @@ async function sendSearch(chatId: number, query: string | undefined, onlyNoteboo
     chatId,
     renderSearchResults(cleaned, results, totalFound),
     keyboardFromButtons(resultButtons),
+    "HTML",
   );
 }
 

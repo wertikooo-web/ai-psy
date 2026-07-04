@@ -80,6 +80,7 @@ export async function sendTelegramMessage(
   chatId: number,
   text: string,
   replyMarkup?: { inline_keyboard: TelegramInlineKeyboardButton[][] },
+  parseMode?: "HTML",
 ): Promise<void> {
   const token = getTelegramBotToken();
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -89,6 +90,7 @@ export async function sendTelegramMessage(
       chat_id: chatId,
       text,
       disable_web_page_preview: true,
+      ...(parseMode ? { parse_mode: parseMode } : {}),
       ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
     }),
   });
