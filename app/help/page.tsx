@@ -181,10 +181,14 @@ function Section({ icon, title, children }: {
         style={{ background: "#E8E0D0", borderBottom: open ? "1px solid #DDD4C6" : "none" }}
       >
         <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#DDD4C6" }}>{icon}</div>
-        <h2 className="text-sm font-semibold flex-1" style={{ color: "#4A3C2E" }}>{title}</h2>
+        <h2 className="text-sm font-bold flex-1" style={{ color: "#4A3C2E" }}>{title}</h2>
         <ChevronDown size={16} style={{ color: "#9C8E80", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
       </button>
-      {open && <div className="px-6 py-5">{children}</div>}
+      {open && (
+        <div className="px-6 py-5 cursor-pointer" onClick={() => setOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()}>{children}</div>
+        </div>
+      )}
     </section>
   );
 }

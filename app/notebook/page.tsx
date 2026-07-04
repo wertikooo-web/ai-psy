@@ -1535,21 +1535,12 @@ export default function NotebookPage() {
               </div>
 
               <div className="notebook-pagination">
-                {/* Page indicator — centered above buttons */}
+                {/* Page indicator */}
                 <div className="notebook-pagination-center">
                   <span>Страница {query.page} из {notebookTotalPages}</span>
-                  <button
-                    type="button"
-                    onClick={closeNotebook}
-                    className="notebook-cover-button"
-                    aria-label="Закрыть блокнот"
-                    title="Закрыть блокнот"
-                  >
-                    <BookOpen size={16} />
-                  </button>
                 </div>
 
-                {/* Nav buttons — full-width row below */}
+                {/* Nav buttons with cover button in the middle */}
                 <div className="notebook-pagination-nav">
                   <div className="notebook-pagination-left">
                     <button
@@ -1572,6 +1563,16 @@ export default function NotebookPage() {
                       Предыдущая
                     </button>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={closeNotebook}
+                    className="notebook-cover-button"
+                    aria-label="Закрыть блокнот"
+                    title="Закрыть блокнот"
+                  >
+                    <BookOpen size={16} />
+                  </button>
 
                   <div className="notebook-pagination-right">
                     <button
