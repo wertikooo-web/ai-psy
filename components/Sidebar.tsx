@@ -7,7 +7,7 @@ import {
   Home, Users, FileText, Bot,
   Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, BookOpenText,
   PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays, BarChart3, WalletCards, Search,
-  GraduationCap,
+  GraduationCap, Inbox,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
@@ -57,10 +57,11 @@ const profDevNav = [
 ];
 
 const systemNav = [
-  { href: "/analytics",      label: "Аналитика",   icon: BarChart3  },
-  { href: "/settings",       label: "Настройки",   icon: Settings   },
-  { href: "/help",     label: "Помощь",             icon: HelpCircle  },
-  { href: "/about",    label: "About",              icon: Info        },
+  { href: "/telegram-inbox", label: "Входящие Telegram", icon: Inbox      },
+  { href: "/analytics",      label: "Аналитика",         icon: BarChart3  },
+  { href: "/settings",       label: "Настройки",         icon: Settings   },
+  { href: "/help",           label: "Помощь",            icon: HelpCircle },
+  { href: "/about",          label: "About",             icon: Info       },
 ];
 
 // ── NavItem ───────────────────────────────────────────────────────────────────
