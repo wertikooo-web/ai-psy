@@ -174,19 +174,20 @@ function Section({ icon, title, children }: {
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}>
+    <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F7F4EF", borderColor: "#E5DDD2" }}>
       <button
+        aria-expanded={open}
         onClick={() => setOpen(v => !v)}
-        className="w-full px-6 py-4 flex items-center gap-3 text-left"
-        style={{ background: "#E8E0D0", borderBottom: open ? "1px solid #DDD4C6" : "none" }}
+        className="w-full px-6 py-4 flex items-center gap-3 text-left transition-colors focus-visible:outline-none"
+        style={{ background: open ? "#EDE7DA" : "#F0EBE3" }}
       >
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#DDD4C6" }}>{icon}</div>
-        <h2 className="text-sm font-bold flex-1" style={{ color: "#4A3C2E" }}>{title}</h2>
-        <ChevronDown size={16} style={{ color: "#9C8E80", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#E5DDD2", color: "#6B5D4F" }}>{icon}</div>
+        <h2 className="text-sm font-semibold flex-1" style={{ color: "#4A3C2E" }}>{title}</h2>
+        <ChevronDown size={16} style={{ color: "#A8997F", transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }} />
       </button>
       {open && (
-        <div className="px-6 py-5 cursor-pointer" onClick={() => setOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()}>{children}</div>
+        <div className="px-6 py-5 border-t" style={{ borderColor: "#E5DDD2" }}>
+          {children}
         </div>
       )}
     </section>

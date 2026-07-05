@@ -360,7 +360,7 @@ export default function ConsultationsPage() {
                 <div style={{ fontSize: 13, color: "#A8997F", lineHeight: 1.5 }}>Загрузите первую запись — и она появится здесь</div>
               </div>
               <button onClick={() => setUploadOpen(true)} style={{ marginTop: 4, background: "#3a5ff8", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                Загрузить запись
+                Новая консультация
               </button>
             </div>
           ) : (
@@ -418,7 +418,7 @@ export default function ConsultationsPage() {
             className="flex items-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
           >
             <Mic size={15} />
-            Загрузить запись
+            Новая консультация
           </button>
         </div>
 
@@ -472,7 +472,7 @@ export default function ConsultationsPage() {
               <div className="text-sm" style={{ color: "#A8997F" }}>Загрузите первую запись — она появится здесь с транскриптом и анализом</div>
             </div>
             <button onClick={() => setUploadOpen(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "#3a5ff8" }}>
-              <Mic size={14} /> Загрузить запись
+              <Mic size={14} /> Новая консультация
             </button>
           </div>
         ) : (

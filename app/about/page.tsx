@@ -91,24 +91,6 @@ export default function AboutPage() {
             </p>
           </Block>
 
-          {/* Roadmap */}
-          <Block>
-            <Label><Sparkles size={13} />Планируется</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {[
-                "Мобильное приложение",
-                "Автоматическая синхронизация базы знаний",
-                "Шаблоны отчётов для супервизии",
-                "Двусторонняя синхронизация с Google Calendar",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-2 text-sm" style={{ color: "#A8997F" }}>
-                  <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: "#C9BBAA" }} />
-                  {item}
-                </div>
-              ))}
-            </div>
-          </Block>
-
           {/* Contacts */}
           <Block>
             <Label><Mail size={13} />Контакты</Label>
