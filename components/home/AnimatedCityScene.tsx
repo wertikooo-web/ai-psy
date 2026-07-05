@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, memo } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, memo } from "react";
 import { createPortal } from "react-dom";
 import {
   type CityAnimationSettings,
@@ -98,13 +98,13 @@ const ACTOR_META: Record<ActorType, { viewW:number; viewH:number; dispH:number; 
   bus:          { viewW:134, viewH:80, dispH:58, bob:false },
   car:          { viewW:112, viewH:72, dispH:52, bob:false },
   bike:         { viewW:88,  viewH:72, dispH:58, bob:true  },
-  bird:         { viewW:24,  viewH:14, dispH:14, bob:false },
+  bird:         { viewW:24,  viewH:14, dispH:20, bob:false },
   "leash-walk": { viewW:92,  viewH:74, dispH:65, bob:true  },
   stroller:     { viewW:88,  viewH:74, dispH:65, bob:false },
 };
 const ACTOR_COLORS: Record<ActorType, string> = {
   cat:"#8C7E72", dog:"#8C7E72", human:"#7A6C60",
-  car:"#8A7D71", bike:"#7A6C60", bird:"#9A8C80", bus:"#8A8076",
+  car:"#8A7D71", bike:"#7A6C60", bird:"#4A3C2E", bus:"#8A8076",
   "leash-walk":"#7A6C60", stroller:"#7A6C60",
 };
 const BOTTOM_BASE: Record<ActorType, number> = {
@@ -840,8 +840,8 @@ const ActorEl = memo(function ActorEl({ actor, onFinish }: ActorElProps) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Bird: inject curved per-bird keyframe with correct X formula and natural Y trajectory
-  useEffect(() => {
+  // Bird: inject curved per-bird keyframe BEFORE first paint so the CSS animation finds it immediately
+  useLayoutEffect(() => {
     if (!isBird) return;
     const kId = `bf_${actor.id}`;
     const ltr = actor.direction === "ltr";
@@ -909,6 +909,7 @@ const ActorEl = memo(function ActorEl({ actor, onFinish }: ActorElProps) {
   const isClickable = (isCat || isDog) && speedMulti < 8;
   const bobStyle: React.CSSProperties = isLooking ? {} : meta.bob
     ? { animation: `cityBob ${actor.type === "bike" ? "0.38s" : "0.52s"} ease-in-out infinite` }
+    : isBird ? {}
     : { animation: "cityRoll 0.65s ease-in-out infinite" };
 
   const mainEl = (
@@ -1618,8 +1619,8 @@ function makeGroundActor(prev: ActiveActor[], settings: CityAnimationSettings): 
 
 function makeBirdActor(): ActiveActor {
   const direction: Direction = Math.random() > 0.5 ? "ltr" : "rtl";
-  const durationS = parseFloat(rnd(4, 8).toFixed(1));
-  const skyBottom = `${Math.round(rnd(32, 68))}%`;
+  const durationS = parseFloat(rnd(8, 16).toFixed(1));
+  const skyBottom = `${Math.round(rnd(30, 65))}%`;
   return { id: crypto.randomUUID(), type:"bird", direction, durationS, level:"sky", skyBottom };
 }
 
