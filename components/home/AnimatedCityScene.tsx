@@ -13,7 +13,7 @@ import {
 } from "@/lib/city-animation/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type ActorType    = "cat" | "human" | "car" | "dog" | "bike" | "bird" | "bus";
+type ActorType    = "cat" | "human" | "car" | "dog" | "bike" | "bird" | "bus" | "leash-walk" | "stroller";
 type HumanVariant = "man" | "woman" | "child";
 type Direction    = "ltr" | "rtl";
 type TimeMode     = "day" | "evening" | "night";
@@ -59,9 +59,9 @@ function getTimeMode(): TimeMode {
 
 // ─── Actor config ─────────────────────────────────────────────────────────────
 const WEIGHTS: Record<TimeMode, Partial<Record<ActorType, number>>> = {
-  day:     { dog: 35, bike: 25, bus: 18, human: 8, cat: 12, car: 2 },
-  evening: { dog: 32, bike: 20, bus: 15, human: 12, cat: 16, car: 5 },
-  night:   { cat: 65, human: 25, car: 10 },
+  day:     { dog: 28, bike: 22, bus: 16, human: 7, cat: 10, car: 2, "leash-walk": 10, stroller: 5 },
+  evening: { dog: 24, bike: 17, bus: 12, human: 10, cat: 14, car: 4, "leash-walk": 8, stroller: 6 },
+  night:   { cat: 58, human: 20, car: 8, stroller: 8, "leash-walk": 6 },
 };
 
 // Bird spawn intervals vary by frequency (unlike ground actors which use intensity)
@@ -74,13 +74,15 @@ const BIRD_SPAWN_INTERVAL: Record<CharacterFrequency, [number, number]> = {
 
 // Maps actor type → the settings key that controls its frequency
 const ACTOR_FREQ_KEY: Partial<Record<ActorType, keyof CityAnimationSettings>> = {
-  cat:   "catsFrequency",
-  dog:   "dogsFrequency",
-  bird:  "birdsFrequency",
-  human: "peopleFrequency",
-  car:   "carsFrequency",
-  bike:  "cyclistsFrequency",
-  bus:   "busesFrequency",
+  cat:          "catsFrequency",
+  dog:          "dogsFrequency",
+  bird:         "birdsFrequency",
+  human:        "peopleFrequency",
+  car:          "carsFrequency",
+  bike:         "cyclistsFrequency",
+  bus:          "busesFrequency",
+  "leash-walk": "dogsFrequency",
+  stroller:     "peopleFrequency",
 };
 function weightedPick(w: Partial<Record<ActorType, number>>): ActorType {
   const e = Object.entries(w) as [ActorType, number][];
@@ -90,20 +92,24 @@ function weightedPick(w: Partial<Record<ActorType, number>>): ActorType {
 }
 
 const ACTOR_META: Record<ActorType, { viewW:number; viewH:number; dispH:number; bob:boolean }> = {
-  cat:   { viewW:52,  viewH:58, dispH:50, bob:true  },
-  dog:   { viewW:65,  viewH:62, dispH:54, bob:true  },
-  human: { viewW:44,  viewH:74, dispH:65, bob:true  },
-  bus:   { viewW:134, viewH:80, dispH:58, bob:false },
-  car:   { viewW:112, viewH:72, dispH:52, bob:false },
-  bike:  { viewW:88,  viewH:72, dispH:58, bob:true  },
-  bird:  { viewW:24,  viewH:14, dispH:14, bob:false }, // kept for type completeness
+  cat:          { viewW:52,  viewH:58, dispH:50, bob:true  },
+  dog:          { viewW:65,  viewH:62, dispH:54, bob:true  },
+  human:        { viewW:44,  viewH:74, dispH:65, bob:true  },
+  bus:          { viewW:134, viewH:80, dispH:58, bob:false },
+  car:          { viewW:112, viewH:72, dispH:52, bob:false },
+  bike:         { viewW:88,  viewH:72, dispH:58, bob:true  },
+  bird:         { viewW:24,  viewH:14, dispH:14, bob:false },
+  "leash-walk": { viewW:92,  viewH:74, dispH:65, bob:true  },
+  stroller:     { viewW:88,  viewH:74, dispH:65, bob:false },
 };
 const ACTOR_COLORS: Record<ActorType, string> = {
   cat:"#8C7E72", dog:"#8C7E72", human:"#7A6C60",
   car:"#8A7D71", bike:"#7A6C60", bird:"#9A8C80", bus:"#8A8076",
+  "leash-walk":"#7A6C60", stroller:"#7A6C60",
 };
 const BOTTOM_BASE: Record<ActorType, number> = {
   cat:28, dog:28, human:26, car:18, bike:20, bird:0, bus:16,
+  "leash-walk":26, stroller:26,
 };
 
 // Level depth config (0=near/large, 2=far/small)
@@ -448,6 +454,162 @@ function SvgBird({ flip, c }: { flip:boolean; c:string }) {
   return flip ? <g transform="scale(-1,1) translate(-24,0)">{g}</g> : g;
 }
 
+// ─── Man with leashed dog ────────────────────────────────────────────────────
+function SvgLeashWalk({ flip, c, speedMulti=1, dogBroke=false }: { flip:boolean; c:string; speedMulti?:number; dogBroke?:boolean }) {
+  const legDur = (0.50 / speedMulti).toFixed(2);
+  const armDur = (0.50 / speedMulti).toFixed(2);
+  const dogDur = (0.44 / speedMulti).toFixed(2);
+  const LSW = 2.1;
+  const pv = (anim: string): React.CSSProperties => ({
+    transformBox: "fill-box" as React.CSSProperties["transformBox"],
+    transformOrigin: "50% 0%",
+    animation: anim,
+  });
+  const g = (
+    <g>
+      {/* Man (x:0–44, male profile) */}
+      <g style={pv(`humanLegF ${legDur}s ease-in-out infinite`)}>
+        <path d="M19,44 Q16,54 15,62" stroke={c} strokeWidth={LSW+0.1} strokeLinecap="round" fill="none"/>
+        <path d="M15,62 Q14,68 14,72" stroke={c} strokeWidth={LSW-0.1} strokeLinecap="round" fill="none"/>
+        <line x1="14" y1="72" x2="8"  y2="73" stroke={c} strokeWidth={1.5} strokeLinecap="round"/>
+      </g>
+      <g style={pv(`humanArmB ${armDur}s ease-in-out infinite`)}>
+        <path d="M19,21 Q14,30 12,37" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+        <path d="M12,37 Q11,44 11,47" stroke={c} strokeWidth={LSW-0.4} strokeLinecap="round" fill="none"/>
+      </g>
+      <path d="M18,20 Q16,32 16,44 L25,44 Q25,32 26,20 Z"
+            stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.11} strokeLinejoin="round"/>
+      <line x1="17" y1="40" x2="25" y2="40" stroke={c} strokeWidth={0.9} opacity={0.45}/>
+      {/* Front arm — static, extended forward holding leash */}
+      <path d="M24,21 Q32,30 36,37" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+      <path d="M36,37 Q38,43 38,46" stroke={c} strokeWidth={LSW-0.4} strokeLinecap="round" fill="none"/>
+      <g style={pv(`humanLegB ${legDur}s ease-in-out infinite`)}>
+        <path d="M23,44 Q26,54 27,62" stroke={c} strokeWidth={LSW+0.1} strokeLinecap="round" fill="none"/>
+        <path d="M27,62 Q28,68 29,72" stroke={c} strokeWidth={LSW-0.1} strokeLinecap="round" fill="none"/>
+        <line x1="29" y1="72" x2="35" y2="71" stroke={c} strokeWidth={1.5} strokeLinecap="round"/>
+      </g>
+      <circle cx="24" cy="8" r="7.5" stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.07}/>
+      <path d="M31,8 Q34,9 31,12" stroke={c} strokeWidth={1.1} fill="none"/>
+      {/* Leash — taut when intact, slack-dashed when broke */}
+      {!dogBroke
+        ? <path d="M38,46 Q44,50 50,50" stroke={c} strokeWidth={1.1} fill="none" strokeLinecap="round" opacity={0.7}/>
+        : <path d="M38,46 Q40,54 37,58" stroke={c} strokeWidth={1.0} fill="none" strokeLinecap="round" opacity={0.4} strokeDasharray="2 2.5"/>
+      }
+      {/* Dog (x:48–92) — hidden when broke */}
+      {!dogBroke && (
+        <g>
+          <ellipse cx="68" cy="47" rx="13" ry="8" stroke={c} strokeWidth={1.5} fill="none"/>
+          <circle  cx="78" cy="38" r="7.5"         stroke={c} strokeWidth={1.5} fill="none"/>
+          <path d="M73,32 Q66,24 70,32"             stroke={c} strokeWidth={1.2} fill="none" strokeLinecap="round"/>
+          <circle  cx="81" cy="36" r="0.9"          fill={c}/>
+          <ellipse cx="84" cy="41" rx="2" ry="1.5"  stroke={c} strokeWidth={1.0} fill="none"/>
+          <g style={{ transformBox:"fill-box" as React.CSSProperties["transformBox"], transformOrigin:"100% 100%", animation:"dogTail 0.5s ease-in-out infinite" }}>
+            <path d="M55,42 Q46,33 50,26"           stroke={c} strokeWidth={1.5} fill="none" strokeLinecap="round"/>
+          </g>
+          <g style={legG(`dogLegB ${dogDur}s ease-in-out infinite`)}>
+            <line x1="60" y1="55" x2="56" y2="64"  stroke={c} strokeWidth={1.5} strokeLinecap="round"/>
+            <line x1="67" y1="55" x2="70" y2="64"  stroke={c} strokeWidth={1.5} strokeLinecap="round"/>
+          </g>
+          <g style={legG(`dogLegF ${dogDur}s ease-in-out infinite`)}>
+            <line x1="73" y1="55" x2="69" y2="64"  stroke={c} strokeWidth={1.5} strokeLinecap="round"/>
+            <line x1="79" y1="55" x2="83" y2="64"  stroke={c} strokeWidth={1.5} strokeLinecap="round"/>
+          </g>
+          <circle cx="50" cy="49" r="1.2" fill={c} opacity={0.6}/>
+        </g>
+      )}
+    </g>
+  );
+  return flip ? <g transform="scale(-1,1) translate(-92,0)">{g}</g> : g;
+}
+
+// ─── Runaway dog (portal element when leash breaks) ───────────────────────────
+function SvgRunawayDog({ flip, c, speedMulti=4 }: { flip:boolean; c:string; speedMulti?:number }) {
+  const dur = (0.20 / speedMulti).toFixed(2);
+  const g = (
+    <g>
+      <ellipse cx="20" cy="14" rx="12" ry="6"  stroke={c} strokeWidth={1.5} fill="none"/>
+      <circle  cx="29" cy="7"  r="6"            stroke={c} strokeWidth={1.5} fill="none"/>
+      <path d="M25,3 Q18,1 20,8"               stroke={c} strokeWidth={1.1} fill="none" strokeLinecap="round"/>
+      <circle  cx="31" cy="6"  r="0.8"          fill={c}/>
+      <path d="M34,8 L37,9"                     stroke={c} strokeWidth={1.0} strokeLinecap="round"/>
+      <path d="M8,11 Q1,3 4,0"                  stroke={c} strokeWidth={1.4} fill="none" strokeLinecap="round"/>
+      <g style={legG(`dogLegB ${dur}s ease-in-out infinite`)}>
+        <line x1="13" y1="20" x2="9"  y2="27"  stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
+        <line x1="20" y1="20" x2="23" y2="27"  stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
+      </g>
+      <g style={legG(`dogLegF ${dur}s ease-in-out infinite`)}>
+        <line x1="23" y1="20" x2="19" y2="27"  stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
+        <line x1="29" y1="20" x2="33" y2="27"  stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
+      </g>
+    </g>
+  );
+  return flip ? <g transform="scale(-1,1) translate(-38,0)">{g}</g> : g;
+}
+
+// ─── Woman with baby stroller ─────────────────────────────────────────────────
+function SvgStroller({ flip, c, speedMulti=1 }: { flip:boolean; c:string; speedMulti?:number }) {
+  const legDur = (0.52 / speedMulti).toFixed(2);
+  const wDur   = (1.4  / speedMulti).toFixed(2);
+  const LSW = 2.0;
+  const pv = (anim: string): React.CSSProperties => ({
+    transformBox: "fill-box" as React.CSSProperties["transformBox"],
+    transformOrigin: "50% 0%",
+    animation: anim,
+  });
+  const g = (
+    <g>
+      {/* Woman (x:0–44, female profile) */}
+      <g style={pv(`humanLegF ${legDur}s ease-in-out infinite`)}>
+        <path d="M19,57 Q17,63 16,69" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+        <path d="M16,69 Q15,72 15,74" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+        <line x1="15" y1="74" x2="9"  y2="74" stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
+      </g>
+      <g style={pv(`humanArmB ${legDur}s ease-in-out infinite`)}>
+        <path d="M18,21 Q13,30 12,37" stroke={c} strokeWidth={1.9} strokeLinecap="round" fill="none"/>
+        <path d="M12,37 Q11,44 11,47" stroke={c} strokeWidth={1.5} strokeLinecap="round" fill="none"/>
+      </g>
+      <path d="M17,20 Q14,28 14,36 Q13,42 16,44 L25,44 Q27,42 26,36 Q26,28 25,20 Z"
+            stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.10} strokeLinejoin="round"/>
+      <path d="M16,44 Q10,53 12,57 L30,57 Q32,53 25,44"
+            stroke={c} strokeWidth={SW-0.2} fill={c} fillOpacity={0.09} strokeLinejoin="round"/>
+      {/* Front arm — static, extended pushing stroller */}
+      <path d="M24,21 Q34,24 42,28" stroke={c} strokeWidth={1.8} strokeLinecap="round" fill="none"/>
+      <g style={pv(`humanLegB ${legDur}s ease-in-out infinite`)}>
+        <path d="M22,57 Q25,63 26,69" stroke={c} strokeWidth={LSW} strokeLinecap="round" fill="none"/>
+        <path d="M26,69 Q27,72 27,74" stroke={c} strokeWidth={LSW-0.3} strokeLinecap="round" fill="none"/>
+        <line x1="27" y1="74" x2="33" y2="73" stroke={c} strokeWidth={1.4} strokeLinecap="round"/>
+      </g>
+      <circle cx="24" cy="8" r="7.5" stroke={c} strokeWidth={SW} fill={c} fillOpacity={0.07}/>
+      <ellipse cx="21" cy="5" rx="9" ry="5"  stroke={c} strokeWidth={1.3} fill={c} fillOpacity={0.12}/>
+      {/* Stroller (x:44–88) */}
+      <line x1="42" y1="28" x2="52" y2="24" stroke={c} strokeWidth={2.1} strokeLinecap="round"/>
+      {/* Frame */}
+      <line x1="52" y1="24" x2="58" y2="62" stroke={c} strokeWidth={1.8} strokeLinecap="round"/>
+      <line x1="52" y1="24" x2="76" y2="62" stroke={c} strokeWidth={1.8} strokeLinecap="round"/>
+      {/* Hood arc */}
+      <path d="M52,24 Q58,13 70,17 Q78,21 76,35" stroke={c} strokeWidth={1.6} fill="none" strokeLinecap="round"/>
+      <path d="M59,14 Q67,9 74,14"               stroke={c} strokeWidth={1.0} fill="none" strokeLinecap="round" opacity={0.45}/>
+      {/* Seat */}
+      <line x1="58" y1="46" x2="58" y2="62" stroke={c} strokeWidth={1.5} strokeLinecap="round" opacity={0.7}/>
+      <line x1="58" y1="46" x2="76" y2="50" stroke={c} strokeWidth={1.3} strokeLinecap="round" opacity={0.7}/>
+      <line x1="58" y1="62" x2="76" y2="62" stroke={c} strokeWidth={1.2} strokeLinecap="round" opacity={0.45}/>
+      {/* Rear wheel */}
+      <g style={wheelG(`${wDur}s`)}>
+        <circle cx="58" cy="62" r="7"            stroke={c} strokeWidth={1.6} fill="none"/>
+        <line x1="58" y1="55" x2="58" y2="69"   stroke={c} strokeWidth={0.9} strokeLinecap="round" opacity={0.55}/>
+        <line x1="51" y1="62" x2="65" y2="62"   stroke={c} strokeWidth={0.9} strokeLinecap="round" opacity={0.55}/>
+      </g>
+      {/* Front wheel */}
+      <g style={wheelG(`${wDur}s`)}>
+        <circle cx="76" cy="62" r="7"            stroke={c} strokeWidth={1.6} fill="none"/>
+        <line x1="76" y1="55" x2="76" y2="69"   stroke={c} strokeWidth={0.9} strokeLinecap="round" opacity={0.55}/>
+        <line x1="69" y1="62" x2="83" y2="62"   stroke={c} strokeWidth={0.9} strokeLinecap="round" opacity={0.55}/>
+      </g>
+    </g>
+  );
+  return flip ? <g transform="scale(-1,1) translate(-88,0)">{g}</g> : g;
+}
+
 // ─── Actor element ────────────────────────────────────────────────────────────
 interface ActorElProps { actor: ActiveActor; onFinish: (id:string) => void; }
 
@@ -457,6 +619,10 @@ const ActorEl = memo(function ActorEl({ actor, onFinish }: ActorElProps) {
   const [isHumanStopped, setIsHumanStopped] = useState(false);
   const [speedMulti,     setSpeedMulti]     = useState(1);
   const [speedAnim,      setSpeedAnim]      = useState<string|null>(null);
+  const [leashBroke,     setLeashBroke]     = useState(false);
+  const [dogEscapePos,   setDogEscapePos]   = useState<{left:number; bottom:number}|null>(null);
+  const [dogEscapeCss,   setDogEscapeCss]   = useState<string|null>(null);
+  const actorOuterRef = useRef<HTMLDivElement>(null);
   const [flipDir,        setFlipDir]        = useState(actor.direction === "rtl");
   // humanRevAnim is initialised eagerly so the div has a valid animation string from first render
   const [humanRevAnim,   setHumanRevAnim]   = useState<string|null>(() => {
@@ -478,7 +644,7 @@ const ActorEl = memo(function ActorEl({ actor, onFinish }: ActorElProps) {
 
   // Auto-remove when crossing completes
   useEffect(() => {
-    finishRef.current = setTimeout(() => onFinish(actor.id), actor.durationS * 1000 + 2500);
+    finishRef.current = setTimeout(() => onFinish(actor.id), actor.durationS * 1000 + 5000);
     return () => { if (finishRef.current) clearTimeout(finishRef.current); };
   }, [actor.id, actor.durationS, onFinish]);
 
@@ -643,6 +809,37 @@ const ActorEl = memo(function ActorEl({ actor, onFinish }: ActorElProps) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Leash-walk: dog breaks free at 2/3 of screen width, runs fast to exit
+  useEffect(() => {
+    if (actor.type !== "leash-walk") return;
+    const breakTime = actor.durationS * (2 / 3) * 1000;
+    const t = setTimeout(() => {
+      const outer = actorOuterRef.current;
+      if (!outer) { setLeashBroke(true); return; }
+      const rect   = outer.getBoundingClientRect();
+      const ltr    = actor.direction === "ltr";
+      const actW   = rect.width;
+      // Dog occupies the front ~55% of the composite, centered at ~73% from origin
+      const dogLeft = ltr ? rect.left + actW * 0.73 : rect.left + actW * 0.27;
+      const dogBot  = window.innerHeight - rect.bottom + 28;
+      const kId     = `dre_${actor.id}`;
+      const toX     = ltr
+        ? `${(window.innerWidth + 300 - dogLeft).toFixed(0)}px`
+        : `${(-300 - dogLeft).toFixed(0)}px`;
+      const sEl     = document.createElement("style");
+      sEl.id        = kId;
+      sEl.textContent = `@keyframes ${kId}{from{transform:translateX(0)}to{transform:translateX(${toX})}}`;
+      document.head.appendChild(sEl);
+      setDogEscapePos({ left: dogLeft, bottom: dogBot });
+      setDogEscapeCss(`${kId} 3s linear forwards`);
+      setLeashBroke(true);
+    }, breakTime);
+    return () => {
+      clearTimeout(t);
+      document.getElementById(`dre_${actor.id}`)?.remove();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Bird: inject curved per-bird keyframe with correct X formula and natural Y trajectory
   useEffect(() => {
     if (!isBird) return;
@@ -714,8 +911,9 @@ const ActorEl = memo(function ActorEl({ actor, onFinish }: ActorElProps) {
     ? { animation: `cityBob ${actor.type === "bike" ? "0.38s" : "0.52s"} ease-in-out infinite` }
     : { animation: "cityRoll 0.65s ease-in-out infinite" };
 
-  return (
+  const mainEl = (
     <div
+      ref={actorOuterRef}
       className="city-actor"
       style={{
         position:"absolute", bottom:bottomVal, left:0,
@@ -732,17 +930,33 @@ const ActorEl = memo(function ActorEl({ actor, onFinish }: ActorElProps) {
           aria-hidden
           style={bobStyle}
         >
-          {actor.type === "cat"   && <SvgCat   flip={flip} c={color} isLooking={isLooking} speedMulti={speedMulti}/>}
-          {actor.type === "dog"   && <SvgDog   flip={flip} c={color} isPeeing={isPeeing} peeDurS={(actor.pauseMs ?? 3000)/1000} speedMulti={speedMulti}/>}
-          {actor.type === "human" && <SvgHuman flip={flip} c={color} variant={actor.humanVariant} speedMulti={speedMulti} isStopped={isHumanStopped}/>}
-          {actor.type === "car"   && <SvgCar   flip={flip} c={color}/>}
-          {actor.type === "bike"  && <SvgBike  flip={flip} c={color}/>}
-          {actor.type === "bird"  && <SvgBird  flip={flip} c={color}/>}
-          {actor.type === "bus"   && <SvgBus   flip={flip} c={color}/>}
+          {actor.type === "cat"        && <SvgCat        flip={flip} c={color} isLooking={isLooking} speedMulti={speedMulti}/>}
+          {actor.type === "dog"        && <SvgDog        flip={flip} c={color} isPeeing={isPeeing} peeDurS={(actor.pauseMs ?? 3000)/1000} speedMulti={speedMulti}/>}
+          {actor.type === "human"      && <SvgHuman      flip={flip} c={color} variant={actor.humanVariant} speedMulti={speedMulti} isStopped={isHumanStopped}/>}
+          {actor.type === "car"        && <SvgCar        flip={flip} c={color}/>}
+          {actor.type === "bike"       && <SvgBike       flip={flip} c={color}/>}
+          {actor.type === "bird"       && <SvgBird       flip={flip} c={color}/>}
+          {actor.type === "bus"        && <SvgBus        flip={flip} c={color}/>}
+          {actor.type === "leash-walk" && <SvgLeashWalk  flip={flip} c={color} speedMulti={speedMulti} dogBroke={leashBroke}/>}
+          {actor.type === "stroller"   && <SvgStroller   flip={flip} c={color} speedMulti={speedMulti}/>}
         </svg>
       </div>
     </div>
   );
+
+  // Escaped dog portal — rendered directly on document.body when leash breaks
+  const dogPortal = actor.type === "leash-walk" && dogEscapeCss && dogEscapePos
+    ? createPortal(
+        <div style={{ position:"fixed", left:dogEscapePos.left, bottom:dogEscapePos.bottom, pointerEvents:"none", animation:dogEscapeCss, zIndex:2 }}>
+          <svg viewBox="0 0 38 28" width={30} height={22} aria-hidden style={{ animation:`dogLegB 0.1s ease-in-out infinite` }}>
+            <SvgRunawayDog flip={actor.direction === "rtl"} c={color}/>
+          </svg>
+        </div>,
+        document.body
+      )
+    : null;
+
+  return dogPortal ? <>{mainEl}{dogPortal}</> : mainEl;
 }); // memo(ActorEl)
 
 // ─── Bus ──────────────────────────────────────────────────────────────────────
@@ -1350,13 +1564,15 @@ function makeGroundActor(prev: ActiveActor[], settings: CityAnimationSettings): 
 
   // Apply frequency multipliers to base weights
   const freqMap: Partial<Record<ActorType, CharacterFrequency>> = {
-    cat:   settings.catsFrequency,
-    dog:   settings.dogsFrequency,
-    bird:  settings.birdsFrequency,
-    human: settings.peopleFrequency,
-    car:   settings.carsFrequency,
-    bike:  settings.cyclistsFrequency,
-    bus:   settings.busesFrequency,
+    cat:          settings.catsFrequency,
+    dog:          settings.dogsFrequency,
+    bird:         settings.birdsFrequency,
+    human:        settings.peopleFrequency,
+    car:          settings.carsFrequency,
+    bike:         settings.cyclistsFrequency,
+    bus:          settings.busesFrequency,
+    "leash-walk": settings.dogsFrequency,
+    stroller:     settings.peopleFrequency,
   };
   const effectiveWeights: Partial<Record<ActorType, number>> = {};
   for (const [t, w] of Object.entries(WEIGHTS[mode]) as [ActorType, number][]) {
@@ -1389,7 +1605,7 @@ function makeGroundActor(prev: ActiveActor[], settings: CityAnimationSettings): 
       humanStopFraction = parseFloat(rnd(0.25, 0.65).toFixed(2));
       humanStopMs       = Math.round(rnd(2000, 4500));
     } else if (r < 0.46) {   // 18%: turn around
-      humanReverseFraction = parseFloat(rnd(0.28, 0.70).toFixed(2));
+      humanReverseFraction = parseFloat(rnd(0.52, 0.72).toFixed(2));
     }
   }
 
@@ -1606,7 +1822,9 @@ export function AnimatedCityScene() {
           }, rnd(800, 2200));
         }
       }
-      const [lo, hi] = BIRD_SPAWN_INTERVAL[settingsRef.current.birdsFrequency];
+      // Use "rare" interval even when "off" so birds resume quickly when re-enabled
+      const schedFreq = settingsRef.current.birdsFrequency === "off" ? "rare" : settingsRef.current.birdsFrequency;
+      const [lo, hi] = BIRD_SPAWN_INTERVAL[schedFreq];
       scheduleBird(rnd(lo, hi));
     }, delay);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
