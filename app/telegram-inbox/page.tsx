@@ -147,17 +147,17 @@ function ItemCard({
 }: {
   item: InboxItem;
   clients: Client[];
-  onAction: (id: string, action: "link" | "done" | "delete" | "note", payload?: unknown) => Promise<void>;
+  onAction: (id: string, action: "link" | "done" | "delete" | "note" | "material", payload?: unknown) => Promise<void>;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
   const [noteSaved, setNoteSaved] = useState(false);
 
-  async function handle(action: "link" | "done" | "delete" | "note", payload?: unknown) {
+  async function handle(action: "link" | "done" | "delete" | "note" | "material", payload?: unknown) {
     setLoading(action);
     try {
       await onAction(item.id, action, payload);
-      if (action === "note") setNoteSaved(true);
+      if (action === "note" || action === "material") setNoteSaved(true);
     } finally {
       setLoading(null);
       if (action === "link") setPickerOpen(false);
@@ -236,24 +236,26 @@ function ItemCard({
 
         {/* Actions */}
         <div className="flex gap-2">
-          {/* Save to notebook */}
+          {/* Save to client materials (observation) — only active when client is linked */}
           {item.text && (
             <button
-              onClick={() => handle("note")}
-              disabled={!!loading || noteSaved}
+              onClick={() => handle("material")}
+              disabled={!!loading || noteSaved || !item.clientId}
+              title={!item.clientId ? "Сначала привяжите клиента" : "Сохранить как наблюдение в материалах клиента"}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl font-medium transition-colors"
               style={{
                 background: noteSaved ? "#F0FDF4" : T.header,
                 border: `1px solid ${noteSaved ? "#86EFAC" : T.borderLt}`,
-                color: noteSaved ? T.green : T.muted,
-                opacity: loading && loading !== "note" ? 0.5 : 1,
+                color: noteSaved ? T.green : item.clientId ? T.muted : T.faint,
+                opacity: !item.clientId || (loading && loading !== "material") ? 0.45 : 1,
+                cursor: !item.clientId ? "not-allowed" : "pointer",
               }}
             >
-              {loading === "note"
+              {loading === "material"
                 ? <Loader2 size={13} className="animate-spin" />
                 : <BookOpen size={13} />
               }
-              {noteSaved ? "В блокноте" : "В блокнот"}
+              {noteSaved ? "Сохранено" : "В материалы"}
             </button>
           )}
 
@@ -360,7 +362,7 @@ export default function TelegramInboxPage() {
 
   useEffect(() => { load(); }, [load, filterStatus]);
 
-  async function handleAction(id: string, action: "link" | "done" | "delete" | "note", payload?: unknown) {
+  async function handleAction(id: string, action: "link" | "done" | "delete" | "note" | "material", payload?: unknown) {
     if (action === "delete") {
       await fetch(`/api/telegram-inbox?id=${id}`, { method: "DELETE" });
       setItems((prev) => prev.filter((i) => i.id !== id));
@@ -402,6 +404,19 @@ export default function TelegramInboxPage() {
           clientId: item.clientId ?? undefined,
           topic:    item.messageType === "voice" ? "Голосовое (Telegram)" : "Telegram",
           tags:     ["telegram"],
+        }),
+      });
+
+    } else if (action === "material") {
+      const item = items.find((i) => i.id === id);
+      if (!item?.text || !item.clientId) return;
+      await fetch(`/api/client-materials/${item.clientId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type:    "observation",
+          title:   item.messageType === "voice" ? "Голосовое (Telegram)" : "Заметка из Telegram",
+          content: item.text,
         }),
       });
     }
