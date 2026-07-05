@@ -38,8 +38,10 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
   const searchParams = useSearchParams();
   const initTab      = (searchParams.get("tab") as Tab | null) ?? "overview";
   const highlightMaterialId = searchParams.get("material") ?? undefined;
+  const initRequestFilter = searchParams.get("request") ?? undefined;
 
   const [tab, setTab]                     = useState<Tab>(initTab);
+  const [filterRequestId, setFilterRequestId] = useState<string | undefined>(initRequestFilter);
   const [uploadOpen, setUploadOpen]       = useState(false);
   const [realClient, setRealClient]       = useState<StoredClient | null>(null);
   const [realSessions, setRealSessions]   = useState<StoredConsultation[]>([]);
@@ -453,6 +455,11 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
             uploadBtnLabel={uploadBtnLabel}
             onDeleteSession={handleDeleteSession}
             requestsMap={requestsMap}
+            filterRequestId={filterRequestId}
+            onClearFilter={() => {
+              setFilterRequestId(undefined);
+              router.replace(`/client/${id}?tab=consultations`);
+            }}
           />
         )}
 

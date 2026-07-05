@@ -67,6 +67,8 @@ interface Props {
   uploadBtnLabel?:  string;
   onDeleteSession?: (id: string) => void;
   requestsMap?:     Record<string, string>;
+  filterRequestId?: string;
+  onClearFilter?:   () => void;
 }
 
 export function ConsultationsTab({
@@ -77,6 +79,8 @@ export function ConsultationsTab({
   uploadBtnLabel = "Загрузить запись",
   onDeleteSession,
   requestsMap   = {},
+  filterRequestId,
+  onClearFilter,
 }: Props) {
   const [openCompare, setOpenCompare] = useState<string | null>(null);
   const [deletingId, setDeletingId]   = useState<string | null>(null);
@@ -169,11 +173,42 @@ export function ConsultationsTab({
   }
 
   // Real sessions
-  if (realSessions.length === 0) return <Empty onUpload={onUpload} label={uploadBtnLabel} />;
+  const filteredSessions = filterRequestId
+    ? realSessions.filter(c => c.requestId === filterRequestId)
+    : realSessions;
+
+  const filterLabel = filterRequestId ? requestsMap[filterRequestId] : undefined;
+
+  if (filteredSessions.length === 0 && !filterRequestId) return <Empty onUpload={onUpload} label={uploadBtnLabel} />;
 
   return (
     <div className="space-y-2.5">
-      {realSessions.map((c, idx) => {
+      {filterRequestId && (
+        <div
+          className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs"
+          style={{ background: "#F0EAE0", border: "1px solid #D8CFBE", color: "#6B5D4F" }}
+        >
+          <span className="truncate">
+            <span style={{ color: "#9C8E80" }}>Запрос: </span>
+            {filterLabel ? `«${filterLabel.slice(0, 60)}${filterLabel.length > 60 ? "…" : ""}»` : "фильтр по запросу"}
+          </span>
+          <button
+            onClick={onClearFilter}
+            className="flex-shrink-0 text-xs px-2 py-0.5 rounded-lg transition-colors"
+            style={{ background: "#E9DCC7", color: "#6B5D4F" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#D8CFBE"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#E9DCC7"; }}
+          >
+            Все консультации
+          </button>
+        </div>
+      )}
+      {filteredSessions.length === 0 && (
+        <div className="py-10 text-center text-sm" style={{ color: "#9C8E80" }}>
+          По этому запросу консультаций нет
+        </div>
+      )}
+      {filteredSessions.map((c, idx) => {
         const hasAudio      = !!(c.audio?.fileUrl ?? c.fileUrl);
         const hasTranscript = !!c.transcript?.text;
         const hasAnalysis   = !!(c.analyses?.length);

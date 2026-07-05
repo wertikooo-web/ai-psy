@@ -35,6 +35,7 @@ export type TelegramIntent =
   | "analytics_open"
   | "analytics_metric_query"
   | "get_first_client_request"
+  | "get_current_client_request"
   | "unknown";
 
 type ParsedRequest = {
@@ -492,8 +493,16 @@ function extractClientHintFromU(text: string): string | undefined {
  */
 function detectClientFieldIntent(rest: string): TelegramIntent {
   const r = rest.toLowerCase();
-  if (/первый\s+запрос|первую?\s+тему|первую?\s+проблем|первую?\s+жалоб|с\s+чем\s+(пришёл|пришел|обратился)|назыв|запрос/.test(r)) {
+  // "последний/текущий/актуальный запрос" — MUST be before the первый check
+  if (/последн.{0,6}запрос|последн.{0,6}тем|текущий\s+запрос|актуальный\s+запрос/.test(r)) {
+    return "get_current_client_request";
+  }
+  if (/первый\s+запрос|первую?\s+тему|первую?\s+проблем|первую?\s+жалоб|с\s+чем\s+(пришёл|пришел|обратился)|как\s+назыв/.test(r)) {
     return "get_first_client_request";
+  }
+  // bare "запрос" (no first/last qualifier) → return the current one
+  if (/\bзапрос\b/.test(r)) {
+    return "get_current_client_request";
   }
   if (/последн.{0,6}(консультац|встреч|сессия|виде)|последн.{0,3}раз/.test(r)) {
     return "get_last_consultation";
@@ -1734,6 +1743,37 @@ async function sendFirstClientRequest(chatId: number, clientName: string | undef
   );
 }
 
+async function sendCurrentClientRequest(chatId: number, clientName: string | undefined): Promise<void> {
+  const client = await resolveSingleClient(chatId, clientName);
+  if (!client) return;
+
+  if (!isSupabaseConfigured()) {
+    await sendTelegramMessage(chatId, "База данных недоступна.");
+    return;
+  }
+
+  const { data } = await supabaseServer!
+    .from("client_requests")
+    .select("text, created_at")
+    .eq("client_id", client.id)
+    .is("deleted_at", null)
+    .eq("is_current", true)
+    .limit(1);
+
+  const current = data?.[0] ?? null;
+  if (!current) {
+    await sendTelegramMessage(chatId, `У ${client.name} нет текущего запроса.`);
+    return;
+  }
+
+  const dateStr = new Date(current.created_at as string).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  await sendTelegramMessage(
+    chatId,
+    `<b>Текущий запрос — ${client.name}</b>\n${dateStr}\n\n${escapeHtml(current.text as string)}`,
+    keyboardFromButtons([urlButton("Открыть клиента", getClientUrl(client.id))]),
+  );
+}
+
 async function saveNotebookEntry(chatId: number, text: string | undefined, clientName?: string): Promise<void> {
   const noteText = text?.trim();
   if (!noteText) {
@@ -1780,6 +1820,7 @@ async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedReq
   if (parsed.intent === "get_notebook_count") return sendNotebookCount(chatId);
   if (parsed.intent === "get_session_brief") return sendSessionBrief(chatId, parsed.clientName);
   if (parsed.intent === "get_first_client_request") return sendFirstClientRequest(chatId, parsed.clientName);
+  if (parsed.intent === "get_current_client_request") return sendCurrentClientRequest(chatId, parsed.clientName);
   if (parsed.intent === "add_notebook_entry") return saveNotebookEntry(chatId, parsed.query, parsed.clientName);
   return sendUnknownResponse(chatId);
 }

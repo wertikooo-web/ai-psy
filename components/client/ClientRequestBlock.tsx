@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, Pencil, Plus, X, Loader2, History, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronDown, Pencil, Plus, X, Loader2, BookOpen, Trash2 } from "lucide-react";
 import { ModalPortal } from "@/components/ui/ModalPortal";
-import { RequestHistoryDrawer } from "@/components/client/RequestHistoryDrawer";
 import type { ClientRequest } from "@/lib/types";
 
 const S = {
@@ -310,11 +310,11 @@ interface Props {
 }
 
 export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props) {
+  const router = useRouter();
   const [requests, setRequests]       = useState<ClientRequest[]>([]);
   const [loading, setLoading]         = useState(true);
-  const [historyOpen, setHistoryOpen]   = useState(false);
-  const [showAll, setShowAll]           = useState(false);
-  const [historyRequest, setHistoryRequest] = useState<ClientRequest | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [showAll, setShowAll]         = useState(false);
   const [editOpen, setEditOpen]       = useState(false);
   const [newOpen, setNewOpen]         = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ClientRequest | null>(null);
@@ -530,15 +530,15 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
                                 </span>
                               )}
                               <button
-                                onClick={() => setHistoryRequest(req)}
+                                onClick={() => router.push(`/client/${clientId}?tab=consultations&request=${req.id}`)}
                                 className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-lg transition-colors"
                                 style={{ background: "#E9DCC7", color: "#6B5D4F" }}
                                 onMouseEnter={e => { e.currentTarget.style.background = "#D8CFBE"; }}
                                 onMouseLeave={e => { e.currentTarget.style.background = "#E9DCC7"; }}
-                                title="Открыть историю консультаций по этому запросу"
+                                title="Открыть консультации по этому запросу"
                               >
-                                <History size={11} />
-                                История
+                                <BookOpen size={11} />
+                                Консультации
                               </button>
                               <button
                                 onClick={() => setDeleteTarget(req)}
@@ -610,11 +610,6 @@ export function ClientRequestBlock({ clientId, isMock, onCurrentChange }: Props)
           onClose={() => setNewOpen(false)}
         />
       )}
-
-      <RequestHistoryDrawer
-        request={historyRequest}
-        onClose={() => setHistoryRequest(null)}
-      />
 
       {deleteTarget && (
         <DeleteConfirmDialog
