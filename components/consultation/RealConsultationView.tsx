@@ -869,11 +869,13 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                     style={{
                       background: showEvidenceIcons && hasEvidenceIcons
                         ? "rgba(255,255,255,0.22)"
-                        : "rgba(255,255,255,0.08)",
-                      color: showEvidenceIcons && hasEvidenceIcons ? "#FFFFFF" : "rgba(255,255,255,0.45)",
+                        : "rgba(255,255,255,0.13)",
+                      color: showEvidenceIcons && hasEvidenceIcons
+                        ? "#FFFFFF"
+                        : "rgba(255,255,255,0.70)",
                       border: showEvidenceIcons && hasEvidenceIcons
                         ? "1.5px solid rgba(255,255,255,0.45)"
-                        : "1px solid rgba(255,255,255,0.18)",
+                        : "1px solid rgba(255,255,255,0.30)",
                     }}
                   >
                     <ScanSearch size={13} />
