@@ -522,7 +522,7 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: "#3D3228", marginBottom: 3 }}>
-            Фокус месяца
+            Прогресс к годовым целям
           </div>
           <div style={{ fontSize: 12, color: "#4A4455", lineHeight: 1.5 }}>
             {focusMsg(d)}

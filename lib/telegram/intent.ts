@@ -118,6 +118,7 @@ const SYSTEM_PROMPT = `
 - get_last_consultation: последняя консультация с клиентом или вообще
 - get_consultations: список консультаций клиента
 - find_client / get_client_summary: информация о конкретном клиенте
+  Примеры: "кто такой жора?", "жора это кто?", "расскажи про аню", "покажи кирилла"
 - search_consultations: поиск по содержимому консультаций
 - search_analyses: поиск по анализам
 - search_notebook: поиск по заметкам/блокноту

@@ -1645,6 +1645,10 @@ export async function handleTelegramReadOnlySearch(message: TelegramMessage, tex
     // "найди..." is always a search — skip LLM to avoid misclassification as conversation
     const q = cleanupSearchQuery(text);
     parsed = { intent: "search_consultations", query: q || text };
+  } else if (/^(\w+)\s+это\s+кто\??$/.test(lower) || /^кто\s+такой\s+(.+)\??$/.test(lower) || /^расскажи\s+про\s+(\w+)$/.test(lower)) {
+    // "жора это кто", "кто такой жора", "расскажи про жора" → find_client
+    const m = lower.match(/^(\w+)\s+это\s+кто/) ?? lower.match(/кто\s+такой\s+(.+?)\??$/) ?? lower.match(/расскажи\s+про\s+(\w+)/);
+    parsed = { intent: "find_client", clientName: m?.[1]?.trim() ?? text };
   } else if (isAnalyticsOpenPhrase(lower)) {
     // "открой статистику", "покажи аналитику", "дай статистику" — bypass LLM
     parsed = { intent: "analytics_open" };
