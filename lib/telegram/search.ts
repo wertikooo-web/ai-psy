@@ -94,14 +94,16 @@ function navKeyboard(): { inline_keyboard: TelegramInlineKeyboardButton[][] } {
   return {
     inline_keyboard: [
       [
-        { text: "Клиенты", callback_data: "help:clients" },
-        { text: "Консультации", callback_data: "help:consultations" },
-        { text: "Поиск", callback_data: "help:search" },
+        { text: "👥 Клиенты", callback_data: "help:clients" },
+        { text: "📋 Консультации", callback_data: "help:consultations" },
       ],
       [
-        { text: "Оплаты", callback_data: "help:analytics" },
-        { text: "Аналитика", callback_data: "help:analytics" },
-        { text: "Что ты умеешь?", callback_data: "help:capabilities" },
+        { text: "🔍 Поиск", callback_data: "help:search" },
+        { text: "💰 Оплаты", callback_data: "help:analytics" },
+      ],
+      [
+        { text: "📊 Аналитика", callback_data: "help:analytics" },
+        { text: "❓ Что ты умеешь?", callback_data: "help:capabilities" },
       ],
     ],
   };
