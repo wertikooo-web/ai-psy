@@ -468,8 +468,8 @@ function VizContent({ data, onNavigate }: { data: VizData; onNavigate: (tab: str
 
       {/* ── Row 3: Ближайшие события ─────────────────────────────────── */}
       <VCard title="Ближайшие события"
-        onMore={() => onNavigate("goals")}
-        moreAriaLabel="Подробнее — перейти к разделу План развития">
+        onMore={() => onNavigate("calendar")}
+        moreAriaLabel="Подробнее — перейти к календарю">
         {d.upcoming_events.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               {d.upcoming_events.map((ev, i) => {

@@ -1443,10 +1443,29 @@ async function sendTopPayer(chatId: number): Promise<void> {
   await sendTelegramMessage(chatId, lines.join("\n"), keyboardFromButtons([urlButton("Открыть оплаты", appUrl("/payments"))]));
 }
 
-async function sendPaymentTotal(chatId: number, period: ParsedRequest["period"]): Promise<void> {
+async function sendPaymentTotal(chatId: number, period: ParsedRequest["period"], clientName?: string): Promise<void> {
   const range = currentPeriodRange(period);
-  const payments = (await getPayments()).filter((item) => !range.from || inRange(item.paymentDate || item.createdAt, range));
-  const paid = payments.reduce((sum, item) => sum + Number(item.paidAmount || 0), 0);
+  let payments = (await getPayments()).filter((item) => !range.from || inRange(item.paymentDate || item.createdAt, range));
+
+  // Client-specific payment lookup
+  if (clientName?.trim()) {
+    const client = await resolveSingleClient(chatId, clientName);
+    if (!client) return;
+    payments = payments.filter((item) => item.clientId === client.id);
+    const paid    = payments.reduce((sum, item) => sum + Number(item.paidAmount    || 0), 0);
+    const charged = payments.reduce((sum, item) => sum + Number(item.chargedAmount || 0), 0);
+    const unpaid  = Math.max(0, charged - paid);
+    const lines = [
+      `Оплаты клиента ${client.name}${range.label !== "за всё время" ? ` (${range.label})` : ""}:`,
+      `Начислено: ${charged} MDL`,
+      `Получено: ${paid} MDL`,
+      unpaid > 0 ? `Долг: ${unpaid} MDL` : "Задолженностей нет.",
+    ];
+    await sendTelegramMessage(chatId, lines.join("\n"), keyboardFromButtons([urlButton("Открыть оплаты", appUrl("/payments"))]));
+    return;
+  }
+
+  const paid    = payments.reduce((sum, item) => sum + Number(item.paidAmount    || 0), 0);
   const charged = payments.reduce((sum, item) => sum + Number(item.chargedAmount || 0), 0);
   await sendTelegramMessage(chatId, `Оплаты ${range.label}:\nНачислено: ${charged} MDL\nПолучено: ${paid} MDL`, keyboardFromButtons([urlButton("Открыть оплаты", appUrl("/payments"))]));
 }
@@ -1572,7 +1591,7 @@ async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedReq
   if (parsed.intent === "search_consultations" || parsed.intent === "search_analyses") return sendSearch(chatId, parsed.query, false, parsed.clientName);
   if (parsed.intent === "get_upcoming_consultation") return sendUpcomingConsultation(chatId, parsed.clientName);
   if (parsed.intent === "get_consultation_count") return sendConsultationCount(chatId, parsed.period, parsed.clientName);
-  if (parsed.intent === "get_payment_total") return sendPaymentTotal(chatId, parsed.period);
+  if (parsed.intent === "get_payment_total") return sendPaymentTotal(chatId, parsed.period, parsed.clientName);
   if (parsed.intent === "get_top_payer") return sendTopPayer(chatId);
   if (parsed.intent === "get_notebook_count") return sendNotebookCount(chatId);
   if (parsed.intent === "get_session_brief") return sendSessionBrief(chatId, parsed.clientName);
