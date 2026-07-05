@@ -130,6 +130,11 @@
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-1px); }
 }
+/* love runner */
+@keyframes loveRunnerLegF    { 0%,100%{transform:rotate(-30deg)} 50%{transform:rotate(30deg)} }
+@keyframes loveRunnerLegB    { 0%,100%{transform:rotate(30deg)}  50%{transform:rotate(-30deg)} }
+@keyframes loveRunnerHeadTilt { 0%,100%{transform:rotate(-8deg)}  50%{transform:rotate(8deg)} }
+@keyframes loveRunnerHeart   { 0%,100%{transform:scale(1)}       50%{transform:scale(1.28)} }
 /* Animation controlled via Settings toggle (localStorage "cityAnimation") */
 
 @layer components {

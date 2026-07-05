@@ -1211,6 +1211,118 @@ function WindowEscaper({ active, onDone }: { active:boolean; onDone:()=>void }) 
   );
 }
 
+// ─── Easter egg: love runner ───────────────────────────────────────────────────
+function SvgLoveRunner({ c, flip }: { c: string; flip: boolean }) {
+  const heartStyle: React.CSSProperties = {
+    transformBox:    "fill-box",
+    transformOrigin: "50% 50%",
+    animation:       "loveRunnerHeart 0.65s ease-in-out infinite",
+  };
+  const headStyle: React.CSSProperties = {
+    transformBox:    "fill-box",
+    transformOrigin: "50% 100%",
+    animation:       "loveRunnerHeadTilt 0.56s ease-in-out infinite",
+  };
+  const legFStyle: React.CSSProperties = {
+    transformBox:    "fill-box",
+    transformOrigin: "50% 0%",
+    animation:       "loveRunnerLegF 0.28s ease-in-out infinite",
+  };
+  const legBStyle: React.CSSProperties = {
+    transformBox:    "fill-box",
+    transformOrigin: "50% 0%",
+    animation:       "loveRunnerLegB 0.28s ease-in-out infinite",
+  };
+  const g = (
+    <g>
+      {/* Pulsing red heart */}
+      <g style={heartStyle}>
+        <path d="M26,22 C26,22 18,15 18,20.5 C18,25 22,28 26,33 C30,28 34,25 34,20.5 C34,15 26,22 26,22Z"
+              fill="#E83535" stroke="#C83030" strokeWidth="0.7"/>
+        <ellipse cx="21" cy="19" rx="2.4" ry="1.6" fill="rgba(255,255,255,0.55)"
+                 transform="rotate(-25,21,19)"/>
+      </g>
+      {/* Motion dashes around heart */}
+      <line x1="14" y1="20" x2="11" y2="17" stroke="#E05050" strokeWidth="1.1" strokeLinecap="round" opacity="0.7"/>
+      <line x1="38" y1="20" x2="41" y2="17" stroke="#E05050" strokeWidth="1.1" strokeLinecap="round" opacity="0.7"/>
+      <line x1="13" y1="25" x2="10" y2="25" stroke="#E05050" strokeWidth="1.1" strokeLinecap="round" opacity="0.7"/>
+      <line x1="39" y1="25" x2="42" y2="25" stroke="#E05050" strokeWidth="1.1" strokeLinecap="round" opacity="0.7"/>
+      {/* Head group — tilts left/right */}
+      <g style={headStyle}>
+        <circle cx="19" cy="37" r="2.1" fill={c} opacity="0.6"/>
+        <circle cx="33" cy="37" r="2.1" fill={c} opacity="0.6"/>
+        <circle cx="26" cy="48" r="12" fill="rgba(255,255,255,0.72)" stroke={c} strokeWidth={SW}/>
+        <ellipse cx="17" cy="52" rx="3.5" ry="2.5" fill="#FFB0C0" opacity="0.5"/>
+        <ellipse cx="35" cy="52" rx="3.5" ry="2.5" fill="#FFB0C0" opacity="0.5"/>
+        {/* Happy eyes ∩∩ */}
+        <path d="M19.5,46 Q22,43 24.5,46" stroke={c} strokeWidth="1.7" fill="none" strokeLinecap="round"/>
+        <path d="M27.5,46 Q30,43 32.5,46" stroke={c} strokeWidth="1.7" fill="none" strokeLinecap="round"/>
+        {/* Smile */}
+        <path d="M20,53 Q26,57 32,53" stroke={c} strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+      </g>
+      {/* Body */}
+      <ellipse cx="26" cy="69" rx="7" ry="5.5" fill="rgba(255,255,255,0.65)" stroke={c} strokeWidth={SW}/>
+      {/* Arms raised */}
+      <line x1="19" y1="67" x2="10" y2="59" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+      <line x1="33" y1="67" x2="42" y2="59" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+      {/* Running legs */}
+      <g style={legFStyle}>
+        <line x1="26" y1="74" x2="20" y2="88" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+      </g>
+      <g style={legBStyle}>
+        <line x1="26" y1="74" x2="32" y2="88" stroke={c} strokeWidth={SW} strokeLinecap="round"/>
+      </g>
+    </g>
+  );
+  return (
+    <svg viewBox="0 0 52 92" width={42} height={74} aria-hidden overflow="visible">
+      {flip ? <g transform="scale(-1,1) translate(-52,0)">{g}</g> : g}
+    </svg>
+  );
+}
+
+function LoveRunner({ active, onDone }: { active: boolean; onDone: () => void }) {
+  const [animName, setAnimName] = useState<string | null>(null);
+  const durRef  = useRef(13);
+  const flipRef = useRef(false);
+
+  useEffect(() => {
+    if (!active) { setAnimName(null); return; }
+    const id  = `lr_${crypto.randomUUID().slice(0, 8)}`;
+    const d   = rnd(11, 16);
+    const ltr = Math.random() > 0.5;
+    durRef.current  = d;
+    flipRef.current = !ltr;
+    const styleEl = document.createElement("style");
+    styleEl.id = id;
+    styleEl.textContent = ltr
+      ? `@keyframes ${id}{from{transform:translateX(-80px)}to{transform:translateX(calc(100vw + 80px))}}`
+      : `@keyframes ${id}{from{transform:translateX(calc(100vw + 80px))}to{transform:translateX(-80px)}}`;
+    document.head.appendChild(styleEl);
+    setAnimName(id);
+    const t = setTimeout(() => {
+      document.getElementById(id)?.remove();
+      setAnimName(null);
+      onDone();
+    }, d * 1000 + 500);
+    return () => { clearTimeout(t); document.getElementById(id)?.remove(); };
+  }, [active, onDone]);
+
+  if (!animName) return null;
+  return (
+    <div style={{
+      position:      "absolute",
+      bottom:        "4.5%",
+      left:          0,
+      pointerEvents: "none",
+      zIndex:        4,
+      animation:     `${animName} ${durRef.current.toFixed(1)}s linear forwards`,
+    }}>
+      <SvgLoveRunner c="#8C7E72" flip={flipRef.current}/>
+    </div>
+  );
+}
+
 function CrowScene({ crow, onDone }: { crow:CrowInfo|null; onDone:()=>void }) {
   const [phase, setPhase] = useState<CrowPhase>("flying-in");
 
@@ -1368,18 +1480,21 @@ export function AnimatedCityScene() {
   });
   // Mounted flag for createPortal (SSR guard)
   const [mounted,        setMounted]       = useState(false);
-  const crowActive       = useRef(false);
-  const escaperRunning   = useRef(false);
-  const planeRunning     = useRef(false);
+  const [loveRunnerActive, setLoveRunnerActive] = useState(false);
+  const crowActive        = useRef(false);
+  const escaperRunning    = useRef(false);
+  const planeRunning      = useRef(false);
+  const loveRunnerRunning = useRef(false);
   const interactiveActive = useRef(false);  // one interactive event at a time
 
-  const groundTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const birdTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const crowTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const escaperTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const planeTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const ibirdTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const icatTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const groundTimer      = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const birdTimer        = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const crowTimer        = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const escaperTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const planeTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loveRunnerTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ibirdTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const icatTimer        = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -1427,6 +1542,11 @@ export function AnimatedCityScene() {
     planeRunning.current = false;
   }, []);
 
+  const handleLoveRunnerDone = useCallback(() => {
+    setLoveRunnerActive(false);
+    loveRunnerRunning.current = false;
+  }, []);
+
   const handleIbirdDone = useCallback(() => {
     setIbirdSpot(null);
     interactiveActive.current = false;
@@ -1471,6 +1591,18 @@ export function AnimatedCityScene() {
         setPlaneActive(true);
       }
       schedulePlane(rnd(120_000, 240_000));
+    }, delay);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Love runner: rare easter egg, respects loveRunnerEnabled
+  const scheduleLoveRunner = useCallback((delay: number) => {
+    loveRunnerTimer.current = setTimeout(() => {
+      const s = settingsRef.current;
+      if (!loveRunnerRunning.current && s.loveRunnerEnabled) {
+        loveRunnerRunning.current = true;
+        setLoveRunnerActive(true);
+      }
+      scheduleLoveRunner(rnd(600_000, 1_200_000));
     }, delay);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1550,19 +1682,21 @@ export function AnimatedCityScene() {
     scheduleCrow(rnd(15_000, 30_000));
     scheduleEscaper(rnd(60_000, 90_000));
     schedulePlane(rnd(25_000, 50_000));
+    scheduleLoveRunner(rnd(90_000, 180_000));
     scheduleIbird(rnd(80_000, 150_000));
     scheduleIcat(rnd(70_000, 130_000));
     void lo; void hi; // INTENSITY used at each rescheduling call
     return () => {
-      if (groundTimer.current)  clearTimeout(groundTimer.current);
-      if (birdTimer.current)    clearTimeout(birdTimer.current);
-      if (crowTimer.current)    clearTimeout(crowTimer.current);
-      if (escaperTimer.current) clearTimeout(escaperTimer.current);
-      if (planeTimer.current)   clearTimeout(planeTimer.current);
-      if (ibirdTimer.current)   clearTimeout(ibirdTimer.current);
-      if (icatTimer.current)    clearTimeout(icatTimer.current);
+      if (groundTimer.current)     clearTimeout(groundTimer.current);
+      if (birdTimer.current)       clearTimeout(birdTimer.current);
+      if (crowTimer.current)       clearTimeout(crowTimer.current);
+      if (escaperTimer.current)    clearTimeout(escaperTimer.current);
+      if (planeTimer.current)      clearTimeout(planeTimer.current);
+      if (loveRunnerTimer.current) clearTimeout(loveRunnerTimer.current);
+      if (ibirdTimer.current)      clearTimeout(ibirdTimer.current);
+      if (icatTimer.current)       clearTimeout(icatTimer.current);
     };
-  }, [animEnabled, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane, scheduleIbird, scheduleIcat]);
+  }, [animEnabled, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane, scheduleLoveRunner, scheduleIbird, scheduleIcat]);
 
   const cityOpacity = 0.55; // fixed opacity — no dark modes since window lighting was removed
 
@@ -1600,6 +1734,7 @@ export function AnimatedCityScene() {
           {(typeof window === "undefined" || window.innerWidth >= 1024) && (
             <PaperPlane active={planeActive} onDone={handlePlaneDone}/>
           )}
+          <LoveRunner active={loveRunnerActive} onDone={handleLoveRunnerDone}/>
           {icatSpot && (
             <InteractiveCat key={icatSpot.id + Date.now()} spot={icatSpot} onDone={handleIcatDone}/>
           )}

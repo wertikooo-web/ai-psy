@@ -1167,6 +1167,9 @@ function CityAnimContent({ settings, saveStatus, onChange, onReset, onSave }: {
       <AnimRow label="Тише во время консультации" desc="Город становится спокойнее при открытой консультации">
         <AnimToggle on={settings.reduceMotionDuringConsultation} onChange={(v) => onChange("reduceMotionDuringConsultation", v)} label="Тихий режим" />
       </AnimRow>
+      <AnimRow label="Влюблённый человечек" desc="Редкая пасхалка — весёлая фигурка с сердечком">
+        <AnimToggle on={settings.loveRunnerEnabled} onChange={(v) => onChange("loveRunnerEnabled", v)} label="Влюблённый человечек" />
+      </AnimRow>
 
       {/* Sub-accordion: characters */}
       <div style={{ borderBottom: "1px solid #EDE7DA" }}>
