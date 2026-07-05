@@ -316,7 +316,7 @@ function ItemCard({
 const FILTERS = [
   { value: "new",       label: "Новые",        hint: "Необработанные сообщения — те, которые ещё требуют вашего внимания." },
   { value: "",          label: "Все",           hint: "Все сообщения: новые и обработанные. Удалённые не показываются." },
-  { value: "processed", label: "Обработанные", hint: "Сообщения, которые вы пометили как обработанные." },
+  { value: "processed", label: "Обработанные", hint: "Сообщения, отмеченные кнопкой «✓ Обработано» в карточке сообщения." },
 ];
 
 export default function TelegramInboxPage() {
