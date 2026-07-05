@@ -186,6 +186,23 @@ function normalize(value: string): string {
     .trim();
 }
 
+const CYR_TO_LAT: Record<string, string> = {
+  а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ж:"zh",з:"z",и:"i",й:"y",
+  к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",
+  ф:"f",х:"h",ц:"ts",ч:"ch",ш:"sh",щ:"sch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya",
+};
+const LAT_TO_CYR: Record<string, string> = {
+  a:"а",b:"б",v:"в",g:"г",d:"д",e:"е",z:"з",i:"и",y:"й",k:"к",
+  l:"л",m:"м",n:"н",o:"о",p:"п",r:"р",s:"с",t:"т",u:"у",f:"ф",h:"х",
+};
+
+function cyrToLat(s: string): string {
+  return s.split("").map(c => CYR_TO_LAT[c] ?? c).join("");
+}
+function latToCyr(s: string): string {
+  return s.split("").map(c => LAT_TO_CYR[c] ?? c).join("");
+}
+
 /** Strip all markdown from text before showing in Telegram. Must run BEFORE truncating. */
 function cleanTelegramText(text: string): string {
   return text
@@ -260,17 +277,35 @@ async function findClientsByName(name: string): Promise<StoredClient[]> {
   const search = normalize(name);
   if (!search) return [];
   const clients = await getClients();
-  const exact = clients.filter((client) => normalize(client.name) === search);
+
+  // Build multiple search variants: original + transliterated both ways
+  const searchVariants = Array.from(new Set([search, cyrToLat(search), latToCyr(search)]));
+
+  function clientVariants(client: StoredClient): string[] {
+    const n = normalize(client.name);
+    return Array.from(new Set([n, cyrToLat(n), latToCyr(n)]));
+  }
+
+  function anyMatch(client: StoredClient, fn: (cv: string, sv: string) => boolean): boolean {
+    return searchVariants.some(sv => clientVariants(client).some(cv => fn(cv, sv)));
+  }
+
+  const exact = clients.filter(c => anyMatch(c, (cv, sv) => cv === sv));
   if (exact.length) return exact;
-  const starts = clients.filter((client) => normalize(client.name).startsWith(search));
+  const starts = clients.filter(c => anyMatch(c, (cv, sv) => cv.startsWith(sv)));
   if (starts.length) return starts;
-  const partial = clients.filter((client) => normalize(client.name).includes(search));
+  const partial = clients.filter(c => anyMatch(c, (cv, sv) => cv.includes(sv)));
   if (partial.length) return partial;
   const fuzzy = clients
-    .map((client) => ({ client, distance: levenshtein(normalize(client.name), search) }))
-    .filter((item) => item.distance <= Math.max(2, Math.floor(search.length / 4)))
+    .map(client => ({
+      client,
+      distance: Math.min(...searchVariants.map(sv =>
+        Math.min(...clientVariants(client).map(cv => levenshtein(cv, sv)))
+      )),
+    }))
+    .filter(item => item.distance <= Math.max(2, Math.floor(search.length / 4)))
     .sort((a, b) => a.distance - b.distance)
-    .map((item) => item.client);
+    .map(item => item.client);
   return fuzzy.slice(0, 5);
 }
 

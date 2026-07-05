@@ -819,6 +819,28 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
               </div>
 
               <div className="flex items-center gap-1.5 flex-shrink-0">
+                {/* Лупа toggle — show/hide evidence icons without affecting analysis text */}
+                {selectedAnalysis && (
+                  <button
+                    onClick={() => setShowEvidenceIcons(v => !v)}
+                    title={showEvidenceIcons
+                      ? (hasEvidenceIcons ? "Скрыть объяснения" : "Объяснения доступны после обновления анализа")
+                      : "Показать объяснения"}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
+                    style={{
+                      background: showEvidenceIcons && hasEvidenceIcons
+                        ? "rgba(255,255,255,0.22)"
+                        : "rgba(255,255,255,0.10)",
+                      color: "#FFFFFF",
+                      border: showEvidenceIcons && hasEvidenceIcons
+                        ? "1.5px solid rgba(255,255,255,0.50)"
+                        : "1px solid rgba(255,255,255,0.28)",
+                      opacity: hasEvidenceIcons ? 1 : 0.55,
+                    }}
+                  >
+                    <ScanSearch size={13} />
+                  </button>
+                )}
                 {selectedAnalysis && (
                   <div className="relative" ref={downloadMenuRef}>
                     <button
@@ -858,29 +880,6 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                     )}
                   </div>
                 )}
-                {/* Лупа toggle — show/hide evidence icons without affecting analysis text */}
-                {selectedAnalysis && (
-                  <button
-                    onClick={() => setShowEvidenceIcons(v => !v)}
-                    title={showEvidenceIcons
-                      ? (hasEvidenceIcons ? "Скрыть объяснения" : "Объяснения доступны после обновления анализа")
-                      : "Показать объяснения"}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
-                    style={{
-                      background: showEvidenceIcons && hasEvidenceIcons
-                        ? "rgba(255,255,255,0.22)"
-                        : "rgba(255,255,255,0.10)",
-                      color: "#FFFFFF",
-                      border: showEvidenceIcons && hasEvidenceIcons
-                        ? "1.5px solid rgba(255,255,255,0.50)"
-                        : "1px solid rgba(255,255,255,0.28)",
-                      opacity: hasEvidenceIcons ? 1 : 0.55,
-                    }}
-                  >
-                    <ScanSearch size={13} />
-                  </button>
-                )}
-                {/* Download moved to AnalysisPanel header dropdown */}
                 {/* Refresh current analysis — always visible when analysis exists */}
                 {displayedMode && analysesByMode.has(displayedMode) && (
                   <button
