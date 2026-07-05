@@ -34,6 +34,7 @@ export type TelegramIntent =
   | "add_client_note"
   | "analytics_open"
   | "analytics_metric_query"
+  | "get_first_client_request"
   | "unknown";
 
 type ParsedRequest = {
@@ -487,6 +488,14 @@ function parseTextRequest(text: string): ParsedRequest {
   // 2b. Pre-session brief — "что помнить про клиента", "подготовка к сессии"
   if (lower.includes("помнить") || lower.includes("подготовк") || (lower.includes("напомни") && !lower.includes("напомн"+"и мне"))) {
     return { intent: "get_session_brief", clientName: extractClientNameFromPhrase(raw) };
+  }
+
+  // 2c. First client request — "у жоры первый запрос", "как назывался первый запрос у X"
+  if ((lower.includes("первый запрос") || lower.includes("первый")&&lower.includes("запрос") || lower.includes("первую")&&lower.includes("запрос") || lower.includes("первой")&&lower.includes("запрос") || lower.includes("первая тема") || lower.includes("первый тема") || lower.includes("первая проблем") || lower.includes("первый проблем")) && (lower.includes(" у ") || /[а-яё]+'?[а-яё]+\s+(это|как|назыв|был)/.test(lower) || /^у\s/.test(lower))) {
+    return { intent: "get_first_client_request", clientName: extractClientNameFromPhrase(raw) };
+  }
+  if (/первый\s+запрос|первую?\s+тему|первую?\s+проблем|как\s+назывался\s+запрос|что\s+был[аo]?\s+запрос|запрос.*первой?\s+встреч|запрос.*начал/.test(lower)) {
+    return { intent: "get_first_client_request", clientName: extractClientNameFromPhrase(raw) };
   }
 
   // 2a. Who paid the most — must be before generic payment check
@@ -1586,6 +1595,37 @@ async function sendSessionBrief(chatId: number, clientName: string | undefined):
   );
 }
 
+async function sendFirstClientRequest(chatId: number, clientName: string | undefined): Promise<void> {
+  const client = await resolveSingleClient(chatId, clientName);
+  if (!client) return;
+
+  if (!isSupabaseConfigured()) {
+    await sendTelegramMessage(chatId, "База данных недоступна.");
+    return;
+  }
+
+  const { data } = await supabaseServer!
+    .from("client_requests")
+    .select("text, created_at")
+    .eq("client_id", client.id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  const first = data?.[0] ?? null;
+  if (!first) {
+    await sendTelegramMessage(chatId, `У ${client.name} нет сохранённых запросов.`);
+    return;
+  }
+
+  const dateStr = new Date(first.created_at as string).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  await sendTelegramMessage(
+    chatId,
+    `<b>Первый запрос — ${client.name}</b>\n${dateStr}\n\n${escapeHtml(first.text as string)}`,
+    keyboardFromButtons([urlButton("Открыть клиента", getClientUrl(client.id))]),
+  );
+}
+
 async function saveNotebookEntry(chatId: number, text: string | undefined, clientName?: string): Promise<void> {
   const noteText = text?.trim();
   if (!noteText) {
@@ -1631,6 +1671,7 @@ async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedReq
   if (parsed.intent === "get_top_payer") return sendTopPayer(chatId);
   if (parsed.intent === "get_notebook_count") return sendNotebookCount(chatId);
   if (parsed.intent === "get_session_brief") return sendSessionBrief(chatId, parsed.clientName);
+  if (parsed.intent === "get_first_client_request") return sendFirstClientRequest(chatId, parsed.clientName);
   if (parsed.intent === "add_notebook_entry") return saveNotebookEntry(chatId, parsed.query, parsed.clientName);
   return sendUnknownResponse(chatId);
 }
