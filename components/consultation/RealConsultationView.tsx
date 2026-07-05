@@ -865,17 +865,16 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
                     title={showEvidenceIcons
                       ? (hasEvidenceIcons ? "Скрыть объяснения" : "Объяснения доступны после обновления анализа")
                       : "Показать объяснения"}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
                     style={{
                       background: showEvidenceIcons && hasEvidenceIcons
                         ? "rgba(255,255,255,0.22)"
-                        : "rgba(255,255,255,0.13)",
-                      color: showEvidenceIcons && hasEvidenceIcons
-                        ? "#FFFFFF"
-                        : "rgba(255,255,255,0.70)",
+                        : "rgba(255,255,255,0.10)",
+                      color: "#FFFFFF",
                       border: showEvidenceIcons && hasEvidenceIcons
-                        ? "1.5px solid rgba(255,255,255,0.45)"
-                        : "1px solid rgba(255,255,255,0.30)",
+                        ? "1.5px solid rgba(255,255,255,0.50)"
+                        : "1px solid rgba(255,255,255,0.28)",
+                      opacity: hasEvidenceIcons ? 1 : 0.55,
                     }}
                   >
                     <ScanSearch size={13} />
