@@ -406,7 +406,7 @@ function ProfDevInner() {
           <VisualizationPanel
             year={selectedYear}
             onClose={() => togglePanel(true)}
-            onNavigate={(tab) => setTab(tab as Tab)}
+            onNavigate={(tab) => tab === "calendar" ? router.push("/calendar") : setTab(tab as Tab)}
           />
         )}
       </div>
