@@ -137,7 +137,6 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
     .sort((a, b) => b.sessionNumber - a.sessionNumber);
 
   const sessionCount = isMock ? mockSessionsForClient.length : realSessions.length;
-  const uploadBtnLabel = sessionCount === 0 ? "Загрузить первую запись" : "Новая запись";
 
   const st = statusLabel[client.status] ?? statusLabel.active;
 
@@ -187,8 +186,12 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
             <ArrowLeft size={20} />
           </Link>
           <span className="flex-1 text-base font-semibold truncate" style={{ color: "#3D3228" }}>{client?.name}</span>
-          <button onClick={() => setUploadOpen(true)} style={{ background: "#3a5ff8", border: "none", borderRadius: 8, padding: "5px 10px", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-            <Mic size={13} /> Запись
+          <button
+            onClick={() => setUploadOpen(true)}
+            title="Новая консультация"
+            style={{ background: "#3a5ff8", border: "none", borderRadius: 8, width: 34, height: 34, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          >
+            <Mic size={15} />
           </button>
         </div>
 
@@ -371,13 +374,13 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
                 : ""}
             </p>
           </div>
-          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={() => setUploadOpen(true)}
               className="flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
             >
               <Mic size={13} />
-              {uploadBtnLabel}
+              Новая консультация
             </button>
             {!isMock && (
               <button
@@ -401,24 +404,8 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
 
-        {/* Tab navigation — underline on mobile, pills on desktop */}
-        <div className="sm:hidden flex border-b overflow-x-auto" style={{ borderColor: "#CFC0A9" }}>
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className="flex-shrink-0 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors"
-              style={{
-                color: tab === t.id ? "#3a5ff8" : "#A8997F",
-                borderBottom: tab === t.id ? "2px solid #3a5ff8" : "2px solid transparent",
-                background: "none",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="hidden sm:flex gap-1 bg-stone-300 rounded-xl p-1 overflow-x-auto">
+        {/* Tab navigation */}
+        <div className="flex gap-1 bg-stone-300 rounded-xl p-1 overflow-x-auto">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -452,7 +439,7 @@ export default function ClientPage({ params }: { params: Promise<{ id: string }>
             mockSessions={isMock ? mockSessionsForClient : []}
             realSessions={realSessions}
             onUpload={() => setUploadOpen(true)}
-            uploadBtnLabel={uploadBtnLabel}
+            uploadBtnLabel="Новая консультация"
             onDeleteSession={handleDeleteSession}
             requestsMap={requestsMap}
             filterRequestId={filterRequestId}
