@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CheckCircle2, AlertCircle, Loader2, BookOpen, Zap, HelpCircle, Database, BrainCircuit, ChevronDown } from "lucide-react";
 
 interface SystemStatus {
@@ -9,12 +9,31 @@ interface SystemStatus {
   detail: string;
 }
 
+type SectionKey = "quickstart" | "analysis" | "knowledge" | "data" | "system";
+
 export default function HelpPage() {
   const [statuses, setStatuses] = useState<SystemStatus[]>([
     { label: "OpenAI API",     state: "loading", detail: "" },
     { label: "База знаний",    state: "loading", detail: "" },
     { label: "Whisper",        state: "loading", detail: "" },
   ]);
+
+  const [openSection, setOpenSection] = useState<SectionKey | null>(null);
+
+  useEffect(() => {
+    if (!openSection) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      if (target?.closest(".help-section")) return;
+      setOpenSection(null);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [openSection]);
+
+  function toggle(key: SectionKey) {
+    setOpenSection(prev => prev === key ? null : key);
+  }
 
   useEffect(() => {
     async function check() {
@@ -69,7 +88,7 @@ export default function HelpPage() {
         </div>
 
         {/* Quick start */}
-        <Section icon={<HelpCircle size={15} className="text-brand-500" />} title="Быстрый старт">
+        <Section icon={<HelpCircle size={15} />} title="Быстрый старт" isOpen={openSection === "quickstart"} onToggle={() => toggle("quickstart")}>
           <ol className="space-y-3">
             {[
               "Создайте клиента — перейдите в раздел Клиенты и нажмите «Добавить клиента».",
@@ -89,7 +108,7 @@ export default function HelpPage() {
         </Section>
 
         {/* Analysis modes */}
-        <Section icon={<BrainCircuit size={15} className="text-brand-500" />} title="Режимы анализа">
+        <Section icon={<BrainCircuit size={15} />} title="Режимы анализа" isOpen={openSection === "analysis"} onToggle={() => toggle("analysis")}>
           <div className="space-y-4">
             {[
               {
@@ -118,7 +137,7 @@ export default function HelpPage() {
         </Section>
 
         {/* Knowledge base */}
-        <Section icon={<BookOpen size={15} className="text-slate-500" />} title="Как работает база знаний">
+        <Section icon={<BookOpen size={15} />} title="Как работает база знаний" isOpen={openSection === "knowledge"} onToggle={() => toggle("knowledge")}>
           <div className="text-sm space-y-2 leading-relaxed" style={{ color: "#6B5D4F" }}>
             <p>База знаний лежит в папке <code className="font-mono px-1.5 py-0.5 rounded text-xs" style={{ background: "#E8E0D0", color: "#4A3C2E" }}>knowledge_base/</code> проекта.</p>
             <p>Главный файл <code className="font-mono px-1.5 py-0.5 rounded text-xs" style={{ background: "#E8E0D0", color: "#4A3C2E" }}>000_CORE_INSTRUCTIONS.md</code> подключается к каждому запросу.</p>
@@ -128,7 +147,7 @@ export default function HelpPage() {
         </Section>
 
         {/* Data storage */}
-        <Section icon={<Database size={15} className="text-slate-400" />} title="Где хранятся данные">
+        <Section icon={<Database size={15} />} title="Где хранятся данные" isOpen={openSection === "data"} onToggle={() => toggle("data")}>
           <div className="text-sm space-y-3 leading-relaxed" style={{ color: "#6B5D4F" }}>
             <p>Данные клиентов, консультаций, транскриптов, анализов и настроек хранятся в <strong>Supabase</strong>.</p>
             <p>Аудиозаписи и загруженные материалы хранятся в <strong>Supabase Storage</strong>.</p>
@@ -142,7 +161,7 @@ export default function HelpPage() {
         </Section>
 
         {/* System check */}
-        <Section icon={<Zap size={15} className="text-amber-500" />} title="Проверка системы">
+        <Section icon={<Zap size={15} />} title="Проверка системы" isOpen={openSection === "system"} onToggle={() => toggle("system")}>
           <div className="space-y-3">
             {statuses.map((s) => (
               <div key={s.label} className="flex items-center gap-3">
@@ -167,25 +186,26 @@ export default function HelpPage() {
   );
 }
 
-function Section({ icon, title, children }: {
+function Section({ icon, title, isOpen, onToggle, children }: {
   icon: React.ReactNode;
   title: string;
+  isOpen: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F7F4EF", borderColor: "#E5DDD2" }}>
+    <section className="help-section rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#F7F4EF", borderColor: "#E5DDD2" }}>
       <button
-        aria-expanded={open}
-        onClick={() => setOpen(v => !v)}
+        aria-expanded={isOpen}
+        onClick={onToggle}
         className="w-full px-6 py-4 flex items-center gap-3 text-left transition-colors focus-visible:outline-none"
-        style={{ background: open ? "#EDE7DA" : "#F0EBE3" }}
+        style={{ background: isOpen ? "#EDE7DA" : "#F0EBE3" }}
       >
         <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#E5DDD2", color: "#6B5D4F" }}>{icon}</div>
         <h2 className="text-sm font-semibold flex-1" style={{ color: "#4A3C2E" }}>{title}</h2>
-        <ChevronDown size={16} style={{ color: "#A8997F", transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }} />
+        <ChevronDown size={16} style={{ color: "#A8997F", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }} />
       </button>
-      {open && (
+      {isOpen && (
         <div className="px-6 py-5 border-t" style={{ borderColor: "#E5DDD2" }}>
           {children}
         </div>
