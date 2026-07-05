@@ -7,7 +7,7 @@ import {
   Save, Trash2, User, CheckCircle2, AlertCircle,
   BrainCircuit, Database, Loader2, Camera, X, ArrowLeft,
   Building2, ChevronDown, ChevronRight, RotateCcw, BookOpen, Mic,
-  Send, Copy, ExternalLink, Unplug,
+  Send, Copy, ExternalLink, Unplug, Info, Mail, Phone, Layers, ShieldCheck, Sparkles,
 } from "lucide-react";
 import type { UserProfile, AnalysisStyle, AnalysisLength, ChatStyle } from "@/lib/userProfile";
 import { AI_MODELS, ANALYSIS_STYLE_OPTIONS, ANALYSIS_LENGTH_OPTIONS, CHAT_STYLE_OPTIONS } from "@/lib/userProfile";
@@ -48,9 +48,9 @@ const AI_DEFAULTS = {
 
 const APPROACHES = ["Гештальт", "КПТ", "ACT", "Схема-терапия", "Интегративный", "Другой"];
 
-type SectionId = "profile" | "telegram" | "ai" | "interface" | "transcription" | "data";
+type SectionId = "profile" | "telegram" | "ai" | "interface" | "transcription" | "data" | "about";
 
-const VALID_SECTION_IDS: SectionId[] = ["profile", "telegram", "ai", "interface", "transcription", "data"];
+const VALID_SECTION_IDS: SectionId[] = ["profile", "telegram", "ai", "interface", "transcription", "data", "about"];
 
 interface TelegramStatus {
   connected: boolean;
@@ -365,6 +365,7 @@ export default function SettingsPage() {
     interface: "Интерфейс",
     transcription: "Транскрибация",
     data: "Данные",
+    about: "About",
   };
 
   return (
@@ -404,7 +405,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Settings rows */}
-        {(["telegram", "ai", "interface", "transcription", "data"] as SectionId[]).map((sectionId) => (
+        {(["telegram", "ai", "interface", "transcription", "data", "about"] as SectionId[]).map((sectionId) => (
           <div key={sectionId} style={{ background: "#F3EBDD", border: "1px solid #CFC0A9", borderRadius: 14, marginBottom: 8 }}>
             <button
               onClick={() => toggleSection(sectionId)}
@@ -684,6 +685,17 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
+          </SettingsSection>
+
+          {/* 7. About */}
+          <SettingsSection
+            title="About"
+            description="О приложении и команде"
+            icon={<Info size={14} />}
+            isOpen={isOpen("about")}
+            onToggle={() => toggleSection("about")}
+          >
+            <AboutContent />
           </SettingsSection>
 
         </div>
@@ -1186,7 +1198,7 @@ function CityAnimContent({ settings, saveStatus, onChange, onReset, onSave }: {
             ))}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
               <span style={{ fontSize: 12, color: "#4A3C2E", minWidth: 140 }}>Влюблённый человечек</span>
-              <AnimToggle on={settings.loveRunnerEnabled} onChange={(v) => onChange("loveRunnerEnabled", v)} label="Влюблённый человечек" />
+              <SegControl<CharacterFrequency> options={FREQ_LABELS} value={settings.loveRunnerFrequency} onChange={(v) => onChange("loveRunnerFrequency", v)} />
             </div>
             <div style={{ height: 1, background: "#E5DDD2", margin: "6px 0" }} />
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
@@ -1226,6 +1238,93 @@ function CityAnimContent({ settings, saveStatus, onChange, onReset, onSave }: {
             Сохранить
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── AboutContent ──────────────────────────────────────────────────────────────
+
+function AboutContent() {
+  return (
+    <div className="space-y-4">
+      {/* Identity */}
+      <div className="flex items-start gap-4 p-4 rounded-xl" style={{ background: "#F0EBE3" }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E8E0D0" }}>
+          <BrainCircuit size={18} style={{ color: "#6B5D4F" }} />
+        </div>
+        <div>
+          <div className="text-sm font-bold mb-1" style={{ color: "#3D3228" }}>TRANSCRIPT AI · PSY</div>
+          <p className="text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
+            Инструмент для практикующих психологов. Помогает расшифровывать записи сессий,
+            анализировать их через призму разных терапевтических подходов и вести
+            структурированную историю клиентов — без лишней рутины.
+          </p>
+        </div>
+      </div>
+
+      {/* How it works */}
+      <div className="p-4 rounded-xl" style={{ background: "#F0EBE3" }}>
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "#A8997F" }}>
+          <Layers size={12} />Как устроено
+        </div>
+        <ul className="space-y-2">
+          {[
+            "Транскрипция аудиозаписей через OpenAI Whisper",
+            "Анализ через GPT-4o с базой знаний, настроенной под психологическую практику",
+            "Четыре режима анализа: рабочий, глубокий, анализ работы психолога, гештальт",
+            "База знаний настраивается под ваш стиль и подход",
+            "PSY-GPTs — специализированные AI-ассистенты для профессиональных задач",
+          ].map((item) => (
+            <li key={item} className="flex items-start gap-2.5 text-sm" style={{ color: "#6B5D4F" }}>
+              <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#C9BBAA" }} />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Privacy */}
+      <div className="p-4 rounded-xl" style={{ background: "#F0EBE3" }}>
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "#A8997F" }}>
+          <ShieldCheck size={12} />Приватность
+        </div>
+        <p className="text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
+          Данные клиентов хранятся локально на вашем сервере и никуда не передаются.
+          OpenAI получает только текст транскрипта для анализа — без имён, без личных данных,
+          без привязки к конкретному человеку.
+        </p>
+      </div>
+
+      {/* Contacts */}
+      <div className="p-4 rounded-xl" style={{ background: "#F0EBE3" }}>
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "#A8997F" }}>
+          <Mail size={12} />Контакты
+        </div>
+        <div className="space-y-3">
+          <a
+            href="mailto:wertikoo@yahoo.com"
+            className="flex items-center gap-3 text-sm transition-colors"
+            style={{ color: "#6B5D4F" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#3D3228"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "#6B5D4F"; }}
+          >
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#E8E0D0" }}>
+              <Mail size={13} style={{ color: "#A8997F" }} />
+            </div>
+            wertikoo@yahoo.com
+          </a>
+          <div className="flex items-center gap-3 text-sm" style={{ color: "#6B5D4F" }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#E8E0D0" }}>
+              <Phone size={13} style={{ color: "#A8997F" }} />
+            </div>
+            +373 79 676 487
+          </div>
+        </div>
+      </div>
+
+      <div className="text-center text-xs pt-1" style={{ color: "#C9BBAA" }}>
+        TRANSCRIPT AI · PSY · v1.0 · 2026 · All rights reserved
       </div>
     </div>
   );

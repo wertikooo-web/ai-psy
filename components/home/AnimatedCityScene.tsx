@@ -1762,15 +1762,24 @@ export function AnimatedCityScene() {
     }, delay);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Love runner: rare easter egg, respects loveRunnerEnabled
+  const LOVE_RUNNER_INTERVAL: Record<CharacterFrequency, [number, number]> = {
+    off:      [99_999, 99_999],
+    rare:     [30_000, 45_000],
+    normal:   [14_000, 22_000],
+    frequent: [6_000,  11_000],
+  };
+
+  // Love runner: respects loveRunnerFrequency setting
   const scheduleLoveRunner = useCallback((delay: number) => {
     loveRunnerTimer.current = setTimeout(() => {
       const s = settingsRef.current;
-      if (!loveRunnerRunning.current && s.loveRunnerEnabled) {
+      if (!loveRunnerRunning.current && s.loveRunnerFrequency !== "off") {
         loveRunnerRunning.current = true;
         setLoveRunnerActive(true);
       }
-      scheduleLoveRunner(rnd(30_000, 45_000));
+      const freq = s.loveRunnerFrequency === "off" ? "rare" : s.loveRunnerFrequency;
+      const [lo, hi] = LOVE_RUNNER_INTERVAL[freq];
+      scheduleLoveRunner(rnd(lo, hi));
     }, delay);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

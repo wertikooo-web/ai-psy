@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Users, FileText, Bot,
-  Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, Info, BookOpenText,
+  Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, BookOpenText,
   PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays, BarChart3, WalletCards, Search,
   GraduationCap, Inbox,
 } from "lucide-react";
@@ -61,7 +61,6 @@ const systemNav = [
   { href: "/analytics",      label: "Аналитика",         icon: BarChart3  },
   { href: "/settings",       label: "Настройки",         icon: Settings   },
   { href: "/help",           label: "Помощь",            icon: HelpCircle },
-  { href: "/about",          label: "About",             icon: Info       },
 ];
 
 // ── NavItem ───────────────────────────────────────────────────────────────────

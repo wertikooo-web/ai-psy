@@ -17,7 +17,7 @@ export interface CityAnimationSettings {
   cyclistsFrequency:              CharacterFrequency;
   busesFrequency:                 CharacterFrequency;
   easterEggFrequency:             EasterEggFrequency;
-  loveRunnerEnabled:              boolean;
+  loveRunnerFrequency:            CharacterFrequency;
 }
 
 export const DEFAULT_CITY_ANIMATION_SETTINGS: CityAnimationSettings = {
@@ -35,7 +35,7 @@ export const DEFAULT_CITY_ANIMATION_SETTINGS: CityAnimationSettings = {
   cyclistsFrequency:              "rare",
   busesFrequency:                 "rare",
   easterEggFrequency:             "rare",
-  loveRunnerEnabled:              true,
+  loveRunnerFrequency:            "rare",
 };
 
 export const CITY_ANIM_STORAGE_KEY = "cityAnimSettings";
