@@ -865,75 +865,6 @@ function InteractiveBird({ spot, onDone }: { spot:BirdPerch; onDone:()=>void }) 
   );
 }
 
-// ─── Interactive cat from building edge ───────────────────────────────────────
-const CAT_SPOT_POSITIONS = [
-  { id:"cs1", x:10, y:16, entryFrom:"left"  as const },
-  { id:"cs2", x:48, y:15, entryFrom:"left"  as const },
-  { id:"cs3", x:78, y:17, entryFrom:"right" as const },
-] as const;
-type CatSpot = typeof CAT_SPOT_POSITIONS[number];
-
-function InteractiveCat({ spot, onDone }: { spot:CatSpot; onDone:()=>void }) {
-  const [visible, setVisible] = useState(false);
-  const [leaving, setLeaving] = useState(false);
-  const [isIdle,  setIsIdle]  = useState(false);
-  const [clicked, setClicked] = useState(false);
-  const timersC = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const c = "#8C7E72";
-
-  const atC = (ms:number, fn:()=>void) => { const t = setTimeout(fn, ms); timersC.current.push(t); };
-  const clearC = useCallback(() => { timersC.current.forEach(clearTimeout); timersC.current = []; }, []);
-
-  useEffect(() => {
-    atC(40,  () => setVisible(true));
-    atC(1400, () => setIsIdle(true));
-    const idleMs = Math.round(rnd(12_000, 20_000));
-    atC(1400 + idleMs, () => { setIsIdle(false); setLeaving(true); atC(1100, onDone); });
-    return clearC;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleClick = useCallback(() => {
-    if (clicked || leaving) return;
-    setClicked(true);
-    clearC();
-    setIsIdle(false);
-    setLeaving(true);
-    setTimeout(onDone, 1000);
-  }, [clicked, leaving, clearC, onDone]);
-
-  const fromLeft = spot.entryFrom === "left";
-  const dispW = 44;
-  // Slide from behind building edge; the container clips during entry/exit
-  const slideX = !visible ? (fromLeft ? -dispW : dispW) : leaving ? (fromLeft ? -dispW - 8 : dispW + 8) : 0;
-  const op     = !visible || leaving ? 0 : 1;
-
-  return (
-    <div style={{
-      position:"absolute", left:`${spot.x}%`, bottom:`${spot.y}%`,
-      width: dispW + 20, height:52, overflow:"hidden",
-      pointerEvents: isIdle ? "auto" : "none",
-    }}>
-      <div
-        role={isIdle ? "button" : undefined}
-        tabIndex={isIdle ? 0 : undefined}
-        aria-label={isIdle ? "Позвать кошку" : undefined}
-        style={{
-          transform:`translateX(${slideX}px)`,
-          opacity: op,
-          transition:"transform 1.4s ease-out, opacity 0.7s ease",
-          cursor: isIdle ? "pointer" : "default",
-        }}
-        onClick={isIdle ? handleClick : undefined}
-        onKeyDown={isIdle ? (e)=>{ if(e.key==="Enter"||e.key===" ") handleClick(); } : undefined}
-      >
-        <svg viewBox="0 0 52 58" width={dispW} height={50} aria-hidden>
-          <SvgCat flip={!fromLeft} c={c} isLooking={isIdle}/>
-        </svg>
-      </div>
-    </div>
-  );
-}
-
 // ─── Crow ─────────────────────────────────────────────────────────────────────
 // Phases: flying-in → perched (profile) → looking (turns front) → sitting (tucks legs)
 //         → cawing (open beak) → flying-out (turns back, profile)
@@ -1465,7 +1396,6 @@ export function AnimatedCityScene() {
   const [escaperActive,  setEscaperActive] = useState(false);
   const [planeActive,    setPlaneActive]   = useState(false);
   const [ibirdSpot,      setIbirdSpot]     = useState<BirdPerch | null>(null);
-  const [icatSpot,       setIcatSpot]      = useState<CatSpot  | null>(null);
   // City animation settings — read synchronously to avoid race
   const [citySettings, setCitySettings] = useState<CityAnimationSettings>(() => readCitySettings());
   const settingsRef = useRef<CityAnimationSettings>(citySettings);
@@ -1494,7 +1424,6 @@ export function AnimatedCityScene() {
   const planeTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loveRunnerTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ibirdTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const icatTimer        = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -1552,11 +1481,6 @@ export function AnimatedCityScene() {
     interactiveActive.current = false;
   }, []);
 
-  const handleIcatDone = useCallback(() => {
-    setIcatSpot(null);
-    interactiveActive.current = false;
-  }, []);
-
   // Crow spawn: rare surprise, checks rareSurprisesEnabled
   const scheduleCrow = useCallback((delay: number) => {
     crowTimer.current = setTimeout(() => {
@@ -1602,7 +1526,7 @@ export function AnimatedCityScene() {
         loveRunnerRunning.current = true;
         setLoveRunnerActive(true);
       }
-      scheduleLoveRunner(rnd(600_000, 1_200_000));
+      scheduleLoveRunner(rnd(180_000, 300_000));
     }, delay);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1618,21 +1542,6 @@ export function AnimatedCityScene() {
       }
       const [lo, hi] = EASTER_EGG_INTERVAL[settingsRef.current.easterEggFrequency];
       scheduleIbird(rnd(lo, hi));
-    }, delay);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Interactive cat: checks interactiveEasterEggsEnabled + catsFrequency
-  const scheduleIcat = useCallback((delay: number) => {
-    icatTimer.current = setTimeout(() => {
-      const s = settingsRef.current;
-      if (getTimeMode() !== "night" && !interactiveActive.current
-          && s.interactiveEasterEggsEnabled && s.catsFrequency !== "off") {
-        interactiveActive.current = true;
-        const spot = CAT_SPOT_POSITIONS[Math.floor(Math.random() * CAT_SPOT_POSITIONS.length)];
-        setIcatSpot(spot);
-      }
-      const [lo, hi] = EASTER_EGG_INTERVAL[settingsRef.current.easterEggFrequency];
-      scheduleIcat(rnd(lo, hi));
     }, delay);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1682,9 +1591,8 @@ export function AnimatedCityScene() {
     scheduleCrow(rnd(15_000, 30_000));
     scheduleEscaper(rnd(60_000, 90_000));
     schedulePlane(rnd(25_000, 50_000));
-    scheduleLoveRunner(rnd(90_000, 180_000));
+    scheduleLoveRunner(rnd(60_000, 120_000));
     scheduleIbird(rnd(80_000, 150_000));
-    scheduleIcat(rnd(70_000, 130_000));
     void lo; void hi; // INTENSITY used at each rescheduling call
     return () => {
       if (groundTimer.current)     clearTimeout(groundTimer.current);
@@ -1694,9 +1602,8 @@ export function AnimatedCityScene() {
       if (planeTimer.current)      clearTimeout(planeTimer.current);
       if (loveRunnerTimer.current) clearTimeout(loveRunnerTimer.current);
       if (ibirdTimer.current)      clearTimeout(ibirdTimer.current);
-      if (icatTimer.current)       clearTimeout(icatTimer.current);
     };
-  }, [animEnabled, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane, scheduleLoveRunner, scheduleIbird, scheduleIcat]);
+  }, [animEnabled, scheduleGround, scheduleBird, scheduleCrow, scheduleEscaper, schedulePlane, scheduleLoveRunner, scheduleIbird]);
 
   const cityOpacity = 0.55; // fixed opacity — no dark modes since window lighting was removed
 
@@ -1735,9 +1642,6 @@ export function AnimatedCityScene() {
             <PaperPlane active={planeActive} onDone={handlePlaneDone}/>
           )}
           <LoveRunner active={loveRunnerActive} onDone={handleLoveRunnerDone}/>
-          {icatSpot && (
-            <InteractiveCat key={icatSpot.id + Date.now()} spot={icatSpot} onDone={handleIcatDone}/>
-          )}
         </div>,
         document.body
       )}
