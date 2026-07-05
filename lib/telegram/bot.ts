@@ -80,7 +80,7 @@ export async function sendTelegramMessage(
   chatId: number,
   text: string,
   replyMarkup?: { inline_keyboard: TelegramInlineKeyboardButton[][] },
-  parseMode?: "HTML",
+  parseMode: "HTML" | undefined = "HTML",
 ): Promise<void> {
   const token = getTelegramBotToken();
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
