@@ -61,28 +61,39 @@ export async function writeProfile(profile: Partial<UserProfile>): Promise<void>
       .upsert({ id: "default", ...patch }, { onConflict: "id" });
 
     if (error) {
-      // 42703 = column does not exist — migration 020 not yet applied in this Supabase instance.
-      // Retry without the newer profile columns so core fields (name, AI settings) still save.
-      if (error.code === "42703") {
-        const safePatch: Record<string, unknown> = {
-          updated_at:           patch.updated_at,
-          ...(patch.first_name            !== undefined && { first_name:            patch.first_name            }),
-          ...(patch.last_name             !== undefined && { last_name:             patch.last_name             }),
-          ...(patch.display_name          !== undefined && { display_name:          patch.display_name          }),
-          ...(patch.default_analysis_mode !== undefined && { default_analysis_mode: patch.default_analysis_mode }),
-          ...(patch.ai_model              !== undefined && { ai_model:              patch.ai_model              }),
-          ...(patch.analysis_style        !== undefined && { analysis_style:        patch.analysis_style        }),
-          ...(patch.analysis_length       !== undefined && { analysis_length:       patch.analysis_length       }),
-          ...(patch.chat_style            !== undefined && { chat_style:            patch.chat_style            }),
-          ...(patch.ai_instructions       !== undefined && { ai_instructions:       patch.ai_instructions       }),
-        };
-        console.warn("PROFILE_SAVE: migration 020 not applied, retrying without newer columns. Run supabase/migrations/020_user_profile_profile_fields.sql in your Supabase SQL editor.");
+      // Handle missing-column errors:
+      //   42703 = PostgreSQL "column does not exist"
+      //   PGRST204 / schema cache = PostgREST can't find the column in its schema cache
+      // In both cases retry with only the always-present base columns.
+      const isColumnMissing =
+        error.code === "42703" ||
+        (typeof error.message === "string" && error.message.includes("schema cache"));
+
+      if (isColumnMissing) {
+        // Base columns guaranteed to exist since migration 001/012.
+        // Newer columns (ai_instructions, specialization, approach, email, photo_url)
+        // are excluded — they require migrations 003/020 to be applied first.
+        const safePatch: Record<string, unknown> = { updated_at: patch.updated_at };
+        if (patch.first_name            !== undefined) safePatch.first_name            = patch.first_name;
+        if (patch.last_name             !== undefined) safePatch.last_name             = patch.last_name;
+        if (patch.display_name          !== undefined) safePatch.display_name          = patch.display_name;
+        if (patch.default_analysis_mode !== undefined) safePatch.default_analysis_mode = patch.default_analysis_mode;
+        if (patch.ai_model              !== undefined) safePatch.ai_model              = patch.ai_model;
+        if (patch.analysis_style        !== undefined) safePatch.analysis_style        = patch.analysis_style;
+        if (patch.analysis_length       !== undefined) safePatch.analysis_length       = patch.analysis_length;
+        if (patch.chat_style            !== undefined) safePatch.chat_style            = patch.chat_style;
+
+        console.warn(
+          "PROFILE_SAVE: missing columns detected (run migrations 003 and 020 in Supabase SQL editor). " +
+          `Error code: ${error.code}, msg: ${error.message}`
+        );
         const { error: retryErr } = await supabaseServer!
           .from("user_profile")
           .upsert({ id: "default", ...safePatch }, { onConflict: "id" });
         if (retryErr) throw new Error(retryErr.message);
         return;
       }
+
       console.error("PROFILE_SAVE_FAILED", {
         code:    error.code,
         message: error.message,
