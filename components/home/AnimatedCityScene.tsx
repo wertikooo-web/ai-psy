@@ -63,6 +63,25 @@ const WEIGHTS: Record<TimeMode, Partial<Record<ActorType, number>>> = {
   evening: { dog: 32, bike: 20, bus: 15, human: 12, cat: 16, car: 5 },
   night:   { cat: 65, human: 25, car: 10 },
 };
+
+// Bird spawn intervals vary by frequency (unlike ground actors which use intensity)
+const BIRD_SPAWN_INTERVAL: Record<CharacterFrequency, [number, number]> = {
+  off:      [99_999, 99_999],
+  rare:     [20_000, 40_000],
+  normal:   [12_000, 26_000],
+  frequent: [4_000,  8_000],
+};
+
+// Maps actor type → the settings key that controls its frequency
+const ACTOR_FREQ_KEY: Partial<Record<ActorType, keyof CityAnimationSettings>> = {
+  cat:   "catsFrequency",
+  dog:   "dogsFrequency",
+  bird:  "birdsFrequency",
+  human: "peopleFrequency",
+  car:   "carsFrequency",
+  bike:  "cyclistsFrequency",
+  bus:   "busesFrequency",
+};
 function weightedPick(w: Partial<Record<ActorType, number>>): ActorType {
   const e = Object.entries(w) as [ActorType, number][];
   let r = Math.random() * e.reduce((s, [, v]) => s + v, 0);
@@ -1452,6 +1471,15 @@ export function AnimatedCityScene() {
   }, []);
 
 
+  // When settings change, immediately remove any on-screen actors whose type is now "off"
+  useEffect(() => {
+    setActors(prev => prev.filter(a => {
+      const key = ACTOR_FREQ_KEY[a.type];
+      if (!key) return true;
+      return (citySettings[key] as CharacterFrequency) !== "off";
+    }));
+  }, [citySettings]);
+
   const removeActor = useCallback((id: string) => {
     setActors(prev => prev.filter(a => a.id !== id));
   }, []);
@@ -1566,10 +1594,11 @@ export function AnimatedCityScene() {
     }, delay);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Bird spawn loop (no birds at night, respects birdsFrequency)
+  // Bird spawn loop (no birds at night, respects birdsFrequency including spawn rate)
   const scheduleBird = useCallback((delay: number) => {
     birdTimer.current = setTimeout(() => {
-      if (getTimeMode() !== "night" && settingsRef.current.birdsFrequency !== "off") {
+      const freq = settingsRef.current.birdsFrequency;
+      if (getTimeMode() !== "night" && freq !== "off") {
         setActors(prev => [...prev, makeBirdActor()]);
         if (Math.random() < 0.30) {
           setTimeout(() => {
@@ -1577,7 +1606,8 @@ export function AnimatedCityScene() {
           }, rnd(800, 2200));
         }
       }
-      scheduleBird(rnd(12_000, 26_000));
+      const [lo, hi] = BIRD_SPAWN_INTERVAL[settingsRef.current.birdsFrequency];
+      scheduleBird(rnd(lo, hi));
     }, delay);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

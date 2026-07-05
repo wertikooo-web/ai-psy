@@ -169,6 +169,11 @@ function AddGptModal({
   );
 }
 
+function firstSentence(text: string): string {
+  const m = text.match(/^[\s\S]+?[.!?](?=\s|$)/);
+  return m ? m[0].trim() : text;
+}
+
 // ── Card ──────────────────────────────────────────────────────────────────────
 function GptCard({ item, onRemove }: { item: GptItem; onRemove: () => void }) {
   const [hovered, setHovered] = useState(false);
@@ -176,10 +181,10 @@ function GptCard({ item, onRemove }: { item: GptItem; onRemove: () => void }) {
   return (
     <div
       className="rounded-2xl border flex flex-col shadow-sm hover:shadow-md transition-shadow"
-      style={{ background: "#F0EBE1", borderColor: "#DDD4C6" }}
+      style={{ background: "#F0EBE1", borderColor: "#DDD4C6", height: 190 }}
     >
       <div
-        className="px-5 pt-4 pb-3 border-b flex items-start gap-3"
+        className="px-5 pt-4 pb-3 border-b flex items-start gap-3 flex-shrink-0"
         style={{ background: "#E8E0D0", borderColor: "#DDD4C6", borderRadius: "1rem 1rem 0 0" }}
       >
         <span className="text-xl leading-none flex-shrink-0 mt-0.5">{item.emoji}</span>
@@ -198,9 +203,9 @@ function GptCard({ item, onRemove }: { item: GptItem; onRemove: () => void }) {
         </button>
       </div>
 
-      <div className="px-5 py-3 flex-1" style={{ background: "#FBF8F5" }}>
-        <p className="text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
-          {item.description || <span className="italic" style={{ color: "#C9BBAA" }}>Без описания</span>}
+      <div className="px-5 py-3 flex-1 overflow-hidden" style={{ background: "#FBF8F5" }}>
+        <p className="text-sm leading-relaxed line-clamp-2" style={{ color: "#6B5D4F" }}>
+          {firstSentence(item.description) || <span className="italic" style={{ color: "#C9BBAA" }}>Без описания</span>}
         </p>
       </div>
 
@@ -210,7 +215,7 @@ function GptCard({ item, onRemove }: { item: GptItem; onRemove: () => void }) {
         rel="noopener noreferrer"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="w-full flex items-center justify-between px-5 py-2.5 text-sm font-medium rounded-b-2xl"
+        className="w-full flex items-center justify-between px-5 py-2.5 text-sm font-medium rounded-b-2xl flex-shrink-0"
         style={{
           background: hovered ? "#BEB09E" : "#C9BBAA",
           color:      "#3A2E22",

@@ -35,6 +35,8 @@ export function CalendarButtons({ clientName, date, duration, topic, session, co
   const summary = `Консультация${session ? ` #${session}` : ""} · ${clientName}`;
   const details = topic ? `Тема: ${topic}` : "Психологическая консультация";
 
+  const isFuture = new Date(date) > new Date();
+
   // Google Calendar URL — no OAuth, opens browser form directly
   const dtStart = toGCalDate(date);
   const mins    = parseMins(duration);
@@ -53,6 +55,8 @@ export function CalendarButtons({ clientName, date, duration, topic, session, co
 
   const btnBase = "flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border transition-colors flex-shrink-0";
   const btnStyle = { borderColor: "#D8CFBE", color: "#A8997F", background: "#F4F0E8" } as const;
+
+  if (!isFuture) return null;
 
   return (
     <div className="flex items-center gap-1.5">

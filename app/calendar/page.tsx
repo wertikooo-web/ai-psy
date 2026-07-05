@@ -899,7 +899,7 @@ export default function CalendarPage() {
     else router.push("/");
   }
 
-  const [view,          setView]          = useState<ViewType>("week");
+  const [view,          setView]          = useState<ViewType>("month");
   const [current,       setCurrent]       = useState<Date>(() => { const d = new Date(); d.setHours(0,0,0,0); return d; });
   const [events,        setEvents]        = useState<CalendarEvent[]>([]);
   const [clients,       setClients]       = useState<Client[]>([]);

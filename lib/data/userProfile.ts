@@ -46,10 +46,10 @@ export async function writeProfile(profile: Partial<UserProfile>): Promise<void>
     if (profile.lastName            !== undefined) patch.last_name             = profile.lastName;
     if (profile.displayName         !== undefined) patch.display_name          = profile.displayName;
     if (profile.specialization      !== undefined) patch.specialization        = profile.specialization;
-    if (profile.approach            !== undefined) patch.approach              = profile.approach;
-    if (profile.email               !== undefined) patch.email                 = profile.email;
+    if (profile.approach            !== undefined) patch.approach              = profile.approach || null;
+    if (profile.email               !== undefined) patch.email                 = profile.email || null;
     if (profile.defaultAnalysisMode !== undefined) patch.default_analysis_mode = profile.defaultAnalysisMode;
-    if (profile.photoUrl            !== undefined) patch.photo_url             = profile.photoUrl;
+    if (profile.photoUrl            !== undefined) patch.photo_url             = profile.photoUrl || null;
     if (profile.aiModel             !== undefined) patch.ai_model              = profile.aiModel;
     if (profile.analysisStyle       !== undefined) patch.analysis_style        = profile.analysisStyle;
     if (profile.analysisLength      !== undefined) patch.analysis_length       = profile.analysisLength;

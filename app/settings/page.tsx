@@ -502,7 +502,7 @@ export default function SettingsPage() {
                   style={{ borderColor: "#D4C9B5", color: "#3D3228" }}
                 >
                   <option value="">— Выберите подход —</option>
-                  {APPROACHES.map((a) => <option key={a}>{a}</option>)}
+                  {APPROACHES.map((a) => <option key={a} value={a}>{a}</option>)}
                 </select>
               </div>
               <Field
@@ -757,7 +757,7 @@ function SaveRow({ status, onSave, label = "Сохранить", errorMsg }: {
   return (
     <div className="flex items-center gap-3">
       {status === "saved" && <span className="flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 size={13} />Сохранено</span>}
-      {status === "error"  && <span className="flex items-center gap-1 text-xs text-rose-500" title={errorMsg}><AlertCircle size={13} />Ошибка</span>}
+      {status === "error"  && <span className="flex items-center gap-1 text-xs text-rose-500" title={errorMsg}><AlertCircle size={13} />Ошибка{errorMsg ? `: ${errorMsg}` : ""}</span>}
       <button
         onClick={onSave}
         disabled={status === "saving"}
@@ -1167,10 +1167,6 @@ function CityAnimContent({ settings, saveStatus, onChange, onReset, onSave }: {
       <AnimRow label="Тише во время консультации" desc="Город становится спокойнее при открытой консультации">
         <AnimToggle on={settings.reduceMotionDuringConsultation} onChange={(v) => onChange("reduceMotionDuringConsultation", v)} label="Тихий режим" />
       </AnimRow>
-      <AnimRow label="Влюблённый человечек" desc="Редкая пасхалка — весёлая фигурка с сердечком">
-        <AnimToggle on={settings.loveRunnerEnabled} onChange={(v) => onChange("loveRunnerEnabled", v)} label="Влюблённый человечек" />
-      </AnimRow>
-
       {/* Sub-accordion: characters */}
       <div style={{ borderBottom: "1px solid #EDE7DA" }}>
         <button
@@ -1188,6 +1184,10 @@ function CityAnimContent({ settings, saveStatus, onChange, onReset, onSave }: {
                 <SegControl<CharacterFrequency> options={FREQ_LABELS} value={settings[key] as CharacterFrequency} onChange={(v) => onChange(key, v)} />
               </div>
             ))}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
+              <span style={{ fontSize: 12, color: "#4A3C2E", minWidth: 140 }}>Влюблённый человечек</span>
+              <AnimToggle on={settings.loveRunnerEnabled} onChange={(v) => onChange("loveRunnerEnabled", v)} label="Влюблённый человечек" />
+            </div>
             <div style={{ height: 1, background: "#E5DDD2", margin: "6px 0" }} />
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
               <div>
