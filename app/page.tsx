@@ -352,7 +352,7 @@ export default function HomePage() {
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors shadow-sm"
               >
                 <Mic size={15} />
-                Загрузить запись
+                Новая консультация
               </button>
             </div>
           </div>
