@@ -284,7 +284,7 @@ function MonthView({
                   onClick={() => onDayClick(day)}
                   className="border-r border-[#E5E7EB] last:border-r-0 p-1.5 cursor-pointer hover:bg-amber-50/40 transition-colors overflow-hidden"
                   style={{
-                    background: !inCurMonth ? "#FAFAFA" : isWeekend ? "#FEFEFE" : undefined,
+                    background: !inCurMonth ? "#FAFAFA" : isWeekend ? "#FFF8F8" : "#FFFFFF",
                     opacity:    !inCurMonth ? 0.5 : 1,
                   }}
                 >

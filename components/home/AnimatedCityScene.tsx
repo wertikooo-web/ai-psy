@@ -98,13 +98,13 @@ const ACTOR_META: Record<ActorType, { viewW:number; viewH:number; dispH:number; 
   bus:          { viewW:134, viewH:80, dispH:58, bob:false },
   car:          { viewW:112, viewH:72, dispH:52, bob:false },
   bike:         { viewW:88,  viewH:72, dispH:58, bob:true  },
-  bird:         { viewW:24,  viewH:14, dispH:20, bob:false },
+  bird:         { viewW:24,  viewH:14, dispH:14, bob:false },
   "leash-walk": { viewW:92,  viewH:74, dispH:65, bob:true  },
   stroller:     { viewW:88,  viewH:74, dispH:65, bob:false },
 };
 const ACTOR_COLORS: Record<ActorType, string> = {
   cat:"#8C7E72", dog:"#8C7E72", human:"#7A6C60",
-  car:"#8A7D71", bike:"#7A6C60", bird:"#4A3C2E", bus:"#8A8076",
+  car:"#8A7D71", bike:"#7A6C60", bird:"#9A8C80", bus:"#8A8076",
   "leash-walk":"#7A6C60", stroller:"#7A6C60",
 };
 const BOTTOM_BASE: Record<ActorType, number> = {
