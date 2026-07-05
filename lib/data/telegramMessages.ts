@@ -42,10 +42,13 @@ export async function saveTelegramMessage(input: {
   text?: string;
 }): Promise<void> {
   if (!isSupabaseConfigured()) return;
+  // Always use PROF_DEV_USER_ID as the canonical profile id so the value
+  // matches user_profile.id regardless of what telegram_links stores.
+  const profileId = process.env.PROF_DEV_USER_ID ?? input.profileId;
   const { error } = await supabaseServer!
     .from("telegram_messages")
     .insert({
-      profile_id:          input.profileId,
+      profile_id:          profileId,
       telegram_id:         input.telegramId,
       telegram_chat_id:    input.telegramChatId,
       telegram_message_id: input.telegramMessageId,
@@ -54,7 +57,7 @@ export async function saveTelegramMessage(input: {
       status:              "new",
     });
   if (error) {
-    console.error("[DAL/saveTelegramMessage]", error.message);
+    console.error("[DAL/saveTelegramMessage]", error.message, { profileId });
   }
 }
 
