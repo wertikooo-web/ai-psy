@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import type { AnalyticsResponse } from "@/lib/data/analytics";
 
-type PeriodPreset = "today" | "week" | "month" | "3m" | "6m" | "year" | "all" | "custom";
+type PeriodPreset = "today" | "week" | "month" | "3m" | "6m" | "year" | "all" | "custom" | "specificMonth";
 type ClientMode = "all" | "active" | "archived" | string;
 
 const periodLabels: Record<PeriodPreset, string> = {
@@ -21,6 +21,7 @@ const periodLabels: Record<PeriodPreset, string> = {
   "6m": "6 месяцев",
   year: "Год",
   all: "Всё время",
+  specificMonth: "По месяцу",
   custom: "Период",
 };
 
@@ -229,6 +230,10 @@ export default function AnalyticsPage() {
   const [client, setClient] = useState<ClientMode>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [specificMonth, setSpecificMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [data, setData] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -237,14 +242,23 @@ export default function AnalyticsPage() {
 
   const params = useMemo(() => {
     const sp = new URLSearchParams();
-    sp.set("period", period);
     sp.set("client", client);
-    if (period === "custom") {
-      if (from) sp.set("from", from);
-      if (to) sp.set("to", to);
+    if (period === "specificMonth" && specificMonth) {
+      const [y, m] = specificMonth.split("-").map(Number);
+      const mFrom = new Date(y, m - 1, 1);
+      const mTo   = new Date(y, m, 0);
+      sp.set("period", "custom");
+      sp.set("from", mFrom.toISOString().slice(0, 10));
+      sp.set("to",   mTo.toISOString().slice(0, 10));
+    } else {
+      sp.set("period", period);
+      if (period === "custom") {
+        if (from) sp.set("from", from);
+        if (to)   sp.set("to", to);
+      }
     }
     return sp;
-  }, [period, client, from, to]);
+  }, [period, client, from, to, specificMonth]);
 
   async function load() {
     setLoading(true);
@@ -497,6 +511,14 @@ export default function AnalyticsPage() {
                 {Object.entries(periodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </div>
+            {period === "specificMonth" && (
+              <input
+                type="month"
+                value={specificMonth}
+                onChange={(e) => setSpecificMonth(e.target.value)}
+                className="rounded-lg border border-[#E6DDD0] bg-white px-3 py-2 text-sm outline-none"
+              />
+            )}
             {period === "custom" && (
               <>
                 <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-lg border border-[#E6DDD0] bg-white px-3 py-2 text-sm outline-none" />
