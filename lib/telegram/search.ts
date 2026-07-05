@@ -1881,6 +1881,10 @@ export async function handleTelegramReadOnlySearch(message: TelegramMessage, tex
   } else if (isAnalyticsMetricPhrase(lower)) {
     // "сколько клиентов/консультаций/оплат..." — bypass LLM to avoid list_clients mis-route
     parsed = { intent: "analytics_metric_query", query: text };
+  } else if (parseUClientPattern(lower, text) !== null) {
+    // "у жоры как назывался первый запрос", "у кирилла последняя консультация" etc.
+    // Must be before LLM — LLM consistently misroutes "у [name] [field]" as search_consultations.
+    parsed = parseUClientPattern(lower, text)!;
   } else {
     const llmResult = await parseTelegramIntentWithLlm(text, prior.length ? prior : undefined);
     if (llmResult) {
