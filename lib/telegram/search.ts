@@ -873,7 +873,7 @@ async function searchConsultations(query: string, clientId?: string): Promise<Se
     }));
 }
 
-async function searchNotebook(query: string): Promise<SearchResult[]> {
+async function searchNotebook(query: string, clientId?: string): Promise<SearchResult[]> {
   const terms = Array.from(new Set([query, ...searchNeedles(query)])).filter(Boolean).slice(0, 8);
   const found = new Map<string, Awaited<ReturnType<typeof getEntries>>["entries"][number]>();
   for (const term of terms) {
@@ -888,6 +888,7 @@ async function searchNotebook(query: string): Promise<SearchResult[]> {
       status: "all",
     });
     for (const entry of page.entries) {
+      if (clientId && entry.clientId !== clientId) continue;
       const text = [entry.title, entry.text, entry.topic, ...(entry.tags ?? [])].filter(Boolean).join(" ");
       if (matchesSearchText(text, query)) found.set(entry.id, entry);
     }
@@ -905,7 +906,7 @@ async function searchNotebook(query: string): Promise<SearchResult[]> {
       url: getNotebookUrl(query),
     }));
 }
-async function searchSupabaseTextTables(query: string, consultationIdsAlreadyFound?: Set<string>): Promise<SearchResult[]> {
+async function searchSupabaseTextTables(query: string, consultationIdsAlreadyFound?: Set<string>, clientId?: string): Promise<SearchResult[]> {
   if (!isSupabaseConfigured()) return [];
   const safeQuery = sanitizeSupabaseSearch(query);
   if (!safeQuery) return [];
@@ -914,13 +915,24 @@ async function searchSupabaseTextTables(query: string, consultationIdsAlreadyFou
   const orFor = (columns: string[]) => terms
     .flatMap((term) => columns.map((column) => `${column}.ilike.%${term}%`))
     .join(",");
+
+  // Base queries — optionally scoped to one client
+  let qConsult  = supabaseServer!.from("consultations").select("id,client_id,client_name,title,created_at,notes,transcript_text").or(orFor(["title", "notes", "transcript_text"])).is("deleted_at", null).order("created_at", { ascending: false }).limit(8);
+  let qRequests = supabaseServer!.from("client_requests").select("id,client_id,text,created_at").or(orFor(["text"])).is("deleted_at", null).order("created_at", { ascending: false }).limit(5);
+  let qHistory  = supabaseServer!.from("client_history").select("id,client_id,section,text,created_at").or(orFor(["text"])).order("created_at", { ascending: false }).limit(5);
+  let qMaterials= supabaseServer!.from("client_materials").select("id,client_id,title,content,created_at").or(orFor(["title", "content"])).order("created_at", { ascending: false }).limit(5);
+  let qCalendar = supabaseServer!.from("calendar_events").select("id,client_name,title,notes,starts_at").or(orFor(["title", "notes", "client_name"])).is("deleted_at", null).order("starts_at", { ascending: false }).limit(5);
+
+  if (clientId) {
+    qConsult   = qConsult.eq("client_id", clientId);
+    qRequests  = qRequests.eq("client_id", clientId);
+    qHistory   = qHistory.eq("client_id", clientId);
+    qMaterials = qMaterials.eq("client_id", clientId);
+    // calendar has no client_id column — filter by client_name after fetch
+  }
+
   const [consultations, requests, history, materials, calendar] = await Promise.all([
-    // Direct DB search on transcript_text — catches text that in-memory search may miss
-    supabaseServer!.from("consultations").select("id,client_id,client_name,title,created_at,notes,transcript_text").or(orFor(["title", "notes", "transcript_text"])).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
-    supabaseServer!.from("client_requests").select("id,client_id,text,created_at").or(orFor(["text"])).is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
-    supabaseServer!.from("client_history").select("id,client_id,section,text,created_at").or(orFor(["text"])).order("created_at", { ascending: false }).limit(5),
-    supabaseServer!.from("client_materials").select("id,client_id,title,content,created_at").or(orFor(["title", "content"])).order("created_at", { ascending: false }).limit(5),
-    supabaseServer!.from("calendar_events").select("id,client_name,title,notes,starts_at").or(orFor(["title", "notes", "client_name"])).is("deleted_at", null).order("starts_at", { ascending: false }).limit(5),
+    qConsult, qRequests, qHistory, qMaterials, qCalendar,
   ]);
   const clients = await getClients();
   const clientName = (id?: string) => clients.find((client) => client.id === id)?.name;
@@ -1347,8 +1359,8 @@ async function sendSearch(chatId: number, query: string | undefined, onlyNoteboo
         consultationResults.map((r) => r.url?.split("/consultation/")[1]).filter((id): id is string => Boolean(id)),
       );
       const [notebookResults, supabaseResults] = await Promise.all([
-        searchNotebook(cleaned),
-        searchSupabaseTextTables(cleaned, foundConsultationIds),
+        searchNotebook(cleaned, client?.id),
+        searchSupabaseTextTables(cleaned, foundConsultationIds, client?.id),
       ]);
       rawResults = [...consultationResults, ...notebookResults, ...supabaseResults];
     }
