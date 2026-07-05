@@ -1526,7 +1526,7 @@ export function AnimatedCityScene() {
         loveRunnerRunning.current = true;
         setLoveRunnerActive(true);
       }
-      scheduleLoveRunner(rnd(180_000, 300_000));
+      scheduleLoveRunner(rnd(30_000, 45_000));
     }, delay);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
