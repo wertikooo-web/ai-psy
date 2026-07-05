@@ -609,7 +609,7 @@ export function RealConsultationView({ consultation: c, defaultMode = "working" 
             <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-[#FAF8F5]">
               {/* Simplified analysis header */}
               <div className="px-4 flex-shrink-0 flex items-center gap-2" style={{ height: 56, background: "#9C9289", borderBottom: "1px solid #8A8079" }}>
-                <BrainCircuit size={15} style={{ color: "#D8CFBE" }} />
+                <ScanSearch size={15} style={{ color: "#D8CFBE" }} />
                 <span className="text-sm font-bold flex-1 min-w-0 truncate" style={{ color: "#FDFAF5" }}>
                   {displayedMode ? (ANALYSIS_MODES.find(m => m.id === displayedMode)?.label ?? "AI-анализ") : "AI-анализ"}
                 </span>
