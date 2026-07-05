@@ -687,8 +687,32 @@ function analysisText(analysis: NonNullable<StoredConsultation["analyses"]>[numb
 function periodFromText(text: string): "month" | "week" | "today" | "all" {
   if (text.includes("сегодня")) return "today";
   if (text.includes("недел")) return "week";
-  if (text.includes("месяц") || text.includes("июн") || text.includes("июл")) return "month";
+  if (text.includes("месяц")) return "month";
   return "all";
+}
+
+const MONTH_PREFIXES: [string, number][] = [
+  ["январ", 0], ["феврал", 1], ["март", 2], ["апрел", 3],
+  ["май", 4], ["мая", 4], ["июн", 5], ["июл", 6],
+  ["август", 7], ["сентябр", 8], ["октябр", 9], ["ноябр", 10], ["декабр", 11],
+];
+
+function parseSpecificMonthRange(text: string): { from: Date; to: Date; label: string } | null {
+  const lower = text.toLowerCase();
+  for (const [prefix, monthIdx] of MONTH_PREFIXES) {
+    if (!lower.includes(prefix)) continue;
+    const yearMatch = lower.match(/20\d\d/);
+    const now = new Date();
+    const year = yearMatch ? parseInt(yearMatch[0]) : (
+      // if the named month is in the future this year, assume last year
+      monthIdx > now.getMonth() ? now.getFullYear() - 1 : now.getFullYear()
+    );
+    const from = new Date(year, monthIdx, 1, 0, 0, 0, 0);
+    const to   = new Date(year, monthIdx + 1, 0, 23, 59, 59, 999);
+    const label = from.toLocaleString("ru-RU", { month: "long", year: "numeric" });
+    return { from, to, label };
+  }
+  return null;
 }
 
 function parseStats(args: string): ParsedRequest {
@@ -1154,14 +1178,14 @@ async function sendAnalyticsMetric(chatId: number, originalText: string): Promis
   // Consultations / sessions
   if (/консультац|встреч|сессий/.test(lower)) {
     const period = periodFromText(lower);
-    await sendConsultationCount(chatId, period);
+    await sendConsultationCount(chatId, period, undefined, originalText);
     return;
   }
 
   // Payments / income
   if (/оплат|доход|получен|деньг/.test(lower)) {
     const period = periodFromText(lower);
-    await sendPaymentTotal(chatId, period);
+    await sendPaymentTotal(chatId, period, undefined, originalText);
     return;
   }
 
@@ -1398,8 +1422,8 @@ async function sendSearch(chatId: number, query: string | undefined, onlyNoteboo
   );
 }
 
-async function sendConsultationCount(chatId: number, period: ParsedRequest["period"], clientName?: string): Promise<void> {
-  const range = currentPeriodRange(period);
+async function sendConsultationCount(chatId: number, period: ParsedRequest["period"], clientName?: string, originalText?: string): Promise<void> {
+  const range = parseSpecificMonthRange(originalText ?? "") ?? currentPeriodRange(period);
   if (clientName?.trim()) {
     const client = await resolveSingleClient(chatId, clientName);
     if (!client) return;
@@ -1455,8 +1479,8 @@ async function sendTopPayer(chatId: number): Promise<void> {
   await sendTelegramMessage(chatId, lines.join("\n"), keyboardFromButtons([urlButton("Открыть оплаты", appUrl("/payments"))]));
 }
 
-async function sendPaymentTotal(chatId: number, period: ParsedRequest["period"], clientName?: string): Promise<void> {
-  const range = currentPeriodRange(period);
+async function sendPaymentTotal(chatId: number, period: ParsedRequest["period"], clientName?: string, originalText?: string): Promise<void> {
+  const range = parseSpecificMonthRange(originalText ?? "") ?? currentPeriodRange(period);
   let payments = (await getPayments()).filter((item) => !range.from || inRange(item.paymentDate || item.createdAt, range));
 
   // Client-specific payment lookup
@@ -1602,8 +1626,8 @@ async function dispatchSearchRequest(message: TelegramMessage, parsed: ParsedReq
   if (parsed.intent === "search_notebook") return sendSearch(chatId, parsed.query, true, parsed.clientName);
   if (parsed.intent === "search_consultations" || parsed.intent === "search_analyses") return sendSearch(chatId, parsed.query, false, parsed.clientName);
   if (parsed.intent === "get_upcoming_consultation") return sendUpcomingConsultation(chatId, parsed.clientName);
-  if (parsed.intent === "get_consultation_count") return sendConsultationCount(chatId, parsed.period, parsed.clientName);
-  if (parsed.intent === "get_payment_total") return sendPaymentTotal(chatId, parsed.period, parsed.clientName);
+  if (parsed.intent === "get_consultation_count") return sendConsultationCount(chatId, parsed.period, parsed.clientName, message.text);
+  if (parsed.intent === "get_payment_total") return sendPaymentTotal(chatId, parsed.period, parsed.clientName, message.text);
   if (parsed.intent === "get_top_payer") return sendTopPayer(chatId);
   if (parsed.intent === "get_notebook_count") return sendNotebookCount(chatId);
   if (parsed.intent === "get_session_brief") return sendSessionBrief(chatId, parsed.clientName);
