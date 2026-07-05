@@ -273,17 +273,31 @@ function keyboardFromButtons(buttons: Array<TelegramInlineKeyboardButton | null>
   return rows.length ? { inline_keyboard: rows } : undefined;
 }
 
+/** Strip common Russian inflection suffixes so "жоры"→"жор", "жора"→"жор", "кирилла"→"кирилл" */
+function inflectionVariants(s: string): string[] {
+  const variants = new Set<string>([s]);
+  for (const suf of ["ы", "е", "у", "а", "ю", "и", "ой", "ей", "ом", "ем", "ого", "ему", "ах", "ям"]) {
+    if (s.endsWith(suf) && s.length - suf.length >= 3) {
+      variants.add(s.slice(0, s.length - suf.length));
+    }
+  }
+  return Array.from(variants);
+}
+
 async function findClientsByName(name: string): Promise<StoredClient[]> {
   const search = normalize(name);
   if (!search) return [];
   const clients = await getClients();
 
-  // Build multiple search variants: original + transliterated both ways
-  const searchVariants = Array.from(new Set([search, cyrToLat(search), latToCyr(search)]));
+  // Build search variants: original + transliterated + inflection-stripped
+  const searchBase = Array.from(new Set([search, cyrToLat(search), latToCyr(search)]));
+  const searchVariants = Array.from(new Set(searchBase.flatMap(s => [s, ...inflectionVariants(s)])));
 
   function clientVariants(client: StoredClient): string[] {
     const n = normalize(client.name);
-    return Array.from(new Set([n, cyrToLat(n), latToCyr(n)]));
+    const firstName = n.split(" ")[0];
+    const bases = Array.from(new Set([n, cyrToLat(n), latToCyr(n), firstName, cyrToLat(firstName), latToCyr(firstName)]));
+    return Array.from(new Set(bases.flatMap(b => [b, ...inflectionVariants(b)])));
   }
 
   function anyMatch(client: StoredClient, fn: (cv: string, sv: string) => boolean): boolean {
@@ -459,6 +473,63 @@ function extractClientNameFromPhrase(text: string): string | undefined {
   return name || undefined;
 }
 
+/**
+ * Extract just the client name token from "у [name] ..." patterns.
+ * "у жоры как назывался первый запрос" → "жоры"
+ * "у кирилла последняя консультация" → "кирилла"
+ */
+function extractClientHintFromU(text: string): string | undefined {
+  const lower = normalize(text);
+  // "у [name] ..."
+  const m = lower.match(/^у\s+([а-яёa-z]+)/i) ?? lower.match(/\bу\s+([а-яёa-z]+)/i);
+  if (m) return m[1];
+  return undefined;
+}
+
+/**
+ * Detect field intent from the rest of the query (after stripping "у [name]").
+ * Returns a ParsedRequest intent or null if ambiguous.
+ */
+function detectClientFieldIntent(rest: string): TelegramIntent {
+  const r = rest.toLowerCase();
+  if (/первый\s+запрос|первую?\s+тему|первую?\s+проблем|первую?\s+жалоб|с\s+чем\s+(пришёл|пришел|обратился)|назыв|запрос/.test(r)) {
+    return "get_first_client_request";
+  }
+  if (/последн.{0,6}(консультац|встреч|сессия|виде)|последн.{0,3}раз/.test(r)) {
+    return "get_last_consultation";
+  }
+  if (/сколько.{0,10}(консультац|встреч|сессий)/.test(r)) {
+    return "get_consultation_count";
+  }
+  if (/консультац|встреч|сессий?|список|покажи\s+все/.test(r)) {
+    return "get_consultations";
+  }
+  if (/оплат|долг|деньг|заплатил/.test(r)) {
+    return "get_payment_total";
+  }
+  if (/материал|наблюден|заметк/.test(r)) {
+    return "find_client";
+  }
+  return "find_client";
+}
+
+/**
+ * Try to parse "у [name] [field question]" pattern before hitting LLM.
+ * Returns a ParsedRequest or null if pattern doesn't match.
+ */
+function parseUClientPattern(lower: string, _raw: string): ParsedRequest | null {
+  // Must start with "у [word]" or contain "у [word]" after "покажи/расскажи/что"
+  const startMatch = lower.match(/^у\s+([а-яёa-z]+)\s+(.+)$/i);
+  const midMatchRaw = !startMatch ? lower.match(/^(?:покажи|расскажи|что|какой|какая|когда)\s+.+\bу\s+([а-яёa-z]+)\s*\??$/i) : null;
+  if (!startMatch && !midMatchRaw) return null;
+
+  const clientHint = startMatch ? startMatch[1] : midMatchRaw![1];
+  const rest = startMatch ? startMatch[2] : lower.replace(/^(?:покажи|расскажи|что|какой|какая|когда)\s+/, "").replace(/\bу\s+[а-яёa-z]+\s*\??$/i, "").trim();
+
+  const intent = detectClientFieldIntent(rest);
+  return { intent, clientName: clientHint };
+}
+
 /** Detect "клиент" list signals in normalized text. */
 function parseClientListRequest(lower: string): ParsedRequest | null {
   const hasClientWord = /клиент|пациент/.test(lower);
@@ -525,10 +596,12 @@ function parseTextRequest(text: string): ParsedRequest {
     return { intent: "get_session_brief", clientName: extractClientNameFromPhrase(raw) };
   }
 
-  // 2c. First client request — "у жоры первый запрос", "как назывался первый запрос у X"
-  if ((lower.includes("первый запрос") || lower.includes("первый")&&lower.includes("запрос") || lower.includes("первую")&&lower.includes("запрос") || lower.includes("первой")&&lower.includes("запрос") || lower.includes("первая тема") || lower.includes("первый тема") || lower.includes("первая проблем") || lower.includes("первый проблем")) && (lower.includes(" у ") || /[а-яё]+'?[а-яё]+\s+(это|как|назыв|был)/.test(lower) || /^у\s/.test(lower))) {
-    return { intent: "get_first_client_request", clientName: extractClientNameFromPhrase(raw) };
-  }
+  // 2c. Client-scoped "у [name] [field]" — handles "у жоры как назывался первый запрос",
+  //     "у кирилла последняя консультация", "у анны сколько консультаций" etc.
+  const uPattern = parseUClientPattern(lower, raw);
+  if (uPattern) return uPattern;
+
+  // 2d. First client request without explicit "у" prefix — "как назывался первый запрос X"
   if (/первый\s+запрос|первую?\s+тему|первую?\s+проблем|как\s+назывался\s+запрос|что\s+был[аo]?\s+запрос|запрос.*первой?\s+встреч|запрос.*начал/.test(lower)) {
     return { intent: "get_first_client_request", clientName: extractClientNameFromPhrase(raw) };
   }
