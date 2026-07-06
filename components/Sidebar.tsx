@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Home, Users, FileText, Bot,
   Settings, HelpCircle, BrainCircuit, Mic, X, MessageSquare, BookOpenText,
   PanelLeftClose, PanelLeft, ChevronsLeft, CalendarDays, BarChart3, WalletCards, Search,
-  GraduationCap, Inbox, Sparkles, Lock,
+  GraduationCap, Inbox, Sparkles,
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
-import { FluidSimOverlay } from "@/components/relax/FluidSimOverlay";
 
 export type SidebarMode = "full" | "decorative" | "hidden";
 
@@ -116,7 +115,7 @@ function DecoBtn({
 }
 
 // ── Nav groups ────────────────────────────────────────────────────────────────
-function NavGroups({ onNavigate, onUpload, onSearch, onRelax }: { onNavigate?: () => void; onUpload: () => void; onSearch?: () => void; onRelax: () => void }) {
+function NavGroups({ onNavigate, onUpload, onSearch, onRelax }: { onNavigate?: () => void; onUpload: () => void; onSearch?: () => void; onRelax?: () => void }) {
   return (
     <nav className="flex-1 min-h-0 px-3 py-2 overflow-y-hidden flex flex-col gap-1">
 
@@ -182,7 +181,7 @@ function NavGroups({ onNavigate, onUpload, onSearch, onRelax }: { onNavigate?: (
 
         {/* ── RELAX — below Помощь ─────────────────────────────────── */}
         <button
-          onClick={onRelax}
+          onClick={() => { onRelax?.(); }}
           className="w-full flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all"
           style={{
             background: "linear-gradient(135deg, rgba(168,148,230,0.11) 0%, rgba(130,200,180,0.08) 100%)",
@@ -217,10 +216,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ open, onClose, mode, onModeChange, onSearch }: SidebarProps) {
-  const [uploadOpen, setUploadOpen]     = useState(false);
-  const [relaxMenuOpen, setRelaxMenuOpen] = useState(false);
-  const [activeGame, setActiveGame]     = useState<"fluid" | null>(null);
-  const relaxBtnRef                     = useRef<HTMLDivElement>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const router = useRouter();
   // Delay enabling transitions until after first paint — prevents layout flash
   const [transitionEnabled, setTransitionEnabled] = useState(false);
 
@@ -245,18 +242,6 @@ export function Sidebar({ open, onClose, mode, onModeChange, onSearch }: Sidebar
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
-
-  // Close relax menu on outside click
-  useEffect(() => {
-    if (!relaxMenuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (relaxBtnRef.current && !relaxBtnRef.current.contains(e.target as Node)) {
-        setRelaxMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [relaxMenuOpen]);
 
   const easing     = "cubic-bezier(0.4,0,0.2,1)";
   const wTrans     = transitionEnabled ? `width 280ms ${easing}` : "none";
@@ -322,7 +307,7 @@ export function Sidebar({ open, onClose, mode, onModeChange, onSearch }: Sidebar
           <NavGroups
             onUpload={() => setUploadOpen(true)}
             onSearch={onSearch}
-            onRelax={() => setRelaxMenuOpen(r => !r)}
+            onRelax={() => router.push("/relax")}
           />
 
           <div className="px-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
@@ -476,7 +461,7 @@ export function Sidebar({ open, onClose, mode, onModeChange, onSearch }: Sidebar
               onNavigate={onClose}
               onUpload={() => setUploadOpen(true)}
               onSearch={onSearch}
-              onRelax={() => { setRelaxMenuOpen(r => !r); onClose?.(); }}
+              onRelax={() => { onClose?.(); router.push("/relax"); }}
             />
 
             <div className="px-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
@@ -487,100 +472,7 @@ export function Sidebar({ open, onClose, mode, onModeChange, onSearch }: Sidebar
       </div>
 
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
-
-      {/* ── RELAX game picker ──────────────────────────────────────── */}
-      {relaxMenuOpen && (
-        <div
-          ref={relaxBtnRef}
-          style={{
-            position: "fixed",
-            bottom: 80,
-            left: mode === "hidden" ? 12 : FULL_W + 8,
-            zIndex: 1000,
-            background: "#FFFFFF",
-            border: "1px solid rgba(168,148,230,0.2)",
-            borderRadius: 14,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(168,148,230,0.1)",
-            padding: 8,
-            minWidth: 220,
-            overflow: "hidden",
-          }}
-        >
-          <div style={{ padding: "6px 10px 8px", marginBottom: 2 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#9CA3AF", textTransform: "uppercase" }}>
-              Relax · Выбор игры
-            </div>
-          </div>
-
-          <GameOption
-            num={1}
-            title="Fluid Simulation"
-            subtitle="WebGL · жидкость и цвет"
-            active
-            onClick={() => { setActiveGame("fluid"); setRelaxMenuOpen(false); }}
-          />
-          <GameOption num={2} title="Game 2" subtitle="Скоро" disabled />
-          <GameOption num={3} title="Game 3" subtitle="Скоро" disabled />
-        </div>
-      )}
-
-      {/* ── RELAX overlay ─────────────────────────────────────────── */}
-      {activeGame === "fluid" && (
-        <FluidSimOverlay onClose={() => setActiveGame(null)} />
-      )}
     </>
   );
 }
 
-// ── Game picker option ────────────────────────────────────────────────────────
-function GameOption({
-  num, title, subtitle, active = false, disabled = false, onClick,
-}: {
-  num: number;
-  title: string;
-  subtitle: string;
-  active?: boolean;
-  disabled?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
-      style={{
-        width: "100%", display: "flex", alignItems: "center", gap: 10,
-        padding: "9px 10px", borderRadius: 10,
-        background: "transparent", border: "none",
-        cursor: disabled ? "default" : "pointer",
-        textAlign: "left", transition: "background 150ms",
-        opacity: disabled ? 0.45 : 1,
-      }}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.background = "rgba(168,148,230,0.08)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent";
-      }}
-    >
-      <div style={{
-        width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: active
-          ? "linear-gradient(135deg, rgba(168,148,230,0.2), rgba(130,200,180,0.15))"
-          : "rgba(0,0,0,0.04)",
-        border: `1px solid ${active ? "rgba(168,148,230,0.3)" : "rgba(0,0,0,0.06)"}`,
-      }}>
-        {disabled
-          ? <Lock size={12} style={{ color: "#C4C4C4" }} />
-          : <Sparkles size={13} style={{ color: active ? "#9A8EC8" : "#9CA3AF" }} />
-        }
-      </div>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 500, color: disabled ? "#9CA3AF" : "#111827", lineHeight: 1.3 }}>
-          {title}
-        </div>
-        <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1 }}>{subtitle}</div>
-      </div>
-    </button>
-  );
-}

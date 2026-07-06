@@ -4,41 +4,32 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Fluid Simulation</title>
+  <title>Потоки</title>
   <script src="dat.gui.min.js"></script>
   <style>
-    * { user-select: none; margin: 0; padding: 0; box-sizing: border-box; }
-
-    html, body {
-      overflow: hidden;
-      background: #0a0a0f;
-      width: 100%; height: 100%;
-      position: fixed;
-    }
-
-    canvas {
-      width: 100%; height: 100%;
-      display: block;
-      touch-action: none;
-    }
-
-    /* Hide dat.GUI panel — we have our own game menu */
-    .dg.main { display: none !important; }
-
-    /* Hide promo popup always */
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+    html, body { overflow: hidden; background: #0a0a0f; width: 100%; height: 100%; position: fixed; }
+    canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+    .dg.main, .dg.ac { display: none !important; }
     .promo { display: none !important; }
   </style>
+  <script>
+    /* Safety net: define isMobile before script.js runs */
+    window.ga = function() {};
+    function isMobile() {
+      return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    }
+  </script>
 </head>
 <body>
+
   <canvas></canvas>
 
-  <!-- Required by script.js — kept hidden -->
-  <div class="promo" style="display:none">
+  <!-- script.js requires these DOM elements or it throws -->
+  <div class="promo" style="display:none!important">
     <div class="promo-middle">
       <div class="promo-content">
-        <div class="promo-header">
-          <span class="promo-close">&times;</span>
-        </div>
+        <div class="promo-header"><span class="promo-close"></span></div>
         <div class="promo-body">
           <div class="links-container">
             <a id="apple_link"></a>
@@ -49,44 +40,43 @@
     </div>
   </div>
 
-  <script>
-    // Patch GA to no-op so script.js doesn't throw
-    window.ga = function() {};
-
-    // Patch config AFTER DOMContentLoaded to ensure script.js is parsed first.
-    // We override the dat.GUI controller update to set calming values.
-    document.addEventListener('DOMContentLoaded', () => {
-      // config is a module-level var in script.js — patch via side-effect timing.
-    });
-  </script>
-
   <script src="script.js"></script>
 
   <script>
-    // After script.js runs, patch config to calm/pastel palette
-    if (typeof config !== 'undefined') {
-      config.DENSITY_DISSIPATION   = 3.5;
+    /* Apply calm config AFTER script.js sets up `config` */
+    (function patchConfig() {
+      if (typeof config === 'undefined') {
+        // retry once (async dat.gui might delay init)
+        return setTimeout(patchConfig, 100);
+      }
+      config.DENSITY_DISSIPATION   = 3.2;
       config.VELOCITY_DISSIPATION  = 2.0;
       config.PRESSURE              = 0.1;
-      config.CURL                  = 16;
+      config.CURL                  = 14;
       config.SPLAT_RADIUS          = 0.20;
       config.SPLAT_FORCE           = 5000;
-      config.COLORFUL              = true;
-      config.BLOOM_INTENSITY       = 0.45;
       config.BACK_COLOR            = { r: 10, g: 10, b: 15 };
-    }
+      config.COLORFUL              = true;
+      config.BLOOM_INTENSITY       = 0.40;
+    })();
 
-    // postMessage API — parent can send commands
-    window.addEventListener('message', (e) => {
+    /* Splash command from parent */
+    window.addEventListener('message', function(e) {
       if (!e.data) return;
-
       if (e.data.type === 'SPLASH' && typeof multipleSplats === 'function') {
         multipleSplats(Math.floor(Math.random() * 5) + 4);
       }
     });
 
-    // Tell parent we're ready
-    window.parent.postMessage({ type: 'FLUID_READY' }, '*');
+    /* ESC → tell parent */
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') window.parent.postMessage({ type: 'RELAX_ESC' }, '*');
+    });
+
+    /* Signal ready */
+    window.addEventListener('load', function() {
+      window.parent.postMessage({ type: 'FLUID_READY' }, '*');
+    });
   </script>
 </body>
 </html>
