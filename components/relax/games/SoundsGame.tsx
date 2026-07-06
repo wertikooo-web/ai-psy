@@ -225,14 +225,32 @@ export function SoundsGame() {
       showHint = false;
     }
 
+    function hitNote(x: number, y: number): boolean {
+      // Check in reverse so topmost (last drawn) note gets priority
+      for (let i = notes.length - 1; i >= 0; i--) {
+        const n = notes[i];
+        if (n.fading) continue;
+        const dx = x - n.x, dy = y - n.y;
+        if (dx * dx + dy * dy <= n.r * n.r) {
+          n.fading = true;
+          return true;
+        }
+      }
+      return false;
+    }
+
     function onClick(e: MouseEvent) {
       const r = canvas!.getBoundingClientRect();
-      addNote(e.clientX - r.left, e.clientY - r.top);
+      const x = e.clientX - r.left, y = e.clientY - r.top;
+      if (!hitNote(x, y)) addNote(x, y);
     }
     function onTouch(e: TouchEvent) {
       e.preventDefault();
       const r = canvas!.getBoundingClientRect();
-      Array.from(e.changedTouches).forEach(t => addNote(t.clientX - r.left, t.clientY - r.top));
+      Array.from(e.changedTouches).forEach(t => {
+        const x = t.clientX - r.left, y = t.clientY - r.top;
+        if (!hitNote(x, y)) addNote(x, y);
+      });
     }
     canvas.addEventListener("click", onClick);
     canvas.addEventListener("touchstart", onTouch, { passive: false });
