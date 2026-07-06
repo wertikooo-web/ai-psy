@@ -10,11 +10,48 @@
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
     html, body { overflow: hidden; background: #0a0a0f; width: 100%; height: 100%; position: fixed; }
     canvas { width: 100%; height: 100%; display: block; touch-action: none; }
-    .dg.main, .dg.ac { display: none !important; }
+
+    /* Hide promo */
     .promo { display: none !important; }
+
+    /* ── dat.gui panel — keep visible but reposition ── */
+    .dg.ac {
+      top: 48px !important;
+      right: 0 !important;
+      left: auto !important;
+      z-index: 100 !important;
+    }
+    .dg.main { display: block !important; }
+
+    /* ── Settings toggle button ── */
+    #gui-toggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 200;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.65);
+      font-size: 12px;
+      font-family: -apple-system, sans-serif;
+      font-weight: 500;
+      padding: 5px 11px 5px 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.18s, border-color 0.18s, color 0.18s;
+      letter-spacing: 0.02em;
+    }
+    #gui-toggle:hover {
+      background: rgba(255,255,255,0.14);
+      border-color: rgba(255,255,255,0.28);
+      color: rgba(255,255,255,0.9);
+    }
+    #gui-toggle svg { flex-shrink: 0; }
   </style>
   <script>
-    /* Safety net: define isMobile before script.js runs */
     window.ga = function() {};
     function isMobile() {
       return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
@@ -25,7 +62,7 @@
 
   <canvas></canvas>
 
-  <!-- script.js requires these DOM elements or it throws -->
+  <!-- script.js requires these DOM stubs -->
   <div class="promo" style="display:none!important">
     <div class="promo-middle">
       <div class="promo-content">
@@ -40,15 +77,20 @@
     </div>
   </div>
 
+  <!-- Settings toggle button -->
+  <button id="gui-toggle" title="Настройки">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+    Настройки
+  </button>
+
   <script src="script.js"></script>
 
   <script>
-    /* Apply calm config AFTER script.js sets up `config` */
+    /* ── Patch config after script.js initialises ── */
     (function patchConfig() {
-      if (typeof config === 'undefined') {
-        // retry once (async dat.gui might delay init)
-        return setTimeout(patchConfig, 100);
-      }
+      if (typeof config === 'undefined') return setTimeout(patchConfig, 100);
       config.DENSITY_DISSIPATION   = 3.2;
       config.VELOCITY_DISSIPATION  = 2.0;
       config.PRESSURE              = 0.1;
@@ -60,21 +102,67 @@
       config.BLOOM_INTENSITY       = 0.40;
     })();
 
-    /* Splash command from parent */
-    window.addEventListener('message', function(e) {
+    /* ── Toggle dat.gui visibility ── */
+    (function () {
+      var guiVisible = false; // hidden by default
+
+      function getPanel() {
+        return document.querySelector('.dg.ac');
+      }
+
+      function applyVisibility(show) {
+        var panel = getPanel();
+        if (panel) panel.style.display = show ? 'block' : 'none';
+      }
+
+      /* Hide on load */
+      window.addEventListener('load', function () {
+        applyVisibility(false);
+      });
+
+      /* Also hide once dom.gui.ac appears (dat.gui appends it async) */
+      var observer = new MutationObserver(function () {
+        var panel = getPanel();
+        if (panel) {
+          applyVisibility(guiVisible);
+          // Move panel below our toggle button
+          panel.style.top = '48px';
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      document.getElementById('gui-toggle').addEventListener('click', function () {
+        guiVisible = !guiVisible;
+        applyVisibility(guiVisible);
+        var btn = document.getElementById('gui-toggle');
+        btn.style.background = guiVisible
+          ? 'rgba(168,148,230,0.22)'
+          : 'rgba(255,255,255,0.08)';
+        btn.style.borderColor = guiVisible
+          ? 'rgba(168,148,230,0.45)'
+          : 'rgba(255,255,255,0.15)';
+        btn.style.color = guiVisible
+          ? 'rgba(210,196,255,0.95)'
+          : 'rgba(255,255,255,0.65)';
+      });
+    })();
+
+    /* ── Splash from parent ── */
+    window.addEventListener('message', function (e) {
       if (!e.data) return;
       if (e.data.type === 'SPLASH' && typeof multipleSplats === 'function') {
         multipleSplats(Math.floor(Math.random() * 5) + 4);
       }
     });
 
-    /* ESC → tell parent */
-    document.addEventListener('keydown', function(e) {
+    /* ── ESC → tell parent ── */
+    document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') window.parent.postMessage({ type: 'RELAX_ESC' }, '*');
     });
 
-    /* Signal ready */
-    window.addEventListener('load', function() {
+    /* ── Signal ready ── */
+    window.addEventListener('load', function () {
       window.parent.postMessage({ type: 'FLUID_READY' }, '*');
     });
   </script>
