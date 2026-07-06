@@ -31,6 +31,8 @@ export function RelaxScene({ onClose }: Props) {
     return () => window.removeEventListener("keydown", h);
   }, [handleEsc]);
 
+  const immersive = tab === "theway";
+
   return (
     <div
       style={{
@@ -43,7 +45,8 @@ export function RelaxScene({ onClose }: Props) {
         overflow: "hidden",
       }}
     >
-      {/* ── Top bar ──────────────────────────────────────────────────────────── */}
+      {/* ── Top bar — hidden in immersive mode ───────────────────────────────── */}
+      {!immersive && (
       <div
         style={{
           position: "relative",
@@ -147,9 +150,10 @@ export function RelaxScene({ onClose }: Props) {
           </button>
         )}
       </div>
+      )}
 
       {/* ── Game area ────────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, position: "relative", overflow: "hidden", marginTop: 8 }}>
+      <div style={{ flex: 1, position: "relative", overflow: "hidden", marginTop: immersive ? 0 : 8 }}>
         {/* Flows — always mounted (keeps WebGL alive) */}
         <div style={{ position: "absolute", inset: 0, display: tab === "fluid" ? "block" : "none" }}>
           <FluidGame onEsc={handleEsc} />
@@ -169,7 +173,7 @@ export function RelaxScene({ onClose }: Props) {
 
         {tab === "theway" && (
           <div style={{ position: "absolute", inset: 0 }}>
-            <TheWayGame />
+            <TheWayGame onBack={() => setTab("fluid")} />
           </div>
         )}
       </div>
