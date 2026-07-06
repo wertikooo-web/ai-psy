@@ -50,6 +50,72 @@
       color: rgba(255,255,255,0.9);
     }
     #gui-toggle svg { flex-shrink: 0; }
+
+    /* ── Tool bar ── */
+    #tool-bar {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-family: -apple-system, sans-serif;
+    }
+    .tool-btn {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.55);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+      letter-spacing: 0.02em;
+      font-family: -apple-system, sans-serif;
+    }
+    .tool-btn:hover {
+      background: rgba(255,255,255,0.13);
+      color: rgba(255,255,255,0.85);
+    }
+    .tool-btn.active {
+      background: rgba(168,148,230,0.22);
+      border-color: rgba(168,148,230,0.45);
+      color: #D4C8F0;
+      font-weight: 600;
+    }
+    #fade-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 2px;
+    }
+    #fade-row label {
+      font-size: 10px;
+      color: rgba(255,255,255,0.32);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+    #fade-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 3px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.14);
+      outline: none;
+      cursor: pointer;
+      min-width: 70px;
+    }
+    #fade-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px; height: 13px;
+      border-radius: 50%;
+      background: rgba(168,148,230,0.85);
+      cursor: pointer;
+    }
   </style>
   <script>
     window.ga = function() {};
@@ -74,6 +140,17 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Tool bar (left side) -->
+  <div id="tool-bar">
+    <button class="tool-btn active" data-tool="flows">Потоки</button>
+    <button class="tool-btn" data-tool="brush">Кисть</button>
+    <button class="tool-btn" data-tool="pencil">Карандаш</button>
+    <div id="fade-row">
+      <label>Исчезание</label>
+      <input type="range" id="fade-slider" min="0.4" max="8" step="0.4" value="3.2">
     </div>
   </div>
 
@@ -165,6 +242,45 @@
     window.addEventListener('load', function () {
       window.parent.postMessage({ type: 'FLUID_READY' }, '*');
     });
+
+    /* ── Tool bar ── */
+    (function () {
+      var TOOLS = {
+        flows:  { SPLAT_RADIUS: 0.20, SPLAT_FORCE: 5000, CURL: 14 },
+        brush:  { SPLAT_RADIUS: 0.30, SPLAT_FORCE: 3200, CURL: 22 },
+        pencil: { SPLAT_RADIUS: 0.065, SPLAT_FORCE: 6500, CURL: 4 },
+      };
+      var currentTool = 'flows';
+
+      function applyTool(name) {
+        var t = TOOLS[name]; if (!t || typeof config === 'undefined') return;
+        config.SPLAT_RADIUS = t.SPLAT_RADIUS;
+        config.SPLAT_FORCE  = t.SPLAT_FORCE;
+        config.CURL         = t.CURL;
+      }
+
+      document.querySelectorAll('.tool-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var name = btn.getAttribute('data-tool');
+          currentTool = name;
+          document.querySelectorAll('.tool-btn').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          applyTool(name);
+        });
+      });
+
+      var fadeSlider = document.getElementById('fade-slider');
+      fadeSlider.addEventListener('input', function () {
+        if (typeof config !== 'undefined') {
+          config.DENSITY_DISSIPATION = parseFloat(fadeSlider.value);
+        }
+      });
+
+      // Apply once config is ready
+      (function waitConfig() {
+        if (typeof config !== 'undefined') { applyTool(currentTool); } else { setTimeout(waitConfig, 150); }
+      })();
+    })();
   </script>
 </body>
 </html>
