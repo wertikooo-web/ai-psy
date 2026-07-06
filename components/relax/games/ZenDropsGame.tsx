@@ -45,13 +45,14 @@ export function ZenDropsGame() {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const [showCfg,   setShowCfg]   = useState(false);
   const [showIntro, setShowIntro] = useState(true);
-  const [freq,  setFreq]  = useState<FreqKey>("normal");
-  const [speed, setSpeed] = useState<SpeedKey>("normal");
-  const [level, setLevel] = useState<LevelKey>(1);
+  const [freq,     setFreq]     = useState<FreqKey>("normal");
+  const [speed,    setSpeed]    = useState<SpeedKey>("normal");
+  const [level,    setLevel]    = useState<LevelKey>(1);
+  const [escalate, setEscalate] = useState(false);
 
   // Settings live-ref so game loop reads latest without re-creating
-  const cfgRef = useRef({ freq, speed, level });
-  useEffect(() => { cfgRef.current = { freq, speed, level }; }, [freq, speed, level]);
+  const cfgRef = useRef({ freq, speed, level, escalate });
+  useEffect(() => { cfgRef.current = { freq, speed, level, escalate }; }, [freq, speed, level, escalate]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -287,10 +288,16 @@ export function ZenDropsGame() {
       // Remove committed slots
       slots = slots.filter(s => !s.done);
 
-      // Batch spawn logic
+      // Batch spawn logic — with optional very gradual escalation
+      // factor decays 0.02% per second → after 10min ≈11% faster, after 60min ≈ 2× faster
+      const escalateFactor = cfg.escalate
+        ? Math.max(0.3, Math.pow(0.9998, elapsedMs / 1000))
+        : 1;
+      const effectiveFreqInt = FREQ_INT[cfg.freq] * escalateFactor;
+
       if (!inBatch && slots.length === 0) {
         waitTimer += dt;
-        if (waitTimer >= FREQ_INT[cfg.freq]) {
+        if (waitTimer >= effectiveFreqInt) {
           waitTimer = 0; inBatch = true; batchTimer = 0; batchSpawned = 0;
         }
       }
@@ -544,6 +551,11 @@ export function ZenDropsGame() {
                 {lv===1?"1 — Одна":lv===2?"2 — Две":"3 — Три"}
               </SegBtn>
             ))}
+          </CfgRow>
+
+          <CfgRow label="Нарастание темпа">
+            <SegBtn active={!escalate} onClick={() => setEscalate(false)}>Постоянный</SegBtn>
+            <SegBtn active={escalate}  onClick={() => setEscalate(true)}>Нарастающий</SegBtn>
           </CfgRow>
         </div>
       )}
