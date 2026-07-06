@@ -43,7 +43,8 @@ interface Flash    { x: number; y: number; r: number; op: number; ci: number }
 // ── Component ─────────────────────────────────────────────────────────────────
 export function ZenDropsGame() {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
-  const [showCfg, setShowCfg] = useState(false);
+  const [showCfg,   setShowCfg]   = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
   const [freq,  setFreq]  = useState<FreqKey>("normal");
   const [speed, setSpeed] = useState<SpeedKey>("normal");
   const [level, setLevel] = useState<LevelKey>(1);
@@ -255,15 +256,6 @@ export function ZenDropsGame() {
         ctx.font = "500 12px -apple-system"; ctx.fillStyle = "rgba(255,255,255,0.55)";
         ctx.textAlign = "left"; ctx.fillText(`×${merges[i]}`, x-7, 43);
       });
-      // Goal hint (shown until first merge)
-      const totalMerges = merges[0] + merges[1] + merges[2];
-      if (totalMerges === 0) {
-        ctx.font = "12px -apple-system, sans-serif";
-        ctx.fillStyle = "rgba(255,255,255,0.2)";
-        ctx.textAlign = "center";
-        ctx.fillText("Цель: кликни в поле — шар упадёт. Соединяй одинаковые", cx, H - 28);
-        ctx.fillText("шары одного цвета и размера — они сольются в больший", cx, H - 12);
-      }
       ctx.restore();
     }
 
@@ -394,6 +386,118 @@ export function ZenDropsGame() {
         </svg>
         Настройки
       </button>
+
+      {/* ── Intro overlay ──────────────────────────────────────────────────── */}
+      {showIntro && (
+        <div
+          onClick={() => setShowIntro(false)}
+          style={{
+            position: "absolute", inset: 0,
+            background: "rgba(4,3,12,0.88)",
+            backdropFilter: "blur(6px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 30, cursor: "pointer",
+            fontFamily: "-apple-system, sans-serif",
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "rgba(14,10,28,0.97)",
+              border: "1px solid rgba(168,148,230,0.22)",
+              borderRadius: 20, padding: "28px 28px 22px",
+              maxWidth: 340, width: "90%",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.7)",
+            }}
+          >
+            {/* Title */}
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#D4C8F0", letterSpacing: "0.04em" }}>
+                Zen Droplets
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(168,148,230,0.6)", marginTop: 3, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                как играть
+              </div>
+            </div>
+
+            {/* Step 1 */}
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 16 }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(168,148,230,0.15)", border: "1px solid rgba(168,148,230,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#A898E0", fontSize: 14, fontWeight: 700 }}>1</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#E0D8F8", marginBottom: 3 }}>Кликни в поле — шар упадёт</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>Шар следует за курсором. Нажми мышью или тапни — он полетит вниз</div>
+              </div>
+            </div>
+
+            {/* Step 2 — visual merge demo */}
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 16 }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(142,202,180,0.15)", border: "1px solid rgba(142,202,180,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#8ECAB4", fontSize: 14, fontWeight: 700 }}>2</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#E0D8F8", marginBottom: 6 }}>Одинаковые → сливаются в больший</div>
+                {/* Visual: two small + arrow + one big */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                  {/* Two small balls */}
+                  <svg width="52" height="26" viewBox="0 0 52 26">
+                    <circle cx="13" cy="13" r="11" fill="rgba(142,202,180,0.75)" stroke="rgba(172,232,210,0.9)" strokeWidth="1.2"/>
+                    <circle cx="39" cy="13" r="11" fill="rgba(142,202,180,0.75)" stroke="rgba(172,232,210,0.9)" strokeWidth="1.2"/>
+                  </svg>
+                  <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 16 }}>→</div>
+                  {/* One big ball */}
+                  <svg width="38" height="38" viewBox="0 0 38 38">
+                    <circle cx="19" cy="19" r="17" fill="rgba(142,202,180,0.75)" stroke="rgba(172,232,210,0.9)" strokeWidth="1.5"/>
+                  </svg>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", lineHeight: 1.4 }}>новый<br/>шар</div>
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>Одинаковый цвет + одинаковый размер = слияние. Шары растут через <span style={{ color: "rgba(168,148,230,0.8)" }}>8 уровней</span></div>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 20 }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(212,144,144,0.15)", border: "1px solid rgba(212,144,144,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#D49090", fontSize: 14, fontWeight: 700 }}>3</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#E0D8F8", marginBottom: 3 }}>Цель — вырасти до максимума</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>Стремись создать шар 8-го уровня. Нет проигрыша — только медитация 🌊</div>
+              </div>
+            </div>
+
+            {/* Size progression visual */}
+            <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 14px", marginBottom: 20 }}>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.28)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Рост шаров (8 уровней)</div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 5, justifyContent: "space-between" }}>
+                {[15,24,33,42,51,60,69,78].map((r, i) => {
+                  const scale = r / 78;
+                  const hues = [257, 160, 357];
+                  const h = hues[i % 3];
+                  return (
+                    <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                      <svg width={Math.round(scale * 26 + 4)} height={Math.round(scale * 26 + 4)} viewBox="0 0 30 30">
+                        <circle cx="15" cy="15" r={13 * scale + 2} fill={`hsla(${h},50%,70%,0.7)`} stroke={`hsla(${h},60%,80%,0.8)`} strokeWidth="1"/>
+                      </svg>
+                      <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)" }}>{i + 1}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Start button */}
+            <button
+              onClick={() => setShowIntro(false)}
+              style={{
+                width: "100%", padding: "11px", borderRadius: 12,
+                background: "linear-gradient(135deg, rgba(168,148,230,0.28) 0%, rgba(130,200,180,0.18) 100%)",
+                border: "1px solid rgba(168,148,230,0.4)",
+                color: "#D4C8F0", fontSize: 14, fontWeight: 700,
+                letterSpacing: "0.04em", cursor: "pointer",
+                fontFamily: "-apple-system, sans-serif",
+              }}
+            >
+              Начать
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Settings panel */}
       {showCfg && (
