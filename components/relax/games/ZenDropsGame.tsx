@@ -98,8 +98,45 @@ export function ZenDropsGame() {
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t+0.012); g.gain.exponentialRampToValueAtTime(0.001, t+dur);
       o.connect(g); g.connect(master!); g.connect(verb!); o.start(t); o.stop(t+dur+0.04);
     }
-    const sndMerge       = (ci: number, mc: number) => tone(PALETTE[ci].baseFreq * Math.pow(0.6, mc-1), 1.6, 0.22);
-    const sndBigHit      = (mc: number)              => tone(200 / (1 + mc*0.35), 0.7, 0.14);
+    const sndMerge = (ci: number, mc: number) => tone(PALETTE[ci].baseFreq * Math.pow(0.6, mc-1), 1.6, 0.22);
+
+    // Different-color balls bounce — crisp triangle tick
+    const sndDiffBounce = () => {
+      if (!ac || !master || !verb) return;
+      if (ac.state === "suspended") void ac.resume();
+      const t = ac.currentTime, freq = 680 + Math.random() * 320;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "triangle"; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.09, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+      o.connect(g); g.connect(master!); g.connect(verb!); o.start(t); o.stop(t + 0.14);
+    };
+
+    // Same-color different-size repel — warmer harmonic bounce
+    const sndSameRepel = (ci: number) => {
+      if (!ac || !master || !verb) return;
+      if (ac.state === "suspended") void ac.resume();
+      const t = ac.currentTime, base = PALETTE[ci].baseFreq * 1.33;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(base * 1.06, t); o.frequency.exponentialRampToValueAtTime(base, t + 0.15);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.11, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      o.connect(g); g.connect(master!); g.connect(verb!); o.start(t); o.stop(t + 0.24);
+    };
+
+    // Ball lands on floor missing all others — soft low thud
+    const sndFloorHit = (mc: number) => {
+      if (!ac || !master || !verb) return;
+      if (ac.state === "suspended") void ac.resume();
+      const t = ac.currentTime, freq = Math.max(40, 95 - mc * 5);
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(freq * 1.8, t); o.frequency.exponentialRampToValueAtTime(freq, t + 0.05);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.13, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      o.connect(g); g.connect(master!); g.connect(verb!); o.start(t); o.stop(t + 0.18);
+    };
 
     // ── Game state ────────────────────────────────────────────────────────────
     let balls: Ball[]      = [];
@@ -139,7 +176,10 @@ export function ZenDropsGame() {
       balls.forEach(b => {
         if (b.merged) return;
         b.vy += grav * dt; b.x += b.vx * dt; b.y += b.vy * dt;
-        if (b.y + b.r > floor) { b.y = floor - b.r; b.vy = -Math.abs(b.vy)*DAMPING; b.vx *= FRICTION; }
+        if (b.y + b.r > floor) {
+          if (b.vy > 95 && b.canHit(-1)) { b.regHit(-1); sndFloorHit(b.mc); }
+          b.y = floor - b.r; b.vy = -Math.abs(b.vy)*DAMPING; b.vx *= FRICTION;
+        }
         if (b.x - b.r < FL)   { b.x = FL + b.r;    b.vx =  Math.abs(b.vx)*DAMPING; }
         if (b.x + b.r > FR)   { b.x = FR - b.r;    b.vx = -Math.abs(b.vx)*DAMPING; }
       });
@@ -156,10 +196,10 @@ export function ZenDropsGame() {
             if (rv < 0) { const imp=rv*(1+DAMPING)*0.5; a.vx+=imp*nx; a.vy+=imp*ny; b.vx-=imp*nx; b.vy-=imp*ny; }
             if (a.canHit(b.id)) {
               a.regHit(b.id); b.regHit(a.id);
-              const same=a.ci===b.ci, willMerge=same&&a.mc===b.mc;
+              const same = a.ci === b.ci, willMerge = same && a.mc === b.mc;
               if (!willMerge) {
-                const big=Math.max(a.mc,b.mc), small=Math.min(a.mc,b.mc);
-                if (big>=2&&big>small+1) sndBigHit(big);
+                if (!same) sndDiffBounce();
+                else       sndSameRepel(a.ci);
               }
             }
           }
