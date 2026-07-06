@@ -2,18 +2,20 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { X } from "lucide-react";
-import { FluidGame }    from "./games/FluidGame";
-import { SoundsGame }   from "./games/SoundsGame";
-import { ZenDropsGame } from "./games/ZenDropsGame";
-import { TheWayGame }   from "./games/TheWayGame";
+import { FluidGame }          from "./games/FluidGame";
+import { SoundsGame }         from "./games/SoundsGame";
+import { ZenDropsGame }       from "./games/ZenDropsGame";
+import { EmpathyGardenGame }  from "./games/EmpathyGardenGame";
+import { InnerLightGame }     from "./games/InnerLightGame";
 
-type Tab = "fluid" | "sounds" | "drops" | "theway";
+type Tab = "fluid" | "sounds" | "drops" | "garden" | "light";
 
 const TABS: { id: Tab; label: string; sub: string }[] = [
-  { id: "fluid",  label: "Flows",       sub: "WebGL"   },
-  { id: "sounds", label: "Orbitals",    sub: "Canvas"  },
-  { id: "drops",  label: "Zen Droplets", sub: "Physics" },
-  { id: "theway", label: "The Way",     sub: "Swarm"   },
+  { id: "fluid",  label: "Flows",          sub: "WebGL"    },
+  { id: "sounds", label: "Orbitals",       sub: "Canvas"   },
+  { id: "drops",  label: "Zen Droplets",   sub: "Physics"  },
+  { id: "garden", label: "Empathy Garden", sub: "Swarm"    },
+  { id: "light",  label: "Inner Light",    sub: "Mandala"  },
 ];
 
 interface Props {
@@ -31,8 +33,6 @@ export function RelaxScene({ onClose }: Props) {
     return () => window.removeEventListener("keydown", h);
   }, [handleEsc]);
 
-  const immersive = tab === "theway";
-
   return (
     <div
       style={{
@@ -45,8 +45,7 @@ export function RelaxScene({ onClose }: Props) {
         overflow: "hidden",
       }}
     >
-      {/* ── Top bar — hidden in immersive mode ───────────────────────────────── */}
-      {!immersive && (
+      {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <div
         style={{
           position: "relative",
@@ -150,10 +149,9 @@ export function RelaxScene({ onClose }: Props) {
           </button>
         )}
       </div>
-      )}
 
       {/* ── Game area ────────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, position: "relative", overflow: "hidden", marginTop: immersive ? 0 : 8 }}>
+      <div style={{ flex: 1, position: "relative", overflow: "hidden", marginTop: 8 }}>
         {/* Flows — always mounted (keeps WebGL alive) */}
         <div style={{ position: "absolute", inset: 0, display: tab === "fluid" ? "block" : "none" }}>
           <FluidGame onEsc={handleEsc} />
@@ -171,9 +169,15 @@ export function RelaxScene({ onClose }: Props) {
           </div>
         )}
 
-        {tab === "theway" && (
+        {tab === "garden" && (
           <div style={{ position: "absolute", inset: 0 }}>
-            <TheWayGame onBack={() => setTab("fluid")} />
+            <EmpathyGardenGame />
+          </div>
+        )}
+
+        {tab === "light" && (
+          <div style={{ position: "absolute", inset: 0 }}>
+            <InnerLightGame />
           </div>
         )}
       </div>

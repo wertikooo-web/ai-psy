@@ -97,8 +97,6 @@ export function ZenDropsGame() {
       o.connect(g); g.connect(master!); g.connect(verb!); o.start(t); o.stop(t+dur+0.04);
     }
     const sndMerge       = (ci: number, mc: number) => tone(PALETTE[ci].baseFreq * Math.pow(0.6, mc-1), 1.6, 0.22);
-    const sndSameContact = (ci: number)              => tone(PALETTE[ci].baseFreq * 1.5, 0.25, 0.07, "triangle");
-    const sndDiffContact = ()                        => tone(160, 0.35, 0.10, "triangle");
     const sndBigHit      = (mc: number)              => tone(200 / (1 + mc*0.35), 0.7, 0.14);
 
     // ── Game state ────────────────────────────────────────────────────────────
@@ -160,8 +158,6 @@ export function ZenDropsGame() {
               if (!willMerge) {
                 const big=Math.max(a.mc,b.mc), small=Math.min(a.mc,b.mc);
                 if (big>=2&&big>small+1) sndBigHit(big);
-                else if (same) sndSameContact(a.ci);
-                else sndDiffContact();
               }
             }
           }
@@ -259,6 +255,15 @@ export function ZenDropsGame() {
         ctx.font = "500 12px -apple-system"; ctx.fillStyle = "rgba(255,255,255,0.55)";
         ctx.textAlign = "left"; ctx.fillText(`×${merges[i]}`, x-7, 43);
       });
+      // Goal hint (shown until first merge)
+      const totalMerges = merges[0] + merges[1] + merges[2];
+      if (totalMerges === 0) {
+        ctx.font = "12px -apple-system, sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.2)";
+        ctx.textAlign = "center";
+        ctx.fillText("Цель: кликни в поле — шар упадёт. Соединяй одинаковые", cx, H - 28);
+        ctx.fillText("шары одного цвета и размера — они сольются в больший", cx, H - 12);
+      }
       ctx.restore();
     }
 

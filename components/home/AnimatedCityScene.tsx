@@ -1474,10 +1474,11 @@ function LoveRunner({ active, onDone }: { active: boolean; onDone: () => void })
   }, [active, onDone]);
 
   if (!animName) return null;
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
   return (
     <div style={{
       position:      "absolute",
-      bottom:        "4.5%",
+      bottom:        isMobile ? "calc(4.5% + 5mm)" : "4.5%",
       left:          0,
       pointerEvents: "none",
       zIndex:        4,

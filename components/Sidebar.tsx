@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -11,6 +11,12 @@ import {
 } from "lucide-react";
 import { UploadModal } from "@/components/upload/UploadModal";
 import { UserChip } from "@/components/UserChip";
+import {
+  type CityAnimationSettings,
+  type CityIntensity,
+  DEFAULT_CITY_ANIMATION_SETTINGS,
+  CITY_ANIM_STORAGE_KEY,
+} from "@/lib/city-animation/types";
 
 export type SidebarMode = "full" | "decorative" | "hidden";
 
@@ -115,7 +121,7 @@ function DecoBtn({
 }
 
 // ── Nav groups ────────────────────────────────────────────────────────────────
-function NavGroups({ onNavigate, onUpload, onSearch, onRelax }: { onNavigate?: () => void; onUpload: () => void; onSearch?: () => void; onRelax?: () => void }) {
+function NavGroups({ onNavigate, onUpload, onSearch, onRelax, showRelax = true }: { onNavigate?: () => void; onUpload: () => void; onSearch?: () => void; onRelax?: () => void; showRelax?: boolean }) {
   return (
     <nav className="flex-1 min-h-0 px-3 py-2 overflow-y-hidden flex flex-col gap-1">
 
@@ -180,29 +186,154 @@ function NavGroups({ onNavigate, onUpload, onSearch, onRelax }: { onNavigate?: (
         ))}
 
         {/* ── RELAX — below Помощь ─────────────────────────────────── */}
-        <button
-          onClick={() => { onRelax?.(); }}
-          className="w-full flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all"
-          style={{
-            background: "linear-gradient(135deg, rgba(168,148,230,0.11) 0%, rgba(130,200,180,0.08) 100%)",
-            border: "1px solid rgba(168,148,230,0.2)",
-            color: "#9A8EC8",
-            letterSpacing: "0.05em",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "linear-gradient(135deg, rgba(168,148,230,0.2) 0%, rgba(130,200,180,0.14) 100%)";
-            e.currentTarget.style.borderColor = "rgba(168,148,230,0.32)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "linear-gradient(135deg, rgba(168,148,230,0.11) 0%, rgba(130,200,180,0.08) 100%)";
-            e.currentTarget.style.borderColor = "rgba(168,148,230,0.2)";
-          }}
-        >
-          <Sparkles size={16} strokeWidth={1.8} />
-          RELAX
-        </button>
+        {showRelax && (
+          <button
+            onClick={() => { onRelax?.(); }}
+            className="w-full flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all"
+            style={{
+              background: "linear-gradient(135deg, rgba(168,148,230,0.11) 0%, rgba(130,200,180,0.08) 100%)",
+              border: "1px solid rgba(168,148,230,0.2)",
+              color: "#9A8EC8",
+              letterSpacing: "0.05em",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "linear-gradient(135deg, rgba(168,148,230,0.2) 0%, rgba(130,200,180,0.14) 100%)";
+              e.currentTarget.style.borderColor = "rgba(168,148,230,0.32)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "linear-gradient(135deg, rgba(168,148,230,0.11) 0%, rgba(130,200,180,0.08) 100%)";
+              e.currentTarget.style.borderColor = "rgba(168,148,230,0.2)";
+            }}
+          >
+            <Sparkles size={16} strokeWidth={1.8} />
+            RELAX
+          </button>
+        )}
       </div>
     </nav>
+  );
+}
+
+// ── Mobile animation settings panel ──────────────────────────────────────────
+function readAnimSettings(): CityAnimationSettings {
+  if (typeof window === "undefined") return DEFAULT_CITY_ANIMATION_SETTINGS;
+  try {
+    const raw = localStorage.getItem(CITY_ANIM_STORAGE_KEY);
+    if (raw) return { ...DEFAULT_CITY_ANIMATION_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  return DEFAULT_CITY_ANIMATION_SETTINGS;
+}
+
+function MobileAnimPanel({ onRelax, onClose }: { onRelax?: () => void; onClose?: () => void }) {
+  const [settings, setSettings] = useState<CityAnimationSettings>(DEFAULT_CITY_ANIMATION_SETTINGS);
+
+  useEffect(() => {
+    setSettings(readAnimSettings());
+  }, []);
+
+  const save = useCallback((next: CityAnimationSettings) => {
+    setSettings(next);
+    try {
+      localStorage.setItem(CITY_ANIM_STORAGE_KEY, JSON.stringify(next));
+      window.dispatchEvent(new StorageEvent("storage", {
+        key: CITY_ANIM_STORAGE_KEY,
+        newValue: JSON.stringify(next),
+      }));
+    } catch {}
+  }, []);
+
+  const INTENSITY_LABELS: Record<CityIntensity, string> = { quiet: "Тихо", normal: "Обычно", lively: "Оживлённо" };
+
+  return (
+    <div style={{ padding: "12px 12px 4px", borderTop: "1px solid #E5E5E5" }}>
+      {/* Section header */}
+      <div style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
+        Анимация города
+      </div>
+
+      {/* Enable toggle row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <span style={{ fontSize: 13, color: "#4B5563", fontWeight: 500 }}>Включена</span>
+        <button
+          role="switch"
+          aria-checked={settings.animationEnabled}
+          onClick={() => save({ ...settings, animationEnabled: !settings.animationEnabled })}
+          style={{
+            position: "relative", width: 38, height: 21, borderRadius: 11,
+            border: "none", cursor: "pointer", flexShrink: 0,
+            background: settings.animationEnabled ? "#6B5D4F" : "#D1D5DB",
+            transition: "background 0.2s",
+          }}
+        >
+          <span style={{
+            position: "absolute", top: 2,
+            left: settings.animationEnabled ? 19 : 2,
+            width: 17, height: 17, borderRadius: "50%",
+            background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+            transition: "left 0.2s",
+          }} />
+        </button>
+      </div>
+
+      {/* Intensity row */}
+      {settings.animationEnabled && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <span style={{ fontSize: 12, color: "#6B7280" }}>Интенсивность</span>
+          <div style={{ display: "flex", border: "1px solid #E5E5E5", borderRadius: 7, overflow: "hidden" }}>
+            {(["quiet", "normal", "lively"] as CityIntensity[]).map(k => (
+              <button
+                key={k}
+                onClick={() => save({ ...settings, intensity: k })}
+                style={{
+                  padding: "3px 8px", fontSize: 11, border: "none", cursor: "pointer",
+                  background: settings.intensity === k ? "#6B5D4F" : "#F9FAFB",
+                  color: settings.intensity === k ? "#fff" : "#6B7280",
+                  borderRight: k !== "lively" ? "1px solid #E5E5E5" : "none",
+                  transition: "all 0.15s",
+                }}
+              >
+                {INTENSITY_LABELS[k]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* RELAX button */}
+      <button
+        onClick={() => { onRelax?.(); onClose?.(); }}
+        style={{
+          width: "100%",
+          padding: "10px 16px",
+          marginTop: 4,
+          marginBottom: 8,
+          borderRadius: 12,
+          border: "1px solid rgba(168,148,230,0.28)",
+          background: "linear-gradient(135deg, rgba(168,148,230,0.18) 0%, rgba(130,200,180,0.12) 100%)",
+          color: "#9A8EC8",
+          fontSize: 14,
+          fontWeight: 700,
+          letterSpacing: "0.06em",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          transition: "all 0.18s",
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = "linear-gradient(135deg, rgba(168,148,230,0.28) 0%, rgba(130,200,180,0.2) 100%)";
+          e.currentTarget.style.borderColor = "rgba(168,148,230,0.45)";
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = "linear-gradient(135deg, rgba(168,148,230,0.18) 0%, rgba(130,200,180,0.12) 100%)";
+          e.currentTarget.style.borderColor = "rgba(168,148,230,0.28)";
+        }}
+      >
+        <Sparkles size={16} strokeWidth={1.8} />
+        RELAX — Медитативные игры
+      </button>
+    </div>
   );
 }
 
@@ -461,7 +592,12 @@ export function Sidebar({ open, onClose, mode, onModeChange, onSearch }: Sidebar
               onNavigate={onClose}
               onUpload={() => setUploadOpen(true)}
               onSearch={onSearch}
-              onRelax={() => { onClose?.(); router.push("/relax"); }}
+              showRelax={false}
+            />
+
+            <MobileAnimPanel
+              onRelax={() => router.push("/relax")}
+              onClose={onClose}
             />
 
             <div className="px-3 py-3" style={{ borderTop: `1px solid ${C.border}` }}>
