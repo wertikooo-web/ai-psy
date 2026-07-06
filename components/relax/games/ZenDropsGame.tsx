@@ -11,7 +11,7 @@ const PALETTE = [
 
 function bR(mc: number) { return 15 + mc * 9; }
 
-const GRAVITY_BASE = 820;
+const GRAVITY_BASE = 410;
 const DAMPING  = 0.36;
 const FRICTION = 0.87;
 const ITERS    = 4;
@@ -37,7 +37,7 @@ class Ball {
   regHit(id: number) { this.hits.set(id, Date.now()); }
 }
 
-interface DropSlot { ball: Ball; holdT: number; fallV: number; done: boolean }
+interface DropSlot { ball: Ball; done: boolean }
 interface Flash    { x: number; y: number; r: number; op: number; ci: number }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -59,6 +59,7 @@ export function ZenDropsGame() {
 
     let W = 0, H = 0;
     let FL = 0, FR = 0, FW = 0; // field left / right / width
+    let cursorX = 0;
 
     function resize() {
       W  = canvas!.width  = canvas!.offsetWidth;
@@ -66,6 +67,7 @@ export function ZenDropsGame() {
       FW = Math.round(W / 3);
       FL = Math.round((W - FW) / 2);
       FR = FL + FW;
+      if (cursorX === 0) cursorX = FL + FW / 2;
     }
     resize();
     const ro = new ResizeObserver(resize);
@@ -105,7 +107,6 @@ export function ZenDropsGame() {
     let flashes: Flash[]   = [];
     const merges           = [0, 0, 0];
     let elapsedMs          = 0;
-    let dragIdx            = -1;    // which slot is being dragged
     let waitTimer          = 0;     // time waiting for next batch
     let batchTimer         = 0;     // time within current batch spawn
     let batchSpawned       = 0;     // how many spawned in current batch
@@ -114,21 +115,19 @@ export function ZenDropsGame() {
     function randColor() { return Math.floor(Math.random() * 3); }
     function clampX(x: number, r: number) { return Math.max(FL + r + 3, Math.min(FR - r - 3, x)); }
 
-    function addSlot() {
-      const r  = bR(0);
-      const xR = Math.random();
-      const x  = FL + r + 8 + xR * (FW - 2*r - 16);
-      slots.push({ ball: new Ball(x, r + 22, randColor()), holdT: 0, fallV: 0, done: false });
+    function addSlot(xHint?: number) {
+      const r = bR(0);
+      const x = xHint !== undefined ? xHint : FL + FW / 2;
+      slots.push({ ball: new Ball(x, r + 72, randColor()), done: false });
     }
-    addSlot(); // initial
+    addSlot(FL + FW / 2); // initial
 
     function commitSlot(s: DropSlot) {
       if (s.done) return;
       s.done = true;
       const b  = s.ball;
       const sm = SPEED_MUL[cfgRef.current.speed];
-      b.y  = bR(b.mc) + 22;
-      b.vy = Math.max(s.fallV, 90) * sm;
+      b.vy = 60 * sm;
       b.vx = 0;
       balls.push(b);
     }
@@ -193,28 +192,24 @@ export function ZenDropsGame() {
       if ("touches" in e) { const t=(e as TouchEvent).touches[0]??(e as TouchEvent).changedTouches[0]; return t.clientX-r.left; }
       return (e as MouseEvent).clientX - r.left;
     }
+    function onMove(e: MouseEvent|TouchEvent) {
+      const cx = rawX(e);
+      if (cx >= FL && cx <= FR) cursorX = cx;
+    }
     function onDown(e: MouseEvent|TouchEvent) {
       if ("touches" in e) (e as TouchEvent).preventDefault();
       bootAudio();
       const cx = rawX(e);
-      let best = -1, bestD = 80;
-      slots.forEach((s, i) => { if (s.done) return; const d=Math.abs(s.ball.x-cx); if (d<bestD){bestD=d;best=i;} });
-      if (best >= 0) { dragIdx = best; slots[best].holdT = 0; slots[best].fallV = 0; }
+      if (cx < FL || cx > FR) return;
+      cursorX = cx;
+      const s = slots.find(sl => !sl.done);
+      if (s) { s.ball.x = clampX(cx, s.ball.r); commitSlot(s); }
     }
-    function onMove(e: MouseEvent|TouchEvent) {
-      if (dragIdx < 0) return;
-      if ("touches" in e) (e as TouchEvent).preventDefault();
-      const s = slots[dragIdx]; if (!s||s.done) return;
-      s.ball.x = clampX(rawX(e), s.ball.r);
-    }
-    function onUp() { if (dragIdx >= 0) { const s=slots[dragIdx]; if (s&&!s.done) commitSlot(s); dragIdx=-1; } }
 
     canvas.addEventListener("mousedown", onDown);
     canvas.addEventListener("mousemove", onMove);
-    canvas.addEventListener("mouseup",   onUp);
     canvas.addEventListener("touchstart", onDown as EventListener, { passive: false });
     canvas.addEventListener("touchmove",  onMove as EventListener, { passive: false });
-    canvas.addEventListener("touchend",   onUp);
 
     // ── Draw ──────────────────────────────────────────────────────────────────
     function drawBall(b: Ball, alpha = 1) {
@@ -276,18 +271,12 @@ export function ZenDropsGame() {
       elapsedMs += dt * 1000;
 
       const cfg = cfgRef.current;
-      const sm  = SPEED_MUL[cfg.speed];
 
-      // Update held slots: auto-fall after 1 second
-      slots.forEach(s => {
-        if (s.done) return;
-        s.holdT += dt;
-        if (s.holdT > 1.0) {
-          s.fallV = Math.min(s.fallV + GRAVITY_BASE * sm * dt * 0.22, 520 * sm);
-          s.ball.y += s.fallV * dt;
-          if (s.ball.y + s.ball.r > H - 4) commitSlot(s);
-        }
-      });
+      // First active slot follows cursor
+      const firstActive = slots.find(s => !s.done);
+      if (firstActive && cursorX > 0) {
+        firstActive.ball.x = clampX(cursorX, firstActive.ball.r);
+      }
 
       // Remove committed slots
       slots = slots.filter(s => !s.done);
@@ -302,8 +291,13 @@ export function ZenDropsGame() {
       if (inBatch) {
         batchTimer += dt;
         const toSpawn = cfg.level;
+        const xPos = toSpawn === 1
+          ? [FL + FW / 2]
+          : toSpawn === 2
+          ? [FL + FW * 0.33, FL + FW * 0.67]
+          : [FL + FW * 0.25, FL + FW * 0.50, FL + FW * 0.75];
         while (batchSpawned < toSpawn && batchTimer >= batchSpawned * 0.48) {
-          addSlot(); batchSpawned++;
+          addSlot(xPos[batchSpawned]); batchSpawned++;
         }
         if (batchSpawned >= toSpawn) inBatch = false;
       }
@@ -361,10 +355,8 @@ export function ZenDropsGame() {
       ro.disconnect();
       canvas.removeEventListener("mousedown", onDown);
       canvas.removeEventListener("mousemove", onMove);
-      canvas.removeEventListener("mouseup",   onUp);
       canvas.removeEventListener("touchstart", onDown as EventListener);
       canvas.removeEventListener("touchmove",  onMove as EventListener);
-      canvas.removeEventListener("touchend",   onUp);
       ac?.close();
     };
   }, []);
