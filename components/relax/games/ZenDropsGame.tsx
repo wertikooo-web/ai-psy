@@ -203,10 +203,19 @@ export function ZenDropsGame() {
       if (s) { s.ball.x = clampX(cx, s.ball.r); commitSlot(s); }
     }
 
+    function onKey(e: KeyboardEvent) {
+      if (e.code !== "Space") return;
+      e.preventDefault();
+      bootAudio();
+      const s = slots.find(sl => !sl.done);
+      if (s) { s.ball.x = clampX(cursorX, s.ball.r); commitSlot(s); }
+    }
+
     canvas.addEventListener("mousedown", onDown);
     canvas.addEventListener("mousemove", onMove);
     canvas.addEventListener("touchstart", onDown as EventListener, { passive: false });
     canvas.addEventListener("touchmove",  onMove as EventListener, { passive: false });
+    window.addEventListener("keydown", onKey);
 
     // ── Draw ──────────────────────────────────────────────────────────────────
     function drawBall(b: Ball, alpha = 1) {
@@ -354,6 +363,7 @@ export function ZenDropsGame() {
       canvas.removeEventListener("mousemove", onMove);
       canvas.removeEventListener("touchstart", onDown as EventListener);
       canvas.removeEventListener("touchmove",  onMove as EventListener);
+      window.removeEventListener("keydown", onKey);
       ac?.close();
     };
   }, []);
@@ -424,8 +434,8 @@ export function ZenDropsGame() {
             <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 16 }}>
               <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(168,148,230,0.15)", border: "1px solid rgba(168,148,230,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#A898E0", fontSize: 14, fontWeight: 700 }}>1</div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#E0D8F8", marginBottom: 3 }}>Кликни в поле — шар упадёт</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>Шар следует за курсором. Нажми мышью или тапни — он полетит вниз</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#E0D8F8", marginBottom: 3 }}>Кликни или нажми Пробел — шар упадёт</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>Шар следует за курсором. Клик мышью, тап или <kbd style={{ background: "rgba(168,148,230,0.18)", border: "1px solid rgba(168,148,230,0.3)", borderRadius: 4, padding: "1px 5px", fontSize: 11, color: "#C4B8E8", fontFamily: "monospace" }}>Space</kbd> — бросить</div>
               </div>
             </div>
 
