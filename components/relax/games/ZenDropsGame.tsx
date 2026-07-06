@@ -1,51 +1,56 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-// ── 3-colour palette ──────────────────────────────────────────────────────────
+// ── Palette ───────────────────────────────────────────────────────────────────
 const PALETTE = [
-  { fill: "rgba(180,160,212,0.82)", stroke: "rgba(210,190,240,0.95)", glow: "rgba(180,160,212,0.38)", baseFreq: 440.00, label: "лаванда" },  // lavender
-  { fill: "rgba(142,202,180,0.82)", stroke: "rgba(172,232,210,0.95)", glow: "rgba(142,202,180,0.38)", baseFreq: 329.63, label: "сила"      },  // seafoam
-  { fill: "rgba(212,144,144,0.82)", stroke: "rgba(242,174,174,0.95)", glow: "rgba(212,144,144,0.38)", baseFreq: 261.63, label: "роза"      },  // rose
+  { fill: "rgba(180,160,212,0.82)", stroke: "rgba(210,190,240,0.95)", glow: "rgba(180,160,212,0.38)", baseFreq: 440.00 },
+  { fill: "rgba(142,202,180,0.82)", stroke: "rgba(172,232,210,0.95)", glow: "rgba(142,202,180,0.38)", baseFreq: 329.63 },
+  { fill: "rgba(212,144,144,0.82)", stroke: "rgba(242,174,174,0.95)", glow: "rgba(212,144,144,0.38)", baseFreq: 261.63 },
 ] as const;
 
-// ── Sizes by merge count ──────────────────────────────────────────────────────
 function bR(mc: number) { return 15 + mc * 9; }
 
-// ── Physics constants ─────────────────────────────────────────────────────────
-const GRAVITY   = 820;
-const DAMPING   = 0.36;
-const FRICTION  = 0.87;
-const ITERS     = 4;
-const WALL      = 3;
+const GRAVITY_BASE = 820;
+const DAMPING  = 0.36;
+const FRICTION = 0.87;
+const ITERS    = 4;
+const WALL     = 3;
 
-// ── Ball class ────────────────────────────────────────────────────────────────
+type FreqKey  = "slow" | "normal" | "fast";
+type SpeedKey = "slow" | "normal" | "fast";
+type LevelKey = 1 | 2 | 3;
+
+const FREQ_INT:  Record<FreqKey,  number> = { slow: 4.2, normal: 2.2, fast: 0.9 };
+const SPEED_MUL: Record<SpeedKey, number> = { slow: 0.55, normal: 1.0, fast: 1.65 };
+
+// ── Ball ──────────────────────────────────────────────────────────────────────
 class Ball {
   static _id = 0;
   id = Ball._id++;
-  vx = 0; vy = 0;
-  merged = false;
-  pulseT = 0;
-  r: number;
-  hits = new Map<number, number>();  // id → timestamp
-
-  constructor(
-    public x: number,
-    public y: number,
-    public ci: number,          // colour index
-    public mc = 0,              // merge count
-  ) { this.r = bR(mc); }
-
+  vx = 0; vy = 0; merged = false; pulseT = 0; r: number;
+  hits = new Map<number, number>();
+  constructor(public x: number, public y: number, public ci: number, public mc = 0) {
+    this.r = bR(mc);
+  }
   canHit(id: number) { return Date.now() - (this.hits.get(id) ?? 0) > 380; }
   regHit(id: number) { this.hits.set(id, Date.now()); }
 }
 
-// ── Flash effect ──────────────────────────────────────────────────────────────
-interface Flash { x: number; y: number; r: number; op: number; ci: number }
+interface DropSlot { ball: Ball; holdT: number; fallV: number; done: boolean }
+interface Flash    { x: number; y: number; r: number; op: number; ci: number }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function ZenDropsGame() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef   = useRef<HTMLCanvasElement>(null);
+  const [showCfg, setShowCfg] = useState(false);
+  const [freq,  setFreq]  = useState<FreqKey>("normal");
+  const [speed, setSpeed] = useState<SpeedKey>("normal");
+  const [level, setLevel] = useState<LevelKey>(1);
+
+  // Settings live-ref so game loop reads latest without re-creating
+  const cfgRef = useRef({ freq, speed, level });
+  useEffect(() => { cfgRef.current = { freq, speed, level }; }, [freq, speed, level]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -53,7 +58,15 @@ export function ZenDropsGame() {
     const ctx = canvas.getContext("2d")!;
 
     let W = 0, H = 0;
-    function resize() { W = canvas!.width = canvas!.offsetWidth; H = canvas!.height = canvas!.offsetHeight; }
+    let FL = 0, FR = 0, FW = 0; // field left / right / width
+
+    function resize() {
+      W  = canvas!.width  = canvas!.offsetWidth;
+      H  = canvas!.height = canvas!.offsetHeight;
+      FW = Math.round(W / 3);
+      FL = Math.round((W - FW) / 2);
+      FR = FL + FW;
+    }
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
@@ -65,138 +78,91 @@ export function ZenDropsGame() {
 
     function bootAudio() {
       if (ac) return;
-      ac = new AudioContext();
-      master = ac.createGain(); master.gain.value = 0.45;
+      ac = new AudioContext(); master = ac.createGain(); master.gain.value = 0.45;
       const sr = ac.sampleRate, len = Math.floor(sr * 1.8);
       const buf = ac.createBuffer(2, len, sr);
-      for (let c = 0; c < 2; c++) {
-        const d = buf.getChannelData(c);
-        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.8);
-      }
+      for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/len,2.8); }
       verb = ac.createConvolver(); verb.buffer = buf;
       const rg = ac.createGain(); rg.gain.value = 0.28;
-      verb.connect(rg); rg.connect(ac.destination);
-      master.connect(ac.destination);
+      verb.connect(rg); rg.connect(ac.destination); master.connect(ac.destination);
     }
-
-    function tone(freq: number, dur: number, vol: number, type: OscillatorType = "sine") {
+    function tone(f: number, dur: number, vol: number, type: OscillatorType = "sine") {
       if (!ac || !master || !verb) return;
       if (ac.state === "suspended") void ac.resume();
-      const t = ac.currentTime;
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.type = type; o.frequency.setValueAtTime(freq, t);
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(vol, t + 0.012);
-      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      o.connect(g); g.connect(master!); g.connect(verb!);
-      o.start(t); o.stop(t + dur + 0.04);
+      const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.setValueAtTime(f, t);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t+0.012); g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+      o.connect(g); g.connect(master!); g.connect(verb!); o.start(t); o.stop(t+dur+0.04);
     }
-
-    // 1. Same-colour merge → crystal tone per colour, lower octave for bigger ball
-    function sndMerge(ci: number, newMc: number) {
-      const f = PALETTE[ci].baseFreq * Math.pow(0.6, newMc - 1);
-      tone(f, 1.6, 0.22);
-    }
-    // 2. Same-colour contact (different sizes, no merge) → soft ping
-    function sndSameContact(ci: number) {
-      tone(PALETTE[ci].baseFreq * 1.5, 0.25, 0.07, "triangle");
-    }
-    // 3. Different-colour contact → muted thud
-    function sndDiffContact() {
-      tone(160, 0.35, 0.10, "triangle");
-    }
-    // 4. Hitting a larger ball → deep rumble, lower with each size level
-    function sndLargeBallHit(targetMc: number) {
-      const f = 200 / (1 + targetMc * 0.35);
-      tone(f, 0.7, 0.14, "sine");
-    }
+    const sndMerge       = (ci: number, mc: number) => tone(PALETTE[ci].baseFreq * Math.pow(0.6, mc-1), 1.6, 0.22);
+    const sndSameContact = (ci: number)              => tone(PALETTE[ci].baseFreq * 1.5, 0.25, 0.07, "triangle");
+    const sndDiffContact = ()                        => tone(160, 0.35, 0.10, "triangle");
+    const sndBigHit      = (mc: number)              => tone(200 / (1 + mc*0.35), 0.7, 0.14);
 
     // ── Game state ────────────────────────────────────────────────────────────
-    let balls: Ball[] = [];
-    let dropBall: Ball | null = null;   // player-controlled held ball
-    let dropX = W / 2;
-    let dragging = false;
-    let holdTime  = 0;      // seconds since player stopped dragging
-    let autoFallV = 0;      // auto-fall velocity for held ball (rain mechanic)
-    let flashes: Flash[] = [];
-
-    const mergeCounts = [0, 0, 0];   // successful merges per colour
-    let elapsedMs = 0;
-
-    // Rain intensity
-    let spawnTimer = 0;
-    let spawnInterval = 2.8;          // seconds between auto-rain drops
-    const SPAWN_MIN = 0.35;
+    let balls: Ball[]      = [];
+    let slots: DropSlot[]  = [];
+    let flashes: Flash[]   = [];
+    const merges           = [0, 0, 0];
+    let elapsedMs          = 0;
+    let dragIdx            = -1;    // which slot is being dragged
+    let waitTimer          = 0;     // time waiting for next batch
+    let batchTimer         = 0;     // time within current batch spawn
+    let batchSpawned       = 0;     // how many spawned in current batch
+    let inBatch            = false;
 
     function randColor() { return Math.floor(Math.random() * 3); }
+    function clampX(x: number, r: number) { return Math.max(FL + r + 3, Math.min(FR - r - 3, x)); }
 
-    function newDropBall() {
-      dropX = W * 0.15 + Math.random() * W * 0.70;
-      dropBall = new Ball(dropX, bR(0) + 22, randColor());
-      holdTime = 0; autoFallV = 0;
+    function addSlot() {
+      const r  = bR(0);
+      const xR = Math.random();
+      const x  = FL + r + 8 + xR * (FW - 2*r - 16);
+      slots.push({ ball: new Ball(x, r + 22, randColor()), holdT: 0, fallV: 0, done: false });
     }
-    newDropBall();
+    addSlot(); // initial
 
-    function commitDrop() {
-      if (!dropBall) return;
-      const b = dropBall;
-      b.x = dropX;
-      b.y = bR(b.mc) + 22;
-      b.vy = Math.max(autoFallV, 90);
+    function commitSlot(s: DropSlot) {
+      if (s.done) return;
+      s.done = true;
+      const b  = s.ball;
+      const sm = SPEED_MUL[cfgRef.current.speed];
+      b.y  = bR(b.mc) + 22;
+      b.vy = Math.max(s.fallV, 90) * sm;
       b.vx = 0;
       balls.push(b);
-      dropBall = null;
-      setTimeout(newDropBall, 260);
     }
 
-    // ── Physics step ──────────────────────────────────────────────────────────
+    // ── Physics ───────────────────────────────────────────────────────────────
     function step(dt: number) {
+      const grav = GRAVITY_BASE * SPEED_MUL[cfgRef.current.speed];
       const floor = H - WALL;
       balls.forEach(b => {
         if (b.merged) return;
-        b.vy += GRAVITY * dt;
-        b.x  += b.vx * dt;
-        b.y  += b.vy * dt;
-        if (b.y + b.r > floor)     { b.y = floor - b.r;     b.vy = -Math.abs(b.vy) * DAMPING; b.vx *= FRICTION; }
-        if (b.x - b.r < WALL)      { b.x = WALL + b.r;      b.vx =  Math.abs(b.vx) * DAMPING; }
-        if (b.x + b.r > W - WALL)  { b.x = W - WALL - b.r;  b.vx = -Math.abs(b.vx) * DAMPING; }
+        b.vy += grav * dt; b.x += b.vx * dt; b.y += b.vy * dt;
+        if (b.y + b.r > floor) { b.y = floor - b.r; b.vy = -Math.abs(b.vy)*DAMPING; b.vx *= FRICTION; }
+        if (b.x - b.r < FL)   { b.x = FL + b.r;    b.vx =  Math.abs(b.vx)*DAMPING; }
+        if (b.x + b.r > FR)   { b.x = FR - b.r;    b.vx = -Math.abs(b.vx)*DAMPING; }
       });
-
       for (let it = 0; it < ITERS; it++) {
         for (let i = 0; i < balls.length; i++) {
           const a = balls[i]; if (a.merged) continue;
-          for (let j = i + 1; j < balls.length; j++) {
+          for (let j = i+1; j < balls.length; j++) {
             const b = balls[j]; if (b.merged) continue;
-            const dx = b.x - a.x, dy = b.y - a.y;
-            const d = Math.sqrt(dx * dx + dy * dy);
-            const min = a.r + b.r;
-            if (d >= min || d < 0.001) continue;
-            const nx = dx / d, ny = dy / d;
-            const pen = (min - d) * 0.5;
-            a.x -= nx * pen; a.y -= ny * pen;
-            b.x += nx * pen; b.y += ny * pen;
-            const rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
-            if (rv < 0) {
-              const imp = rv * (1 + DAMPING) * 0.5;
-              a.vx += imp * nx; a.vy += imp * ny;
-              b.vx -= imp * nx; b.vy -= imp * ny;
-            }
-
-            // ── Collision sounds (throttled) ──────────────────────────────
+            const dx = b.x-a.x, dy = b.y-a.y, d = Math.sqrt(dx*dx+dy*dy), mn = a.r+b.r;
+            if (d >= mn || d < 0.001) continue;
+            const nx = dx/d, ny = dy/d, pen = (mn-d)*0.5;
+            a.x -= nx*pen; a.y -= ny*pen; b.x += nx*pen; b.y += ny*pen;
+            const rv = (b.vx-a.vx)*nx + (b.vy-a.vy)*ny;
+            if (rv < 0) { const imp=rv*(1+DAMPING)*0.5; a.vx+=imp*nx; a.vy+=imp*ny; b.vx-=imp*nx; b.vy-=imp*ny; }
             if (a.canHit(b.id)) {
               a.regHit(b.id); b.regHit(a.id);
-              const sameColor = a.ci === b.ci;
-              const willMerge = sameColor && a.mc === b.mc;
+              const same=a.ci===b.ci, willMerge=same&&a.mc===b.mc;
               if (!willMerge) {
-                const bigMc = Math.max(a.mc, b.mc);
-                const smallMc = Math.min(a.mc, b.mc);
-                if (bigMc >= 2 && bigMc > smallMc + 1) {
-                  sndLargeBallHit(bigMc);
-                } else if (sameColor) {
-                  sndSameContact(a.ci);
-                } else {
-                  sndDiffContact();
-                }
+                const big=Math.max(a.mc,b.mc), small=Math.min(a.mc,b.mc);
+                if (big>=2&&big>small+1) sndBigHit(big);
+                else if (same) sndSameContact(a.ci);
+                else sndDiffContact();
               }
             }
           }
@@ -204,59 +170,44 @@ export function ZenDropsGame() {
       }
     }
 
-    // ── Merge detection ───────────────────────────────────────────────────────
     function checkMerges() {
       for (let i = 0; i < balls.length; i++) {
         const a = balls[i]; if (a.merged) continue;
-        for (let j = i + 1; j < balls.length; j++) {
-          const b = balls[j];
-          if (b.merged || b.ci !== a.ci || b.mc !== a.mc) continue;
-          const dx = b.x - a.x, dy = b.y - a.y;
-          if (Math.sqrt(dx * dx + dy * dy) > a.r + b.r + 2) continue;
-
-          const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-          const newMc = a.mc + 1;
-          flashes.push({ x: mx, y: my, r: a.r * 1.6, op: 0.92, ci: a.ci });
-          sndMerge(a.ci, newMc);
-          mergeCounts[a.ci]++;
-
-          a.merged = true; b.merged = true;
-          const nb = new Ball(mx, my, a.ci, Math.min(newMc, 7));
-          nb.vy = -110; nb.vx = (a.vx + b.vx) * 0.28; nb.pulseT = 1;
+        for (let j = i+1; j < balls.length; j++) {
+          const b = balls[j]; if (b.merged||b.ci!==a.ci||b.mc!==a.mc) continue;
+          if (Math.sqrt((b.x-a.x)**2+(b.y-a.y)**2) > a.r+b.r+2) continue;
+          const mx=(a.x+b.x)/2, my=(a.y+b.y)/2, nmc=a.mc+1;
+          flashes.push({x:mx,y:my,r:a.r*1.6,op:0.92,ci:a.ci});
+          sndMerge(a.ci,nmc); merges[a.ci]++;
+          a.merged=true; b.merged=true;
+          const nb=new Ball(mx,my,a.ci,Math.min(nmc,7)); nb.vy=-110; nb.vx=(a.vx+b.vx)*0.28; nb.pulseT=1;
           balls.push(nb);
         }
       }
-      balls = balls.filter(b => !b.merged);
+      balls = balls.filter(b=>!b.merged);
     }
 
     // ── Input ─────────────────────────────────────────────────────────────────
-    const MARGIN = 0.12;
-    function clampX(raw: number) {
-      const r = dropBall ? dropBall.r : bR(0);
-      return Math.max(W * MARGIN + r, Math.min(W * (1 - MARGIN) - r, raw));
+    function rawX(e: MouseEvent|TouchEvent): number {
+      const r = canvas!.getBoundingClientRect();
+      if ("touches" in e) { const t=(e as TouchEvent).touches[0]??(e as TouchEvent).changedTouches[0]; return t.clientX-r.left; }
+      return (e as MouseEvent).clientX - r.left;
     }
-    function rawX(e: MouseEvent | TouchEvent) {
-      const rect = canvas!.getBoundingClientRect();
-      if ("touches" in e) {
-        const t = (e as TouchEvent).touches[0] ?? (e as TouchEvent).changedTouches[0];
-        return t.clientX - rect.left;
-      }
-      return (e as MouseEvent).clientX - rect.left;
-    }
-    function onDown(e: MouseEvent | TouchEvent) {
+    function onDown(e: MouseEvent|TouchEvent) {
       if ("touches" in e) (e as TouchEvent).preventDefault();
       bootAudio();
-      dragging = true; holdTime = 0; autoFallV = 0;
-      dropX = clampX(rawX(e));
-      if (dropBall) { dropBall.x = dropX; dropBall.y = bR(dropBall.mc) + 22; }
+      const cx = rawX(e);
+      let best = -1, bestD = 80;
+      slots.forEach((s, i) => { if (s.done) return; const d=Math.abs(s.ball.x-cx); if (d<bestD){bestD=d;best=i;} });
+      if (best >= 0) { dragIdx = best; slots[best].holdT = 0; slots[best].fallV = 0; }
     }
-    function onMove(e: MouseEvent | TouchEvent) {
-      if (!dragging) return;
+    function onMove(e: MouseEvent|TouchEvent) {
+      if (dragIdx < 0) return;
       if ("touches" in e) (e as TouchEvent).preventDefault();
-      dropX = clampX(rawX(e));
-      if (dropBall) dropBall.x = dropX;
+      const s = slots[dragIdx]; if (!s||s.done) return;
+      s.ball.x = clampX(rawX(e), s.ball.r);
     }
-    function onUp() { if (dragging) { dragging = false; commitDrop(); } }
+    function onUp() { if (dragIdx >= 0) { const s=slots[dragIdx]; if (s&&!s.done) commitSlot(s); dragIdx=-1; } }
 
     canvas.addEventListener("mousedown", onDown);
     canvas.addEventListener("mousemove", onMove);
@@ -265,149 +216,145 @@ export function ZenDropsGame() {
     canvas.addEventListener("touchmove",  onMove as EventListener, { passive: false });
     canvas.addEventListener("touchend",   onUp);
 
-    // ── Draw helpers ──────────────────────────────────────────────────────────
+    // ── Draw ──────────────────────────────────────────────────────────────────
     function drawBall(b: Ball, alpha = 1) {
-      const pal = PALETTE[b.ci];
-      const r   = b.r + (b.pulseT > 0 ? b.pulseT * 10 : 0);
-      ctx.save(); ctx.globalAlpha = alpha;
-      // Glow
-      const g = ctx.createRadialGradient(b.x, b.y, r * 0.25, b.x, b.y, r * 2.3);
-      g.addColorStop(0, pal.glow); g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.beginPath(); ctx.arc(b.x, b.y, r * 2.3, 0, Math.PI * 2);
-      ctx.fillStyle = g; ctx.fill();
-      // Body
-      ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = pal.fill; ctx.strokeStyle = pal.stroke; ctx.lineWidth = 1.6;
-      ctx.fill(); ctx.stroke();
-      // Shine
-      const sh = ctx.createRadialGradient(b.x - r * 0.32, b.y - r * 0.38, 0, b.x, b.y, r);
-      sh.addColorStop(0, "rgba(255,255,255,0.38)"); sh.addColorStop(0.55, "rgba(255,255,255,0.06)"); sh.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = sh; ctx.fill();
+      const pal=PALETTE[b.ci], r=b.r+(b.pulseT>0?b.pulseT*10:0);
+      ctx.save(); ctx.globalAlpha=alpha;
+      const g=ctx.createRadialGradient(b.x,b.y,r*.25,b.x,b.y,r*2.3);
+      g.addColorStop(0,pal.glow); g.addColorStop(1,"rgba(0,0,0,0)");
+      ctx.beginPath(); ctx.arc(b.x,b.y,r*2.3,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+      ctx.beginPath(); ctx.arc(b.x,b.y,r,0,Math.PI*2);
+      ctx.fillStyle=pal.fill; ctx.strokeStyle=pal.stroke; ctx.lineWidth=1.6; ctx.fill(); ctx.stroke();
+      const sh=ctx.createRadialGradient(b.x-r*.32,b.y-r*.38,0,b.x,b.y,r);
+      sh.addColorStop(0,"rgba(255,255,255,0.38)"); sh.addColorStop(.55,"rgba(255,255,255,0.06)"); sh.addColorStop(1,"rgba(255,255,255,0)");
+      ctx.beginPath(); ctx.arc(b.x,b.y,r,0,Math.PI*2); ctx.fillStyle=sh; ctx.fill();
+      ctx.restore();
+    }
+
+    function drawField() {
+      // Darken sides
+      ctx.fillStyle = "rgba(0,0,0,0.48)";
+      ctx.fillRect(0, 0, FL, H);
+      ctx.fillRect(FR, 0, W - FR, H);
+      // Dashed field borders
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.07)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 9]);
+      ctx.beginPath(); ctx.moveTo(FL, 0); ctx.lineTo(FL, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(FR, 0); ctx.lineTo(FR, H); ctx.stroke();
+      ctx.setLineDash([]);
       ctx.restore();
     }
 
     function drawUI() {
-      const secs = Math.floor(elapsedMs / 1000);
-      const mm = String(Math.floor(secs / 60)).padStart(2, "0");
-      const ss = String(secs % 60).padStart(2, "0");
-
-      // Timer
+      const cx = (FL + FR) / 2;
+      const s  = Math.floor(elapsedMs / 1000);
       ctx.save();
-      ctx.font = "bold 15px -apple-system, monospace";
-      ctx.fillStyle = "rgba(255,255,255,0.38)";
+      ctx.font = "bold 14px -apple-system, monospace";
+      ctx.fillStyle = "rgba(255,255,255,0.32)";
       ctx.textAlign = "center";
-      ctx.fillText(`${mm}:${ss}`, W / 2, 26);
-
+      ctx.fillText(`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`, cx, 24);
       // Per-colour counters
-      const dotR = 6, gap = 52;
-      const startX = W / 2 - (PALETTE.length - 1) * gap * 0.5;
+      const dotR=5, gap=44, startX=cx-(PALETTE.length-1)*gap*0.5;
       PALETTE.forEach((pal, i) => {
-        const x = startX + i * gap;
-        // dot
-        ctx.beginPath(); ctx.arc(x - 20, 42, dotR, 0, Math.PI * 2);
-        ctx.fillStyle = pal.fill; ctx.strokeStyle = pal.stroke; ctx.lineWidth = 1.2;
-        ctx.fill(); ctx.stroke();
-        // number
-        ctx.font = "600 13px -apple-system, sans-serif";
-        ctx.fillStyle = "rgba(255,255,255,0.6)";
-        ctx.textAlign = "left";
-        ctx.fillText(`×${mergeCounts[i]}`, x - 11, 47);
+        const x = startX + i*gap;
+        ctx.beginPath(); ctx.arc(x-14, 39, dotR, 0, Math.PI*2);
+        ctx.fillStyle=pal.fill; ctx.strokeStyle=pal.stroke; ctx.lineWidth=1.1; ctx.fill(); ctx.stroke();
+        ctx.font = "500 12px -apple-system"; ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.textAlign = "left"; ctx.fillText(`×${merges[i]}`, x-7, 43);
       });
-
-      // Rain intensity indicator (subtle)
-      const intensity = Math.min(1, (2.8 - spawnInterval) / (2.8 - SPAWN_MIN));
-      if (intensity > 0.05) {
-        ctx.globalAlpha = 0.22 * intensity;
-        ctx.font = "11px -apple-system";
-        ctx.fillStyle = "#AACCFF";
-        ctx.textAlign = "right";
-        ctx.fillText("🌧 " + Math.round(intensity * 100) + "%", W - 14, 26);
-      }
       ctx.restore();
     }
 
     // ── Main loop ─────────────────────────────────────────────────────────────
-    let lastT = 0;
+    let lastT = 0, rafId = 0;
 
     function loop(ts: number) {
-      const dt = Math.min((ts - lastT) / 1000, 0.05);
+      const dt  = Math.min((ts - lastT) / 1000, 0.05);
       lastT = ts;
       elapsedMs += dt * 1000;
 
-      // Rain intensity increases with time
-      const elapsed = elapsedMs / 1000;
-      spawnInterval = Math.max(SPAWN_MIN, 2.8 * Math.exp(-elapsed * 0.022));
+      const cfg = cfgRef.current;
+      const sm  = SPEED_MUL[cfg.speed];
 
-      // Player held ball: after 1.2s of inactivity starts auto-falling (rain drop feel)
-      if (dropBall && !dragging) {
-        holdTime += dt;
-        if (holdTime > 1.2) {
-          autoFallV = Math.min(autoFallV + GRAVITY * dt * 0.18, 450);
-          dropBall.y += autoFallV * dt;
-          if (dropBall.y + dropBall.r > H - 4) commitDrop();
+      // Update held slots: auto-fall after 1 second
+      slots.forEach(s => {
+        if (s.done) return;
+        s.holdT += dt;
+        if (s.holdT > 1.0) {
+          s.fallV = Math.min(s.fallV + GRAVITY_BASE * sm * dt * 0.22, 520 * sm);
+          s.ball.y += s.fallV * dt;
+          if (s.ball.y + s.ball.r > H - 4) commitSlot(s);
         }
-      } else if (dragging) {
-        holdTime = 0; autoFallV = 0;
-      }
+      });
 
-      // Auto-rain drops (separate from player ball, fall straight down)
-      spawnTimer += dt;
-      if (spawnTimer >= spawnInterval && balls.length < 35) {
-        spawnTimer = 0;
-        const rx = W * 0.08 + Math.random() * W * 0.84;
-        const rb = new Ball(rx, -bR(0) - 4, randColor());
-        rb.vy = 45 + Math.random() * 35; // start slow — gravity accelerates them
-        balls.push(rb);
+      // Remove committed slots
+      slots = slots.filter(s => !s.done);
+
+      // Batch spawn logic
+      if (!inBatch && slots.length === 0) {
+        waitTimer += dt;
+        if (waitTimer >= FREQ_INT[cfg.freq]) {
+          waitTimer = 0; inBatch = true; batchTimer = 0; batchSpawned = 0;
+        }
+      }
+      if (inBatch) {
+        batchTimer += dt;
+        const toSpawn = cfg.level;
+        while (batchSpawned < toSpawn && batchTimer >= batchSpawned * 0.48) {
+          addSlot(); batchSpawned++;
+        }
+        if (batchSpawned >= toSpawn) inBatch = false;
       }
 
       step(dt);
       checkMerges();
-
       balls.forEach(b => { if (b.pulseT > 0) b.pulseT = Math.max(0, b.pulseT - dt * 2.6); });
       flashes = flashes.filter(f => f.op > 0.02);
       flashes.forEach(f => { f.op *= 0.87; f.r += 1.8; });
 
-      // ── Render ───────────────────────────────────────────────────────────
+      // ── Render ─────────────────────────────────────────────────────────────
       ctx.fillStyle = "#0a0a0f";
       ctx.fillRect(0, 0, W, H);
-      const bg = ctx.createRadialGradient(W / 2, H * 0.65, 0, W / 2, H * 0.5, Math.max(W, H) * 0.65);
-      bg.addColorStop(0, "rgba(18,12,32,0.55)"); bg.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+      const bg = ctx.createRadialGradient(W/2, H*.65, 0, W/2, H*.5, Math.max(W,H)*.65);
+      bg.addColorStop(0,"rgba(18,12,32,0.55)"); bg.addColorStop(1,"rgba(0,0,0,0)");
+      ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
 
-      // Floor
-      ctx.beginPath(); ctx.moveTo(0, H - WALL); ctx.lineTo(W, H - WALL);
-      ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.lineWidth = 1; ctx.stroke();
+      // Floor line
+      ctx.beginPath(); ctx.moveTo(FL, H-WALL); ctx.lineTo(FR, H-WALL);
+      ctx.strokeStyle="rgba(255,255,255,0.05)"; ctx.lineWidth=1; ctx.stroke();
 
-      // Drop guide + player ball
-      if (dropBall) {
+      drawField();
+
+      // Drop guides + held balls
+      slots.forEach(s => {
+        if (s.done) return;
+        const b = s.ball;
         ctx.save();
-        ctx.globalAlpha = 0.11;
-        ctx.setLineDash([4, 9]);
-        ctx.beginPath(); ctx.moveTo(dropBall.x, dropBall.y + dropBall.r); ctx.lineTo(dropBall.x, H - 4);
-        ctx.strokeStyle = "#FFFFFF"; ctx.lineWidth = 1; ctx.stroke();
+        ctx.globalAlpha = 0.09;
+        ctx.setLineDash([3, 9]);
+        ctx.beginPath(); ctx.moveTo(b.x, b.y+b.r); ctx.lineTo(b.x, H-4);
+        ctx.strokeStyle="#FFFFFF"; ctx.lineWidth=1; ctx.stroke();
         ctx.setLineDash([]);
         ctx.restore();
-        drawBall(dropBall, 0.80);
-      }
+        drawBall(b, 0.78);
+      });
 
       balls.forEach(b => drawBall(b));
 
       flashes.forEach(f => {
-        const pal = PALETTE[f.ci];
-        ctx.save(); ctx.globalAlpha = f.op;
-        const fg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
-        fg.addColorStop(0, pal.stroke); fg.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-        ctx.fillStyle = fg; ctx.fill();
+        const pal=PALETTE[f.ci]; ctx.save(); ctx.globalAlpha=f.op;
+        const fg=ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r);
+        fg.addColorStop(0,pal.stroke); fg.addColorStop(1,"rgba(0,0,0,0)");
+        ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); ctx.fillStyle=fg; ctx.fill();
         ctx.restore();
       });
 
       drawUI();
-
       rafId = requestAnimationFrame(loop);
     }
-    let rafId = requestAnimationFrame(loop);
+    rafId = requestAnimationFrame(loop);
 
     return () => {
       cancelAnimationFrame(rafId);
@@ -422,10 +369,100 @@ export function ZenDropsGame() {
     };
   }, []);
 
+  // ── HTML Settings overlay ─────────────────────────────────────────────────
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ width: "100%", height: "100%", display: "block", touchAction: "none" }}
-    />
+    <div style={{ position: "relative", width: "100%", height: "100%", background: "#0a0a0f" }}>
+      <canvas
+        ref={canvasRef}
+        style={{ width: "100%", height: "100%", display: "block", touchAction: "none" }}
+      />
+
+      {/* Settings toggle */}
+      <button
+        onClick={() => setShowCfg(s => !s)}
+        style={{
+          position: "absolute", top: 10, right: 10,
+          background: showCfg ? "rgba(168,148,230,0.22)" : "rgba(255,255,255,0.07)",
+          border: `1px solid ${showCfg ? "rgba(168,148,230,0.45)" : "rgba(255,255,255,0.13)"}`,
+          borderRadius: 8, color: showCfg ? "#D4C8F0" : "rgba(255,255,255,0.5)",
+          fontSize: 12, fontWeight: 500, padding: "5px 11px 5px 9px",
+          cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+          fontFamily: "-apple-system, sans-serif", transition: "all 0.18s",
+          userSelect: "none",
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        Настройки
+      </button>
+
+      {/* Settings panel */}
+      {showCfg && (
+        <div style={{
+          position: "absolute", top: 44, right: 10,
+          background: "rgba(12,8,22,0.97)",
+          border: "1px solid rgba(168,148,230,0.22)",
+          borderRadius: 14, padding: "14px 16px", minWidth: 215,
+          backdropFilter: "blur(16px)",
+          boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+          display: "flex", flexDirection: "column", gap: 13,
+          fontFamily: "-apple-system, sans-serif",
+          zIndex: 20,
+        }}>
+          <CfgRow label="Частота капель">
+            {(["slow","normal","fast"] as FreqKey[]).map(k => (
+              <SegBtn key={k} active={freq===k} onClick={() => setFreq(k)}>
+                {k==="slow"?"Редко":k==="normal"?"Средне":"Часто"}
+              </SegBtn>
+            ))}
+          </CfgRow>
+
+          <CfgRow label="Скорость падения">
+            {(["slow","normal","fast"] as SpeedKey[]).map(k => (
+              <SegBtn key={k} active={speed===k} onClick={() => setSpeed(k)}>
+                {k==="slow"?"Медленно":k==="normal"?"Нормально":"Быстро"}
+              </SegBtn>
+            ))}
+          </CfgRow>
+
+          <CfgRow label="Уровень (капель за раз)">
+            {([1,2,3] as LevelKey[]).map(lv => (
+              <SegBtn key={lv} active={level===lv} onClick={() => setLevel(lv)}>
+                {lv===1?"1 — Одна":lv===2?"2 — Две":"3 — Три"}
+              </SegBtn>
+            ))}
+          </CfgRow>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── UI sub-components ─────────────────────────────────────────────────────────
+function CfgRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{
+        fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.32)",
+        textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6,
+      }}>{label}</div>
+      <div style={{ display: "flex", gap: 4 }}>{children}</div>
+    </div>
+  );
+}
+
+function SegBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} style={{
+      flex: 1, padding: "5px 4px", borderRadius: 8,
+      border: `1px solid ${active ? "rgba(168,148,230,0.5)" : "rgba(255,255,255,0.1)"}`,
+      background: active ? "rgba(168,148,230,0.22)" : "rgba(255,255,255,0.04)",
+      color: active ? "#D4C8F0" : "rgba(255,255,255,0.42)",
+      fontSize: 11, fontWeight: active ? 600 : 400,
+      cursor: "pointer", transition: "all 0.15s",
+      fontFamily: "-apple-system, sans-serif", whiteSpace: "nowrap",
+    }}>{children}</button>
   );
 }
