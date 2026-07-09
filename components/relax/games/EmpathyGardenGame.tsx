@@ -21,11 +21,13 @@ interface Flower {
   seg: Seg; travelT: number; travelDur: number; bloomT: number;
   x: number; y: number; targetR: number;
   traveling: boolean; hue: number; petals: number;
+  soundPlayed: boolean;
 }
 
 interface Pulse {
   x1: number; y1: number; x2: number; y2: number;
   t: number; dur: number; hue: number;
+  soundStarted: boolean;
 }
 
 // ─── Deterministic tree ───────────────────────────────────────────────────────
@@ -77,19 +79,133 @@ export function EmpathyGardenGame() {
     let curX = W / 2, curY = H / 2;
     let cursorActive = false;
 
+    // Gravity wave state (from click)
+    let gravX = 0, gravY = 0, gravTimer = 0;
+
     // Trail ring buffer
     const TRAIL_LEN = 40;
     const trailX = new Float32Array(TRAIL_LEN);
     const trailY = new Float32Array(TRAIL_LEN);
     let trailHead = 0, trailFilled = 0;
 
-    let seeds: Seed[]   = [];
+    let seeds: Seed[]     = [];
     let flowers: Flower[] = [];
     let pulses: Pulse[]   = [];
     let seedIdCtr = 0;
     let rafId = 0, lastT = 0;
     let spawnTimer = 2.5;
     let showHint = true;
+
+    // ── Web Audio ─────────────────────────────────────────────────────────────
+    let ac: AudioContext | null = null;
+    let masterGain: GainNode | null = null;
+    let verbNode: ConvolverNode | null = null;
+
+    function bootAudio() {
+      if (ac) return;
+      ac = new AudioContext();
+      masterGain = ac.createGain();
+      masterGain.gain.value = 0.5;
+
+      // Simple reverb impulse
+      const sr = ac.sampleRate, len = Math.floor(sr * 2.2);
+      const buf = ac.createBuffer(2, len, sr);
+      for (let c = 0; c < 2; c++) {
+        const d = buf.getChannelData(c);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4);
+      }
+      verbNode = ac.createConvolver();
+      verbNode.buffer = buf;
+      const rg = ac.createGain(); rg.gain.value = 0.35;
+      verbNode.connect(rg); rg.connect(ac.destination);
+      masterGain.connect(ac.destination);
+    }
+
+    // Sound 1: Absorption — deep gong when seed hits root (110-130 Hz sine, 0.8s)
+    function sndAbsorption() {
+      if (!ac || !masterGain || !verbNode) return;
+      if (ac.state === "suspended") void ac.resume();
+      const t = ac.currentTime;
+      const freq = 115 + Math.random() * 20;
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(freq * 1.6, t);
+      o.frequency.exponentialRampToValueAtTime(freq, t + 0.06);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.55, t + 0.018);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.85);
+      o.connect(g); g.connect(masterGain!); g.connect(verbNode!);
+      o.start(t); o.stop(t + 0.9);
+
+      // Overtone: add slight harmonic richness
+      const o2 = ac.createOscillator();
+      const g2 = ac.createGain();
+      o2.type = "sine";
+      o2.frequency.setValueAtTime(freq * 2.1, t);
+      g2.gain.setValueAtTime(0, t);
+      g2.gain.linearRampToValueAtTime(0.15, t + 0.015);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      o2.connect(g2); g2.connect(masterGain!);
+      o2.start(t); o2.stop(t + 0.55);
+    }
+
+    // Sound 2: Glissando — rising sweep along pulse travel (200→600 Hz)
+    function sndGlissando(dur: number) {
+      if (!ac || !masterGain || !verbNode) return;
+      if (ac.state === "suspended") void ac.resume();
+      const t = ac.currentTime;
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      const bpf = ac.createBiquadFilter();
+      bpf.type = "bandpass"; bpf.frequency.value = 800; bpf.Q.value = 0.7;
+      o.type = "sine";
+      o.frequency.setValueAtTime(200, t);
+      o.frequency.linearRampToValueAtTime(600, t + dur * 0.82);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.18, t + 0.05);
+      g.gain.linearRampToValueAtTime(0.14, t + dur * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(bpf); bpf.connect(g); g.connect(masterGain!); g.connect(verbNode!);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+
+    // Sound 3: Zen chord — kalimba-style pentatonic bloom (C5 E5 G5 B5 + delay echo)
+    function sndZenChord(hue: number) {
+      if (!ac || !masterGain || !verbNode) return;
+      if (ac.state === "suspended") void ac.resume();
+      const t = ac.currentTime;
+
+      // Pentatonic: C5=523.25, E5=659.25, G5=784, B5=987.77, D6=1174.66
+      const PENTA = [523.25, 659.25, 784.00, 987.77, 1174.66];
+      // Rotate based on hue for variety
+      const offset = Math.floor(hue / 72) % 3;
+      const freqs = [PENTA[offset], PENTA[offset + 1], PENTA[offset + 2], PENTA[(offset + 3) % 5]];
+
+      // Delay for spatial echo
+      const delay = ac.createDelay(0.6);
+      delay.delayTime.value = 0.28;
+      const dg = ac.createGain(); dg.gain.value = 0.38;
+      delay.connect(dg); dg.connect(delay); dg.connect(masterGain!);
+
+      freqs.forEach((freq, i) => {
+        const o = ac!.createOscillator();
+        const g = ac!.createGain();
+        o.type = "sine";
+        // Slight detuning for shimmer
+        o.frequency.setValueAtTime(freq * (1 + (i % 2 === 0 ? 0.002 : -0.002)), t);
+        const onset = t + i * 0.055;
+        g.gain.setValueAtTime(0, onset);
+        g.gain.linearRampToValueAtTime(0.28, onset + 0.025);
+        g.gain.setValueAtTime(0.28, onset + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.001, onset + 2.8);
+        o.connect(g);
+        g.connect(masterGain!);
+        g.connect(verbNode!);
+        g.connect(delay);
+        o.start(onset); o.stop(onset + 3.2);
+      });
+    }
 
     // ── Seed spawning ─────────────────────────────────────────────────────────
     function makeSeed(x: number, y: number): Seed {
@@ -128,9 +244,11 @@ export function EmpathyGardenGame() {
     [[d1[0], 200], [d1[1], 280], [d2[0], 45], [d2[3], 320]].forEach(([seg, hue]) => {
       if (!seg) return;
       const s = seg as Seg;
-      flowers.push({ seg: s, travelT: 1, travelDur: 1, bloomT: 1, x: s.x2, y: s.y2,
+      flowers.push({
+        seg: s, travelT: 1, travelDur: 1, bloomT: 1, x: s.x2, y: s.y2,
         targetR: 8 - s.depth, traveling: false, hue: hue as number,
-        petals: 5 + Math.floor(Math.random() * 3) });
+        petals: 5 + Math.floor(Math.random() * 3), soundPlayed: true,
+      });
     });
 
     // ── Pick flower branch ────────────────────────────────────────────────────
@@ -145,17 +263,26 @@ export function EmpathyGardenGame() {
       seed.flashT = 0.9;
       showHint = false;
 
+      bootAudio();
+      sndAbsorption();
+
       const seg = pickSeg();
       const hue = SEED_HUES[Math.floor(Math.random() * SEED_HUES.length)];
+      const dur = 1.0 + Math.random() * 0.5;
 
       // Glowing impulse from root to branch tip
-      pulses.push({ x1: rootX, y1: rootY, x2: seg.x2, y2: seg.y2,
-        t: 0, dur: 1.0 + Math.random() * 0.5, hue });
+      pulses.push({
+        x1: rootX, y1: rootY, x2: seg.x2, y2: seg.y2,
+        t: 0, dur, hue, soundStarted: false,
+      });
 
       // Flower traveling along branch
-      flowers.push({ seg, travelT: 0, travelDur: 1.8 + Math.random() * 1.0, bloomT: 0,
+      flowers.push({
+        seg, travelT: 0, travelDur: 1.8 + Math.random() * 1.0, bloomT: 0,
         x: seg.x1, y: seg.y1, targetR: Math.max(3, 9 - seg.depth),
-        traveling: true, hue, petals: 5 + Math.floor(Math.random() * 4) });
+        traveling: true, hue, petals: 5 + Math.floor(Math.random() * 4),
+        soundPlayed: false,
+      });
 
       // Spawn 2-3 new seeds near the contact point
       const newCount = 2 + Math.floor(Math.random() * 2);
@@ -302,29 +429,42 @@ export function EmpathyGardenGame() {
       ctx.setLineDash([4, 7]);
       ctx.stroke();
       ctx.setLineDash([]);
+
+      // Gravity wave visual indicator
+      if (gravTimer > 0) {
+        const alpha = Math.min(1, gravTimer / 0.4) * 0.35;
+        const wavR  = 60 + (2.5 - gravTimer) / 2.5 * 80;
+        ctx.beginPath(); ctx.arc(gravX, gravY, wavR, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(200,170,255,${alpha})`;
+        ctx.lineWidth = 1.5; ctx.setLineDash([3, 6]); ctx.stroke();
+        ctx.setLineDash([]);
+      }
     }
 
     // ── Events ────────────────────────────────────────────────────────────────
-    function onMove(e: MouseEvent) {
+    function onMove(e: PointerEvent) {
       const r = canvas!.getBoundingClientRect();
       curX = e.clientX - r.left; curY = e.clientY - r.top;
       cursorActive = true; showHint = false;
     }
-    function onTouch(e: TouchEvent) {
+    function onDown(e: PointerEvent) {
       const r = canvas!.getBoundingClientRect();
-      const t = e.touches[0]; if (!t) return;
-      curX = t.clientX - r.left; curY = t.clientY - r.top;
-      cursorActive = true; showHint = false;
+      const cx = e.clientX - r.left, cy = e.clientY - r.top;
+      bootAudio();
+      // Gravity wave: pull all seeds to click point for 2.5 seconds
+      gravX = cx; gravY = cy; gravTimer = 2.5;
+      showHint = false;
     }
-    canvas.addEventListener("mousemove",  onMove);
-    canvas.addEventListener("touchmove",  onTouch, { passive: true });
-    canvas.addEventListener("touchstart", onTouch, { passive: true });
+    canvas.addEventListener("pointermove", onMove);
+    canvas.addEventListener("pointerdown", onDown);
 
     // ── Main loop ─────────────────────────────────────────────────────────────
     function loop(ts: number) {
       const dt = Math.min((ts - lastT) / 1000, 0.05);
       lastT = ts;
       const T = ts / 1000;
+
+      if (gravTimer > 0) gravTimer = Math.max(0, gravTimer - dt);
 
       // Background
       ctx.fillStyle = "#04060e";
@@ -358,11 +498,21 @@ export function EmpathyGardenGame() {
         const distC = Math.sqrt(dxC * dxC + dyC * dyC);
 
         const ATTR_R = 165;
-        if (distC < ATTR_R && cursorActive) {
+
+        // Gravity wave — pulls ALL seeds toward click point (strong, 2.5s)
+        if (gravTimer > 0) {
+          const dxG = gravX - seed.x, dyG = gravY - seed.y;
+          const distG = Math.sqrt(dxG * dxG + dyG * dyG) + 1;
+          const strength = 280 * (gravTimer / 2.5);
+          seed.vx += (dxG / distG) * strength * dt;
+          seed.vy += (dyG / distG) * strength * dt;
+          seed.attracted = true;
+          attractedCount++;
+        } else if (distC < ATTR_R && cursorActive) {
+          // Normal cursor swarm magnet
           seed.attracted = true;
           attractedCount++;
           const t       = 1 - distC / ATTR_R;
-          // Inertia: heavier swarm = slightly slower response
           const inertia = 1 / (1 + attractedCount * 0.045);
           const force   = 165 * t * t * inertia * (distC < 45 ? 0.18 : 1);
           seed.vx += (dxC / (distC + 0.1)) * force * dt;
@@ -390,7 +540,7 @@ export function EmpathyGardenGame() {
         if      (seed.y < -38) seed.y = H + 28;
         else if (seed.y > H + 38) seed.y = -28;
 
-        // Root collision trigger
+        // Root collision trigger — seed must be attracted to count
         const dxR = seed.x - rootX, dyR = seed.y - rootY;
         if (seed.attracted && Math.sqrt(dxR * dxR + dyR * dyR) < 50) {
           triggerTransform(seed);
@@ -404,6 +554,11 @@ export function EmpathyGardenGame() {
           if (f.travelT >= 1) {
             f.travelT = 1; f.traveling = false;
             f.x = f.seg.x2; f.y = f.seg.y2;
+            // Zen chord when flower blooms
+            if (!f.soundPlayed) {
+              f.soundPlayed = true;
+              sndZenChord(f.hue);
+            }
           } else {
             f.x = f.seg.x1 + (f.seg.x2 - f.seg.x1) * f.travelT;
             f.y = f.seg.y1 + (f.seg.y2 - f.seg.y1) * f.travelT;
@@ -415,7 +570,14 @@ export function EmpathyGardenGame() {
 
       // ── Update pulses ─────────────────────────────────────────────────────
       pulses = pulses.filter(p => p.t <= 1);
-      for (const p of pulses) p.t = Math.min(1, p.t + dt / p.dur);
+      for (const p of pulses) {
+        // Glissando starts on first frame of pulse
+        if (!p.soundStarted) {
+          p.soundStarted = true;
+          sndGlissando(p.dur);
+        }
+        p.t = Math.min(1, p.t + dt / p.dur);
+      }
 
       // ── Render ────────────────────────────────────────────────────────────
       drawTree(T);
@@ -469,7 +631,7 @@ export function EmpathyGardenGame() {
         }
       }
 
-      // Cursor
+      // Cursor dot
       if (cursorActive) {
         const weight = Math.min(attractedCount / 10, 1);
         const pulse  = 1 + 0.35 * Math.sin(T * 4.5);
@@ -502,9 +664,9 @@ export function EmpathyGardenGame() {
     return () => {
       cancelAnimationFrame(rafId);
       ro.disconnect();
-      canvas.removeEventListener("mousemove",  onMove);
-      canvas.removeEventListener("touchmove",  onTouch);
-      canvas.removeEventListener("touchstart", onTouch);
+      canvas.removeEventListener("pointermove", onMove);
+      canvas.removeEventListener("pointerdown", onDown);
+      ac?.close();
     };
   }, []);
 

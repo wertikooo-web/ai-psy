@@ -100,6 +100,34 @@ export function ZenDropsGame() {
     }
     const sndMerge = (ci: number, mc: number) => tone(PALETTE[ci].baseFreq * Math.pow(0.6, mc-1), 1.6, 0.22);
 
+    // Victory chord — triumphant major arpeggio with reverb bloom
+    function sndVictory() {
+      if (!ac || !master || !verb) return;
+      if (ac.state === "suspended") void ac.resume();
+      // C4 major chord + octave: C4 E4 G4 C5 E5
+      const notes = [261.63, 329.63, 392.00, 523.25, 659.25];
+      notes.forEach((freq, i) => {
+        const t = ac!.currentTime + i * 0.11;
+        const o = ac!.createOscillator(), g = ac!.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(freq, t);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.28, t + 0.04);
+        g.gain.setValueAtTime(0.28, t + 0.18);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 2.8);
+        o.connect(g); g.connect(master!); g.connect(verb!);
+        o.start(t); o.stop(t + 3.0);
+        // Bell partial
+        const o2 = ac!.createOscillator(), g2 = ac!.createGain();
+        o2.type = "sine"; o2.frequency.setValueAtTime(freq * 2.756, t);
+        g2.gain.setValueAtTime(0, t);
+        g2.gain.linearRampToValueAtTime(0.09, t + 0.02);
+        g2.gain.exponentialRampToValueAtTime(0.001, t + 1.4);
+        o2.connect(g2); g2.connect(master!); g2.connect(verb!);
+        o2.start(t); o2.stop(t + 1.5);
+      });
+    }
+
     // Different-color balls bounce — crisp triangle tick
     const sndDiffBounce = () => {
       if (!ac || !master || !verb) return;
@@ -144,10 +172,26 @@ export function ZenDropsGame() {
     let flashes: Flash[]   = [];
     const merges           = [0, 0, 0];
     let elapsedMs          = 0;
-    let waitTimer          = 0;     // time waiting for next batch
-    let batchTimer         = 0;     // time within current batch spawn
-    let batchSpawned       = 0;     // how many spawned in current batch
+    let waitTimer          = 0;
+    let batchTimer         = 0;
+    let batchSpawned       = 0;
     let inBatch            = false;
+
+    // ── Win state ─────────────────────────────────────────────────────────────
+    type WinPhase = null | "growing" | "exploding" | "done";
+    let winPhase: WinPhase = null;
+    let winTimer   = 0;   // seconds since win started
+    let winTextAlpha = 0; // 0→1 fade-in
+
+    function triggerWin() {
+      if (winPhase) return;
+      winPhase  = "growing";
+      winTimer  = 0;
+      sndVictory();
+      // Stop dropping new balls
+      inBatch = false; batchSpawned = 0; waitTimer = 9999;
+      slots = [];
+    }
 
     function randColor() { return Math.floor(Math.random() * 3); }
     function clampX(x: number, r: number) { return Math.max(FL + r + 3, Math.min(FR - r - 3, x)); }
@@ -219,6 +263,7 @@ export function ZenDropsGame() {
           a.merged=true; b.merged=true;
           const nb=new Ball(mx,my,a.ci,Math.min(nmc,7)); nb.vy=-110; nb.vx=(a.vx+b.vx)*0.28; nb.pulseT=1;
           balls.push(nb);
+          if (nmc >= 7) triggerWin();
         }
       }
       balls = balls.filter(b=>!b.merged);
@@ -361,6 +406,34 @@ export function ZenDropsGame() {
       flashes = flashes.filter(f => f.op > 0.02);
       flashes.forEach(f => { f.op *= 0.87; f.r += 1.8; });
 
+      // ── Win animation ──────────────────────────────────────────────────────
+      if (winPhase === "growing") {
+        winTimer += dt;
+        const targetR = bR(7);
+        balls.forEach(b => {
+          b.r += (targetR - b.r) * 4 * dt;
+          // Pull gently toward center during grow
+          b.vx += (W / 2 - b.x) * 0.5 * dt;
+          b.vy += (H * 0.6 - b.y) * 0.5 * dt;
+          b.mc = 7; // visually treat as max level
+        });
+        if (winTimer >= 1.6) {
+          winPhase = "exploding";
+          // Kick balls outward
+          balls.forEach(b => {
+            const ang = Math.random() * Math.PI * 2;
+            const spd = 280 + Math.random() * 220;
+            b.vx = Math.cos(ang) * spd;
+            b.vy = Math.sin(ang) * spd - 80;
+          });
+        }
+      }
+      if (winPhase === "exploding" || winPhase === "done") {
+        winTimer += dt;
+        winTextAlpha = Math.min(1, (winTimer - 1.6) / 0.9);
+        if (winTimer > 4) winPhase = "done";
+      }
+
       // ── Render ─────────────────────────────────────────────────────────────
       ctx.fillStyle = "#0a0a0f";
       ctx.fillRect(0, 0, W, H);
@@ -399,6 +472,39 @@ export function ZenDropsGame() {
       });
 
       drawUI();
+
+      // ── Win overlay ────────────────────────────────────────────────────────
+      if (winPhase && winTextAlpha > 0) {
+        const cx = W / 2, cy = H / 2;
+        // Radial bloom behind text
+        const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(W, H) * 0.45);
+        bloom.addColorStop(0,   `rgba(168,148,230,${0.22 * winTextAlpha})`);
+        bloom.addColorStop(0.5, `rgba(130,200,180,${0.12 * winTextAlpha})`);
+        bloom.addColorStop(1,   "rgba(0,0,0,0)");
+        ctx.fillStyle = bloom; ctx.fillRect(0, 0, W, H);
+
+        ctx.save();
+        ctx.globalAlpha = winTextAlpha;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        // Main text
+        const fs = Math.min(W * 0.07, 46);
+        ctx.font = `bold ${fs}px -apple-system, sans-serif`;
+        ctx.shadowColor = "rgba(168,148,230,0.85)";
+        ctx.shadowBlur  = 28;
+        ctx.fillStyle   = "#E8DEFF";
+        ctx.fillText("У вас всё получилось!", cx, cy - fs * 0.7);
+
+        ctx.shadowColor = "rgba(130,200,180,0.75)";
+        ctx.shadowBlur  = 22;
+        ctx.fillStyle   = "#C8EEE0";
+        ctx.fillText("Поздравляю! 🌸", cx, cy + fs * 0.55);
+
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+
       rafId = requestAnimationFrame(loop);
     }
     rafId = requestAnimationFrame(loop);
